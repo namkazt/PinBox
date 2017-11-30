@@ -323,77 +323,69 @@ void PPClientSession::ss_stopFrameGraber()
 	g_ss_framgrabber.destroy();
 }
 
+
 void PPClientSession::ss_sendFrameToClient(const SL::Screen_Capture::Image& img)
 {
+	u32 newW = 400.0f * ((float)g_ss_outputScale / 100.0f);
+	u32 newH = 240.0f * ((float)g_ss_outputScale / 100.0f);
+	//===============================================================
+	// get buffer data from image frame
+	auto size = Width(img) * Height(img) * 3;
+	u8* imgBuffer = (u8*)malloc(size);
+	SL::Screen_Capture::ExtractAndConvertToRGB(img, (char*)imgBuffer);
+
+	//===============================================================
+	// webp encode
 	try {
-		//-----------------------------------------------------------------------------
-		// Extract image data
-		//-----------------------------------------------------------------------------
-		auto size = Width(img) * Height(img) * 3;
-		char* imgbuffer = static_cast<char*>(malloc(size));
-		SL::Screen_Capture::ExtractAndConvertToRGB(img, imgbuffer);
-		// scale
-		cv::Mat rawImg = cv::Mat(cv::Size(Width(img), Height(img)), CV_8UC3, imgbuffer);
-		cv::Mat scaledImg;
-		cv::resize(rawImg, scaledImg, cv::Size(300, 180));
-		cv::cvtColor(scaledImg, scaledImg, cv::COLOR_RGB2BGR);
-
-		//// display test raw
-		//cv::imshow("Raw", scaledImg);
-		//cv::waitKey(1);
-
-		// compress to webp
-		std::vector<int> compression_params;
-		compression_params.push_back(cv::IMWRITE_WEBP_QUALITY);
-		compression_params.push_back(35);
-		std::vector<uchar> buffer;
-		cv::imencode(".webp", scaledImg, buffer, compression_params);
-
-		// if frame too small then for sure it is blank. we not send it.
-		/*if (buffer.size() < 1024)
-		{
+		WebPConfig config;
+		if (!WebPConfigPreset(&config, WEBP_PRESET_PHOTO, 50)) {
+			g_ss_isReceivedLastFrame = true;
+			return;  // version error
+		}
+		// Add additional tuning:
+		config.sns_strength = 90;
+		config.filter_sharpness = 6;
+		config.method = 1;
+		auto config_error = WebPValidateConfig(&config);
+		// Setup the input data, allocating a picture of width x height dimension
+		WebPPicture pic;
+		if (!WebPPictureInit(&pic)) {
 			g_ss_isReceivedLastFrame = true;
 			return;
-		}*/
-
-		//TODO: this method should be run on other thread
-		// send frame to client
-		std::cout << "FRAME SIZE: " << buffer.size() << std::endl;
-		sendMessageWithCodeAndData(MSG_CODE_REQUEST_NEW_SCREEN_FRAME, reinterpret_cast<u8*>(buffer.data()), buffer.size());
-
-		// test save file
-		//std::ofstream outfile("test/final.webp", std::ofstream::binary);
-		//outfile.write(reinterpret_cast<const char*>(buffer.data()), buffer.size());
-		//outfile.close();
-
-		// free data
-		free(imgbuffer);
-		rawImg.release();
-		scaledImg.release();
-		buffer.clear();
+		}
+		pic.width = Width(img);
+		pic.height = Height(img);
+		if (!WebPPictureAlloc(&pic)) {
+			g_ss_isReceivedLastFrame = true;
+			return;
+		}
+		WebPPictureImportRGB(&pic, imgBuffer, Width(img)*3);
+		WebPPictureRescale(&pic, newW, newH);
+		WebPMemoryWriter writer;
+		WebPMemoryWriterInit(&writer);
+		pic.writer = WebPMemoryWrite;
+		pic.custom_ptr = &writer;
+		int ok = WebPEncode(&config, &pic);
+		WebPPictureFree(&pic);   // Always free the memory associated with the input.
+		//===============================================================
+		// result send to client
+		if (!ok) {
+			//printf("Encoding error: %d\n", pic.error_code);
+			g_ss_isReceivedLastFrame = true;
+			WebPMemoryWriterClear(&writer);
+			free(imgBuffer);
+			return; 
+		}
+		//printf("Output size: %d\n", writer.size);
+		sendMessageWithCodeAndData(MSG_CODE_REQUEST_NEW_SCREEN_FRAME, writer.mem, writer.size);
+		WebPMemoryWriterClear(&writer);
+		free(imgBuffer);
 	}
-	catch (cv::Exception &e)
+	catch (...)
 	{
-		std::cout << e.msg << std::endl;
+		g_ss_isReceivedLastFrame = true;
+		free(imgBuffer);
 	}
-}
-
-// test method
-void PPClientSession::test_initFrameGraber()
-{
-	g_ss_framgrabber = SL::Screen_Capture::CreateScreeCapture([]()
-	{
-		auto mons = SL::Screen_Capture::GetMonitors();
-		std::vector<SL::Screen_Capture::Monitor> selectedMonitor = std::vector<SL::Screen_Capture::Monitor>();
-		//-------------------------- >> Index 0
-		selectedMonitor.push_back(mons[1]);
-		return selectedMonitor;
-	}).onNewFrame([&](const SL::Screen_Capture::Image& img, const SL::Screen_Capture::Monitor& monitor)
-	{
-
-	}).start_capturing();
-	g_ss_framgrabber.setFrameChangeInterval(std::chrono::milliseconds(33));// 1 sec
-	g_ss_framgrabber.resume();
 }
 
 //---------------------------------------------------------------------------------------------------------------------------
