@@ -1,0 +1,28 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 14
+VisualStudioVersion = 14.0.25420.1
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "PinBox", "PinBox\PinBox.vcxproj", "{7C85BF63-9A1F-43F0-9560-6E51BA537C01}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Citra|x64 = Citra|x64
+		Citra|x86 = Citra|x86
+		Netlink|x64 = Netlink|x64
+		Netlink|x86 = Netlink|x86
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{7C85BF63-9A1F-43F0-9560-6E51BA537C01}.Citra|x64.ActiveCfg = Citra|x64
+		{7C85BF63-9A1F-43F0-9560-6E51BA537C01}.Citra|x64.Build.0 = Citra|x64
+		{7C85BF63-9A1F-43F0-9560-6E51BA537C01}.Citra|x86.ActiveCfg = Citra|Win32
+		{7C85BF63-9A1F-43F0-9560-6E51BA537C01}.Citra|x86.Build.0 = Citra|Win32
+		{7C85BF63-9A1F-43F0-9560-6E51BA537C01}.Netlink|x64.ActiveCfg = Netlink|x64
+		{7C85BF63-9A1F-43F0-9560-6E51BA537C01}.Netlink|x64.Build.0 = Netlink|x64
+		{7C85BF63-9A1F-43F0-9560-6E51BA537C01}.Netlink|x86.ActiveCfg = Netlink|Win32
+		{7C85BF63-9A1F-43F0-9560-6E51BA537C01}.Netlink|x86.Build.0 = Netlink|Win32
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal
