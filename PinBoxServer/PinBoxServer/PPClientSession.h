@@ -10,12 +10,6 @@
 // frame capture
 #include "ScreenCapture.h"
 
-//// openCV
-//#include <opencv2/core.hpp>
-//#include <opencv2/imgcodecs.hpp>
-//#include <opencv2/highgui.hpp>
-//#include <opencv2/opencv.hpp>
-
 //webp
 #include "webp/encode.h"
 

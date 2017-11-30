@@ -36,6 +36,9 @@
     <ClInclude Include="winmain-inl.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="AudioStreamSession.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="stdafx.cpp">
@@ -51,6 +54,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="PPServer.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="AudioStreamSession.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
