@@ -5,35 +5,25 @@
 #include "PPServer.h"
 #include "AudioStreamSession.h"
 
-static u_char* recordedAudio;
-static uint32_t recordedIndex = 0;
-static uint32_t totalFrames = 0;
 
 
 int main()
 {
+	//AudioStreamSession* ass = new AudioStreamSession();
+	//ass->SetOnRecordData([=](u8* output, u32 size, u32 frames)
+	//{
+	//});
+	//ass->StartAudioStream();
 
-	AudioStreamSession* ass = new AudioStreamSession();
-	ass->SetOnRecordData([=](u8* buffer, u32 size, u32 frames)
-	{
-		int a = 0;
-	});
-	ass->StartAudioStream();
+	PPServer *server = new PPServer();
+	server->InitServer();
 
-	/*FILE* fd = fopen("record.raw", "wb");
-	fwrite(recordedAudio, sizeof(u_char), recordedIndex * 2, fd);
-	fclose(fd);*/
-
-
-	//PPServer *server = new PPServer();
-	//server->InitServer();
-
-	char a;
+	/*char a;
 	std::cin >> a;
 	if (a == 'f') {
 		ass->StopStreaming();
 	}
-
+*/
 	return 0;
 }
 

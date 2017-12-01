@@ -38,7 +38,7 @@ public:
 	void						StopStreaming();
 	void						SetOnRecordData(OnRecordDataCallback callback) { g_onRecordDataCallback = callback; }
 
-public:
+public: // test functions
 	HMMIO						g_tmpWavFile;
 	void						Helper_WriteWaveHeader(LPCWSTR fileName, LPCWAVEFORMATEX pwfx, MMCKINFO *pckRIFF, MMCKINFO *pckData);
 	void						Helper_FinishWaveFile(LPCWSTR fileName, MMCKINFO *pckRIFF, MMCKINFO *pckData);

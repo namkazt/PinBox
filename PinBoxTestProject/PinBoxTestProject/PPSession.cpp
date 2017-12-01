@@ -230,22 +230,34 @@ void PPSession::processScreenCaptureSession(u8* buffer, size_t size)
 				delete msgObj;
 			}
 
-			cv::Mat frame;
-			std::vector<uchar> data(buffer, buffer + size);
-			cv::imdecode(data, 1, &frame);
+
+			// init webp decode config
+			WebPDecoderConfig config;
+			WebPInitDecoderConfig(&config);
+			config.options.no_fancy_upsampling = 1;
+			config.options.use_scaling = 1;
+			config.options.scaled_width = 400;
+			config.options.scaled_height = 240;
+			if(!WebPGetFeatures(buffer, size, &config.input) == VP8_STATUS_OK)
+				return;
+			config.output.colorspace = MODE_BGR;
+			if (!WebPDecode(buffer, size, &config) == VP8_STATUS_OK)
+				return;
+#ifdef _WIN32
+			// Decode frame data [Windows]
+			cv::Mat frame = cv::Mat(cv::Size(400, 240), CV_8UC3, config.output.private_memory);
 
 			// display test raw
-			cv::resize(frame, frame, cv::Size(400, 240));
 			cv::imshow("Recevied", frame);
 			cv::waitKey(1);
-
-
-			// right way to clean
-			std::vector<uchar>().swap(data);
-			data.clear();
-			data.shrink_to_fit();
 			frame.release();
+#else
+			// Decode frame data [3DS]
 
+
+#endif
+			WebPFreeDecBuffer(&config.output);
+			int a = 0;
 		}catch(cv::Exception& e)
 		{
 			std::cout << e.msg << std::endl;

@@ -89,10 +89,12 @@ private:
 	//---------------------------------------------------------------------------------------------------------------------------
 	//											Server will wait until client received frame after send new frame. Default: true
 	bool										g_ss_waitForClientReceived = true;
-	u32											g_ss_waitForFrame = 6;
+	u32											g_ss_waitForFrame = 2;
 	u32											g_ss_currentWaitedFrame = 0;
-	//											Output scale from 0 -> 100 percent
-	u8											g_ss_outputScale = 100;
+	//											Output scale from 0 -> 100 percent [100 is best]
+	u32											g_ss_outputScale = 75;
+	//											Output quality from 0 -> 100 percent [100 is best]
+	u32											g_ss_outputQuality = 75;
 	//---------------------------------------------------------------------------------------------------------------------------
 	void										ss_initFrameGraber();
 	void										ss_stopFrameGraber();

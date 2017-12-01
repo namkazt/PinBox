@@ -16,10 +16,11 @@
 // Note: each session is running standalone and only 1 session can be run
 // at a time.
 //=======================================================================
-
 #include "PPNetwork.h"
+#include <webp/decode.h>
 #include <iostream>
 
+#ifdef _WIN32 
 //===========================================================
 // for test only
 // openCV
@@ -28,6 +29,8 @@
 #include <opencv2/highgui.hpp>
 #include <opencv2/opencv.hpp>
 //===========================================================
+#endif
+
 
 enum PPSession_Type { PPSESSION_NONE, PPSESSION_MOVIE, PPSESSION_SCREEN_CAPTURE, PPSESSION_INPUT_CAPTURE};
 

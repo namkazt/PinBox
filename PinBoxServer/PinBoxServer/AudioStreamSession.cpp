@@ -124,9 +124,9 @@ void AudioStreamSession::loopbackCaptureThreadFunction(void* context)
 	}
 
 	//NOTE: test result wave file
-	MMCKINFO ckRIFF = { 0 };
-	MMCKINFO ckData = { 0 };
-	self->Helper_WriteWaveHeader(L"test.wav", pwfx, &ckRIFF, &ckData);
+	//MMCKINFO ckRIFF = { 0 };
+	//MMCKINFO ckData = { 0 };
+	//self->Helper_WriteWaveHeader(L"test.wav", pwfx, &ckRIFF, &ckData);
 
 
 	// create a periodic waitable timer
@@ -147,11 +147,6 @@ void AudioStreamSession::loopbackCaptureThreadFunction(void* context)
 	// activate an IAudioCaptureClient
 	IAudioCaptureClient *pAudioCaptureClient;
 	hr = pAudioClient->GetService( __uuidof(IAudioCaptureClient), (void**)&pAudioCaptureClient );
-
-
-	// register with MMCSS
-	//DWORD nTaskIndex = 0;
-	//HANDLE hTask = AvSetMmThreadCharacteristics(L"Audio", &nTaskIndex);
 
 	// set the waitable timer
 	LARGE_INTEGER liFirstFire;
@@ -207,7 +202,7 @@ void AudioStreamSession::loopbackCaptureThreadFunction(void* context)
 				self->g_onRecordDataCallback(pData, lBytesToWrite, nNumFramesToRead);
 
 			//NOTE: test write wave file
-			mmioWrite(self->g_tmpWavFile, reinterpret_cast<PCHAR>(pData), lBytesToWrite);
+			//mmioWrite(self->g_tmpWavFile, reinterpret_cast<PCHAR>(pData), lBytesToWrite);
 
 			//-------------------------------------------------------------------------
 			self->g_totalFrameRecorded += nNumFramesToRead;
@@ -233,7 +228,7 @@ void AudioStreamSession::loopbackCaptureThreadFunction(void* context)
 	}
 
 	//NOTE: test write wave file
-	self->Helper_FinishWaveFile(L"test.wav", &ckData, &ckRIFF);
+	//self->Helper_FinishWaveFile(L"test.wav", &ckData, &ckRIFF);
 
 	//---------------------------------------
 	// finish record data 
@@ -241,7 +236,6 @@ void AudioStreamSession::loopbackCaptureThreadFunction(void* context)
 	//---------------------------------------
 	pAudioClient->Stop();
 	CancelWaitableTimer(hWakeUp);
-	//AvRevertMmThreadCharacteristics(hTask);
 	pAudioCaptureClient->Release();
 	CloseHandle(hWakeUp);
 	CoTaskMemFree(pwfx);
@@ -255,6 +249,9 @@ AudioStreamSession::AudioStreamSession()
 	
 }
 
+//---------------------------------------
+// Those functions only for testing
+//---------------------------------------
 
 void AudioStreamSession::Helper_WriteWaveHeader(LPCWSTR fileName, LPCWAVEFORMATEX pwfx, MMCKINFO *pckRIFF, MMCKINFO *pckData) {
 	MMRESULT result;

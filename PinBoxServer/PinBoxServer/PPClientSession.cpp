@@ -254,9 +254,8 @@ void PPClientSession::processMessageBody(u8* buffer, u8 code)
 
 			// CHANGE SETTING
 			std::cout << "GET SETTING:" << std::endl;
-
-			//int8_t waitForReceived = READ_U8(buffer, 0);
-			//g_ss_waitForClientReceived = !(waitForReceived == 0);
+			int8_t waitForReceived = READ_U8(buffer, 0);
+			g_ss_waitForClientReceived = !(waitForReceived == 0);
 
 			break;
 		}
@@ -313,7 +312,7 @@ void PPClientSession::ss_initFrameGraber()
 			ss_sendFrameToClient(img);
 		}
 	}).start_capturing();
-	g_ss_framgrabber.setFrameChangeInterval(std::chrono::milliseconds(16));//100 ms
+	g_ss_framgrabber.setFrameChangeInterval(std::chrono::nanoseconds(10));//100 ms
 	g_ss_framgrabber.resume();
 }
 
@@ -338,15 +337,20 @@ void PPClientSession::ss_sendFrameToClient(const SL::Screen_Capture::Image& img)
 	// webp encode
 	try {
 		WebPConfig config;
-		if (!WebPConfigPreset(&config, WEBP_PRESET_PHOTO, 50)) {
+		if (!WebPConfigPreset(&config, WEBP_PRESET_PHOTO, g_ss_outputQuality)) {
 			g_ss_isReceivedLastFrame = true;
 			return;  // version error
 		}
+		//===============================================================
 		// Add additional tuning:
 		config.sns_strength = 90;
 		config.filter_sharpness = 6;
-		config.method = 1;
+		config.segments = 4;
+		config.method = 0;
+		config.alpha_compression = 0;
+		config.alpha_quality = 0;
 		auto config_error = WebPValidateConfig(&config);
+		//===============================================================
 		// Setup the input data, allocating a picture of width x height dimension
 		WebPPicture pic;
 		if (!WebPPictureInit(&pic)) {
