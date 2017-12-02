@@ -1,5 +1,6 @@
 #include "PPGraphics.h"
 #include "vshader_shbin.h"
+#include <cstdio>
 
 static C3D_RenderTarget* targetTop = nullptr;
 
@@ -14,19 +15,15 @@ struct Frame2D {
 	C3D_Tex spriteTexture;
 	u32 width;
 	u32 height;
-	u8 strice;
+	u32 strice;
 	GPU_TEXCOLOR texCol;
 	u8 *frameData;
 	u32 frameSize;
 	bool isInitTexture = false;
 	static Frame2D* alloc(u32 id)
 	{
-		Frame2D* ret = (Frame2D*)linearAlloc(sizeof(Frame2D));
-		if (ret == nullptr) linearFree(ret);
-		else
-		{
-			ret->id = id;
-		}
+		Frame2D* ret = new Frame2D();
+		ret->id = id;
 		return ret;
 	}
 
@@ -45,8 +42,8 @@ struct Frame2D {
 		this->height = h;
 		//---------------------------------------------
 		// it take 2 bit each pixel for RGB565
-		this->texCol = GPU_RGB565;
-		this->strice = 2;
+		this->texCol = GPU_RGB8;
+		this->strice = 3;
 	}
 
 	void freeFrameData()
@@ -97,12 +94,15 @@ void initFrameRenderTarget(gfx3dSide_t side, GPU_COLORBUF colorFmt)
 	C3D_BufInfo* bufInfo = C3D_GetBufInfo();
 	BufInfo_Init(bufInfo);
 	BufInfo_Add(bufInfo, vbo, sizeof(VBOEntry), 2, 0x10);
+
+	C3D_DepthTest(true, GPU_GEQUAL, GPU_WRITE_ALL);
 }
 
 void updateTexture()
 {
 	if(frame == nullptr)
 	{
+		printf("Frame is null ?\n");
 		//TODO: some log fail ?
 		return;
 	}
@@ -112,38 +112,21 @@ void updateTexture()
 	//------------------------------------------------------
 	if (frame->frameData != nullptr) {
 		u32 frameSize = frame->width * frame->height;
-
-		/* ---------------------------------------------------
-		 * Reverse texture if need
-		 * ---------------------------------------------------
-		u8 *gpusrc = linearAlloc(w*h*4);
-		// GX_DisplayTransfer needs input buffer in linear RAM
-		u8* src=success; u8 *dst=gpusrc;
-		// ? outputs big endian rgba so we need to convert
-		for(int i = 0; i<w*h; i++) {
-			int r = *src++;
-			int g = *src++;
-			int b = *src++;
-			int a = *src++;
-
-			*dst++ = a;
-			*dst++ = b;
-			*dst++ = g;
-			*dst++ = r;
-		}
-		 */
-
 		//------------------------------------------------------
 		if(!frame->isInitTexture)
 		{
+			printf("init frame texture \n");
 			//--------------------------------------------------
 			// init texture and transfer data into GPU
 			frame->isInitTexture = true;
+
 			GSPGPU_FlushDataCache(frame->frameData, frameSize *  frame->strice);
 			C3D_TexInit(&frame->spriteTexture, frame->width, frame->height, frame->texCol);
 			u32 dim = GX_BUFFER_DIM(frame->width, frame->height);
 			C3D_SafeDisplayTransfer((u32*)frame->frameData, dim, (u32*)frame->spriteTexture.data, dim, TEXTURE_TRANSFER_FLAGS);
 			gspWaitForPPF();
+
+
 			C3D_TexSetFilter(&frame->spriteTexture, GPU_LINEAR, GPU_NEAREST);
 			C3D_TexBind(frame->id, &frame->spriteTexture);
 
@@ -155,10 +138,6 @@ void updateTexture()
 			C3D_TexEnvOp(env, C3D_Both, 0, 0, 0);
 			C3D_TexEnvFunc(env, C3D_Both, GPU_REPLACE);
 
-			//--------------------------------------------------
-			// Configure depth test to overwrite pixels with the same depth (needed to draw overlapping sprites)
-			// in case we just render 2d image so we do not need depth test
-			//C3D_DepthTest(true, GPU_GEQUAL, GPU_WRITE_ALL);
 		}else
 		{
 			//--------------------------------------------------
@@ -198,7 +177,7 @@ void ppGraphicsInit()
 	gfxInitDefault();
 	C3D_Init(C3D_DEFAULT_CMDBUF_SIZE);
 	// we use RGB 565 for small frame size
-	initFrameRenderTarget(GFX_LEFT, GPU_RB_RGB565);
+	initFrameRenderTarget(GFX_LEFT, GPU_RB_RGB8);
 }
 
 void ppGraphicsRender()
@@ -210,7 +189,6 @@ void ppGraphicsRender()
 
 		// Update the uniforms
 		C3D_FVUnifMtx4x4(GPU_VERTEX_SHADER, uLoc_projection, &projection);
-		//NOTE: should we draw fixed size or follow frame size ?
 		drawFrameVBO(0, 0, 0, FRAME_W, FRAME_H);
 		C3D_DrawArrays(GPU_TRIANGLES, 0, 6);
 

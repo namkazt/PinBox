@@ -24,7 +24,6 @@ u8* PPMessage::BuildMessage(u8* contentBuffer, u32 contentSize)
 	// 3, content size
 	WRITE_U32(pointer, g_contentSize);
 
-	//TODO: corrupted when save g_contentSize ??
 	//-----------------------------------------------
 	// build content data
 	if (g_contentSize > 0) {

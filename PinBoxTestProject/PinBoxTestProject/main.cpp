@@ -23,7 +23,7 @@ int main()
 		if (input == 'q') break;
 
 		if (input == 'x')
-			session->StartSession("127.0.0.1", "1234");
+			session->StartSession("192.168.31.222", "1234");
 		if(input == 'a')
 		{
 			session->SS_ChangeSetting();

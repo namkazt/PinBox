@@ -230,7 +230,6 @@ void PPSession::processScreenCaptureSession(u8* buffer, size_t size)
 				delete msgObj;
 			}
 
-
 			// init webp decode config
 			WebPDecoderConfig config;
 			WebPInitDecoderConfig(&config);
@@ -262,9 +261,76 @@ void PPSession::processScreenCaptureSession(u8* buffer, size_t size)
 		{
 			std::cout << e.msg << std::endl;
 		}
-
 		break;
 	}
+
+	//======================================================================
+	// AUDIO DECODE
+	//======================================================================
+	//case MSG_CODE_REQUEST_NEW_AUDIO_FRAME:
+	//{
+	//	int error;
+	//	//check if opus file is init or not
+	//	if (SS_opusFile == nullptr) {
+	//		// check if it is opus stream
+	//		OggOpusFile* opusTest = op_test_memory(buffer, size, &error);
+	//		op_free(opusTest);
+	//		if (error != 0) {
+	//			printf("Stream is not OPUS format.\n");
+	//			return;
+	//		}
+	//		// create new opus file from first block of memory
+	//		SS_opusFile = op_open_memory(buffer, size, &error);
+
+	//		// init audio
+	//		//TODO: this should be call on outside
+	//		//ndspInit();
+
+	//		//// reset audio channel when start stream
+	//		//ndspChnReset(AUDIO_CHANNEL);
+	//		//ndspChnWaveBufClear(AUDIO_CHANNEL);
+	//		//ndspSetOutputMode(NDSP_OUTPUT_STEREO);
+	//		//ndspChnSetInterp(AUDIO_CHANNEL, NDSP_INTERP_LINEAR);
+	//		//ndspChnSetRate(AUDIO_CHANNEL, 48000);
+	//		//ndspChnSetFormat(AUDIO_CHANNEL, NDSP_FORMAT_STEREO_PCM16);
+
+	//		//float mix[12];
+	//		//memset(mix, 0, sizeof(mix));
+	//		//mix[0] = 1.0;
+	//		//mix[1] = 1.0;
+	//		//ndspChnSetMix(0, mix);
+
+
+	//		//ndspWaveBuf waveBuf[2];
+	//		//memset(waveBuf, 0, sizeof(waveBuf));
+	//		//waveBuf[0].data_vaddr = &audioBuffer[0];
+	//		//waveBuf[0].nsamples = SAMPLESPERBUF;
+	//		//waveBuf[1].data_vaddr = &audioBuffer[SAMPLESPERBUF];
+	//		//waveBuf[1].nsamples = SAMPLESPERBUF;
+
+	//		//ndspChnWaveBufAdd(AUDIO_CHANNEL, &waveBuf[0]);
+	//		//ndspChnWaveBufAdd(AUDIO_CHANNEL, &waveBuf[1]);
+	//	}else
+	//	{
+	//		int16_t* bufferOut;
+	//		u32 samplesToRead = 32 * 1024; // 32Kb buffer
+
+	//		// read more buffer
+	//		u32 bufferToRead = 120 * 48 * 2;
+	//		int samplesRead = op_read_stereo(SS_opusFile, bufferOut, samplesToRead > bufferToRead ? bufferToRead : samplesToRead);
+
+	//		if(samplesRead == 0)
+	//		{
+	//			//finish read this
+	//		}else if(samplesRead < 0)
+	//		{
+	//			// error ?
+	//			return;
+	//		}
+	//	}
+
+	//	break;
+	//}
 	default: break;
 	}
 }
@@ -313,16 +379,19 @@ void PPSession::SS_ChangeSetting()
 
 	//-----------------------------------------------
 	// alloc msg content block
-	size_t contentSize = 1;
+	size_t contentSize = 13;
 	u8* contentBuffer = (u8*)malloc(sizeof(u8) * contentSize);
 	u8* pointer = contentBuffer;
 	//----------------------------------------------
 	// setting: wait for received frame
 	u8 _setting_waitToReceivedFrame = SS_setting_waitToReceivedFrame ? 1 : 0;
 	WRITE_U8(pointer, _setting_waitToReceivedFrame);
-
-	// other setting go here!!!
-
+	// setting: smooth frame number ( only activate if waitForReceivedFrame = true)
+	WRITE_U32(pointer, SS_setting_smoothStepFrames);
+	// setting: frame quality [0 ... 100]
+	WRITE_U32(pointer, SS_setting_sourceQuality);
+	// setting: frame scale [0 ... 100]
+	WRITE_U32(pointer, SS_setting_sourceScale);
 	//-----------------------------------------------
 	// build message
 	u8* msgBuffer = authenMsg->BuildMessage(contentBuffer, contentSize);

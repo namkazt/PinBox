@@ -17,8 +17,8 @@
 #include <queue>
 
 enum ppConectState { IDLE, CONNECTING, CONNECTED, FAIL };
-typedef std::function<void(void* buffer, u32 size, u32 tag)> PPNetworkReceivedRequest;
-typedef std::function<void(void* data, u32 code)> PPNetworkCallback;
+typedef std::function<void(u8* buffer, u32 size, u32 tag)> PPNetworkReceivedRequest;
+typedef std::function<void(u8* data, u32 code)> PPNetworkCallback;
 
 typedef struct
 {
@@ -38,8 +38,8 @@ private:
 	u32							g_tag = 0;
 	u32							g_waitForSize = 0;
 	u32							g_receivedCounter = 0;
-	void*						g_receivedBuffer = nullptr;
-	void*						g_tmpReceivedBuffer = nullptr;
+	u8*							g_receivedBuffer = nullptr;
+	u8*							g_tmpReceivedBuffer = nullptr;
 	u32							g_tmpReceivedSize = 0;
 	// thread
 	Thread						g_thread = nullptr;
@@ -66,7 +66,7 @@ public:
 	void Stop();
 	ppConectState GetConnectionStatus() const { return g_connect_state; }
 	void SetRequestData(u32 size, u32 tag = 0);
-	void SendMessage(void *msgBuffer, u32 msgSize);
+	void SendMessageData(u8 *msgBuffer, int32_t msgSize);
 
 	inline void SetOnReceivedRequest(PPNetworkReceivedRequest _callback) { g_onReceivedRequest = _callback; }
 	inline void SetOnConnectionSuccessed(PPNetworkCallback _callback) { g_onConnectionSuccessed = _callback; }

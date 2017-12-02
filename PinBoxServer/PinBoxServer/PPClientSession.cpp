@@ -24,9 +24,11 @@ void PPClientSession::DisconnectFromServer()
 		{
 			g_ss_isStartStreaming = false;
 			ss_stopFrameGraber();
+			//ss_stopAudioCapture();
 		}
 		g_ss_currentWaitedFrame = 0;
 		g_ss_isReceivedLastFrame = true;
+		g_ss_isReceivedLastAudio = true;
 	}
 	else if (g_sessionType == PPSESSION_INPUT_CAPTURE)
 	{
@@ -219,17 +221,22 @@ void PPClientSession::preprocessMessageCode(u8 code)
 			g_ss_isStartStreaming = true;
 			printf("[Screen capture] init frame graber.\n");
 			ss_initFrameGraber();
+			//ss_initAudioCapturer();
 			break;
 		case MSG_CODE_REQUEST_STOP_SCREEN_CAPTURE:
 			// STOP
 			g_ss_isStartStreaming = false;
 			printf("[Screen capture] stop framegraber.\n");
-			g_ss_framgrabber.pause();
-			g_ss_framgrabber.destroy();
+			ss_stopFrameGraber();
+			//ss_stopAudioCapture();
 			break;
 		case MSG_CODE_REQUEST_SCREEN_RECEIVED_FRAME:
 			printf("Client received frame.\n");
 			g_ss_isReceivedLastFrame = true;
+			break;
+		case MSG_CODE_REQUEST_RECEIVED_AUDIO_FRAME:
+			printf("Client received audio part.\n");
+			g_ss_isReceivedLastAudio = true;
 			break;
 		default: break;
 		}
@@ -251,12 +258,15 @@ void PPClientSession::processMessageBody(u8* buffer, u8 code)
 		switch (code)
 		{
 		case MSG_CODE_REQUEST_CHANGE_SETTING_SCREEN_CAPTURE: {
-
-			// CHANGE SETTING
-			std::cout << "GET SETTING:" << std::endl;
+			// wait for frame
 			int8_t waitForReceived = READ_U8(buffer, 0);
 			g_ss_waitForClientReceived = !(waitForReceived == 0);
-
+			// smoother frame
+			g_ss_waitForFrame = READ_U32(buffer, 1);
+			// smoother frame
+			g_ss_outputQuality = READ_U32(buffer, 5);
+			// smoother frame
+			g_ss_outputScale = READ_U32(buffer, 9);
 			break;
 		}
 		default: break;
@@ -374,13 +384,11 @@ void PPClientSession::ss_sendFrameToClient(const SL::Screen_Capture::Image& img)
 		//===============================================================
 		// result send to client
 		if (!ok) {
-			//printf("Encoding error: %d\n", pic.error_code);
 			g_ss_isReceivedLastFrame = true;
 			WebPMemoryWriterClear(&writer);
 			free(imgBuffer);
 			return; 
 		}
-		//printf("Output size: %d\n", writer.size);
 		sendMessageWithCodeAndData(MSG_CODE_REQUEST_NEW_SCREEN_FRAME, writer.mem, writer.size);
 		WebPMemoryWriterClear(&writer);
 		free(imgBuffer);
@@ -390,6 +398,49 @@ void PPClientSession::ss_sendFrameToClient(const SL::Screen_Capture::Image& img)
 		g_ss_isReceivedLastFrame = true;
 		free(imgBuffer);
 	}
+}
+
+void PPClientSession::ss_initAudioCapturer()
+{
+	g_ss_audioCapturer = new AudioStreamSession();
+	g_ss_audioCapturer->SetOnNewRecordedData([=](u8* buffer, u32 size)
+	{
+		if (!g_ss_isStartStreaming) return;
+		if (g_ss_waitForClientReceived)
+		{
+			if (g_ss_isReceivedLastAudio)
+			{
+				g_ss_currentWaitedAudio = 0;
+				g_ss_isReceivedLastAudio = false;
+				sendMessageWithCodeAndData(MSG_CODE_REQUEST_NEW_AUDIO_FRAME, buffer, size);
+			}
+			else
+			{
+				if (g_ss_currentWaitedAudio > g_ss_waitForFrame)
+				{
+					g_ss_currentWaitedAudio = 0;
+					g_ss_isReceivedLastAudio = false;
+					sendMessageWithCodeAndData(MSG_CODE_REQUEST_NEW_AUDIO_FRAME, buffer, size);
+				}
+				g_ss_currentWaitedAudio++;
+			}
+		}
+		else
+		{
+			sendMessageWithCodeAndData(MSG_CODE_REQUEST_NEW_AUDIO_FRAME, buffer, size);
+		}
+	});
+	g_ss_audioCapturer->SetOnEncoderClosed([=]()
+	{
+		g_ss_isReceivedLastAudio = true;
+		g_ss_currentWaitedAudio = 0;
+	});
+	g_ss_audioCapturer->StartOpusAudioStream();
+}
+
+void PPClientSession::ss_stopAudioCapture()
+{
+	g_ss_audioCapturer->StopStreaming();
 }
 
 //---------------------------------------------------------------------------------------------------------------------------

@@ -33,17 +33,36 @@ void AudioStreamSession::useDefaultDevice()
 	pMMDeviceEnumerator->Release();
 }
 
-void AudioStreamSession::StartAudioStream()
+void AudioStreamSession::StartOpusAudioStream()
 {
 	CoInitialize(NULL);
 	this->useDefaultDevice();
-
+	//-----------------------------------------------------
 	// create a "stop capturing now" event
 	g_StopEvent = CreateEvent(NULL, FALSE, FALSE, NULL);
 	if (NULL == g_StopEvent) {
 		printf("CreateEvent failed: last error is %u", GetLastError());
 		return;
 	}
+	//-----------------------------------------------------------------------
+	// init opus
+	g_opus_comments = ope_comments_create();
+	ope_comments_add(g_opus_comments, "SRC", "PINBOX");
+	ope_comments_add(g_opus_comments, "V", "1.0.0");
+	//-----------------------------------------------------------------------
+	int error;
+	OpusEncCallbacks streamWriter;
+	g_opus_encoder = ope_encoder_create_callbacks(&streamWriter, this, g_opus_comments, 48000, 2, 0, &error); // need pass dynamic data here for audio source
+	if (!g_opus_encoder) {
+		printf("Error when create OPUS encoder.\n");
+		return;
+	}
+	//-----------------------------------------------------
+	// override record data callback
+	SetOnRecordData([=](u8* output, u32 size, u32 frames)
+	{
+		ope_encoder_write(g_opus_encoder, (opus_int16*)output, frames);
+	});
 	//-----------------------------------------------------
 	// start loopback record thread
 	g_thread = std::thread(loopbackCaptureThreadFunction, this);
@@ -52,9 +71,15 @@ void AudioStreamSession::StartAudioStream()
 
 void AudioStreamSession::StopStreaming()
 {
-	SetEvent(g_StopEvent);
+	
 	if (m_pMMDevice != NULL) m_pMMDevice->Release();
 	m_pMMDevice = NULL;
+	if (g_opus_encoder != nullptr) {
+		SetEvent(g_StopEvent);
+		ope_encoder_drain(g_opus_encoder);
+		ope_encoder_destroy(g_opus_encoder);
+		ope_comments_destroy(g_opus_comments);
+	}
 }
 
 void AudioStreamSession::loopbackCaptureThreadFunction(void* context)
@@ -89,7 +114,7 @@ void AudioStreamSession::loopbackCaptureThreadFunction(void* context)
 	}
 
 	// int-16 wave format ( if use it )
-	if(false)
+	if(true)
 	{
 		switch (pwfx->wFormatTag) {
 		case WAVE_FORMAT_IEEE_FLOAT:
@@ -123,6 +148,11 @@ void AudioStreamSession::loopbackCaptureThreadFunction(void* context)
 		}
 	}
 
+	//NOTE: can be create as event to get on another thread
+	//callback for device information
+	if(self->g_opus_onGetDeviceInfo!= nullptr)
+		self->g_opus_onGetDeviceInfo(pwfx->nChannels, pwfx->nSamplesPerSec);
+
 	//NOTE: test result wave file
 	//MMCKINFO ckRIFF = { 0 };
 	//MMCKINFO ckData = { 0 };
@@ -140,13 +170,15 @@ void AudioStreamSession::loopbackCaptureThreadFunction(void* context)
 	// the "data ready" event never gets set
 	// so we're going to do a timer-driven loop
 	hr = pAudioClient->Initialize(
-		AUDCLNT_SHAREMODE_SHARED,
+		AUDCLNT_SHAREMODE_SHARED,  // try this ? AUDCLNT_SHAREMODE_EXCLUSIVE
 		AUDCLNT_STREAMFLAGS_LOOPBACK,
 		0, 0, pwfx, 0
 	);
 	// activate an IAudioCaptureClient
 	IAudioCaptureClient *pAudioCaptureClient;
 	hr = pAudioClient->GetService( __uuidof(IAudioCaptureClient), (void**)&pAudioCaptureClient );
+
+
 
 	// set the waitable timer
 	LARGE_INTEGER liFirstFire;
@@ -178,9 +210,7 @@ void AudioStreamSession::loopbackCaptureThreadFunction(void* context)
 
 		// drain data while it is available
 		UINT32 nNextPacketSize;
-		for (hr = pAudioCaptureClient->GetNextPacketSize(&nNextPacketSize);
-			SUCCEEDED(hr) && nNextPacketSize > 0;
-			hr = pAudioCaptureClient->GetNextPacketSize(&nNextPacketSize))
+		for (hr = pAudioCaptureClient->GetNextPacketSize(&nNextPacketSize); SUCCEEDED(hr) && nNextPacketSize > 0; hr = pAudioCaptureClient->GetNextPacketSize(&nNextPacketSize))
 		{
 			// get the captured data
 			BYTE *pData;
@@ -210,17 +240,18 @@ void AudioStreamSession::loopbackCaptureThreadFunction(void* context)
 			bFirstPacket = false;
 		}
 
+		//-------------------------------------------------------------------------
+		// event result if have
+		
 		dwWaitResult = WaitForMultipleObjects(
 			ARRAYSIZE(waitArray), waitArray,
 			FALSE, INFINITE
 		);
-
 		if (WAIT_OBJECT_0 == dwWaitResult) {
 			printf("Received stop event after %u passes and %u frames\n", nPasses, self->g_totalFrameRecorded);
 			bDone = true;
 			continue; // exits loop
 		}
-
 		if (WAIT_OBJECT_0 + 1 != dwWaitResult) {
 			printf("Unexpected WaitForMultipleObjects return value %u on pass %u after %u frames\n", dwWaitResult, nPasses, self->g_totalFrameRecorded);
 			return;
@@ -244,10 +275,6 @@ void AudioStreamSession::loopbackCaptureThreadFunction(void* context)
 	CoUninitialize();
 }
 
-AudioStreamSession::AudioStreamSession()
-{
-	
-}
 
 //---------------------------------------
 // Those functions only for testing
@@ -362,3 +389,27 @@ void AudioStreamSession::Helper_FixWaveFile(LPCWSTR fileName, u32 nFrames)
 	result = mmioAscend(hFile, &ckFact, 0);
 	result = mmioClose(hFile, 0);
 }
+
+
+//---------------------------------------
+// OPUS AUDIO STREAMING
+//---------------------------------------
+
+int AudioStreamSession::opus_onWrite(void* user_data, const unsigned char* ptr, opus_int32 len)
+{
+	AudioStreamSession* self = static_cast<AudioStreamSession*>(user_data);
+	if (!self) return 0;
+	if (self->g_opus_onDataCallback != nullptr)
+		self->g_opus_onDataCallback((u8*)ptr, len);
+	return 0;
+}
+
+int AudioStreamSession::opus_onClose(void* user_data)
+{
+	AudioStreamSession* self = static_cast<AudioStreamSession*>(user_data);
+	if (!self) return 0;
+	if (self->g_opus_onFinishCallback != nullptr)
+		self->g_opus_onFinishCallback();
+	return 0;
+}
+

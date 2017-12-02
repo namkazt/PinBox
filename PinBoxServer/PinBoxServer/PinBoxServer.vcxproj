@@ -71,8 +71,8 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <LinkIncremental>true</LinkIncremental>
-    <IncludePath>E:\3ds\screen_capture_lite\include;$(IncludePath)</IncludePath>
-    <LibraryPath>E:\3ds\screen_capture_lite\vs\src\$(Configuration)\;$(LibraryPath)</LibraryPath>
+    <IncludePath>E:\3ds\screen_capture_lite\include;E:\3ds\PinBoxStreaming\ThirdParty\opus-1.2.1\include;E:\3ds\PinBoxStreaming\ThirdParty\libopusenc\include;$(IncludePath)</IncludePath>
+    <LibraryPath>E:\3ds\screen_capture_lite\vs\src\$(Configuration)\;E:\3ds\PinBoxStreaming\ThirdParty\opus-1.2.1\win32\VS2015\Win32\$(Configuration)\;E:\3ds\PinBoxStreaming\ThirdParty\libopusenc\win32\opusenc\$(Configuration)\;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LinkIncremental>true</LinkIncremental>
@@ -94,7 +94,7 @@
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>libScreen_Capture.lib;avrt.lib;ole32.lib;winmm.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>libScreen_Capture.lib;opus.lib;opusenc.lib;winmm.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">

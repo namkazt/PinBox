@@ -18,6 +18,7 @@
 //=======================================================================
 #include "PPNetwork.h"
 #include <webp/decode.h>
+#include "opusfile.h"
 #include <iostream>
 
 #ifdef _WIN32 
@@ -51,7 +52,12 @@ enum PPSession_Type { PPSESSION_NONE, PPSESSION_MOVIE, PPSESSION_SCREEN_CAPTURE,
 #define MSG_CODE_REQUEST_CHANGE_SETTING_SCREEN_CAPTURE 12
 #define MSG_CODE_REQUEST_NEW_SCREEN_FRAME 15
 #define MSG_CODE_REQUEST_SCREEN_RECEIVED_FRAME 16
+#define MSG_CODE_REQUEST_NEW_AUDIO_FRAME 18
+#define MSG_CODE_REQUEST_RECEIVED_AUDIO_FRAME 19
 
+
+
+#define AUDIO_CHANNEL	0x08
 
 class PPSession
 {
@@ -59,7 +65,6 @@ private:
 	PPSession_Type					g_sessionType = PPSESSION_NONE;
 	PPNetwork*						g_network = nullptr;
 	PPMessage*						g_tmpMessage = nullptr;
-
 	bool							g_authenticated = false;
 private:
 	void initSession();
@@ -81,8 +86,26 @@ public:
 	// screen capture
 	//-----------------------------------------------------
 private:
+	//----------------------------------------------------------------------
+	// profile setting
+	typedef struct
+	{
+		std::string profileName = "Default";
+		bool waitToReceivedFrame = false;
+		u32 smoothStepFrames = 0;
+		u32 sourceQuality = 100;
+		u32 sourceScale = 100;
+	} SSProfile;
+	//----------------------------------------------------------------------
 	bool								SS_v_isStartStreaming = false;
-	bool								SS_setting_waitToReceivedFrame = false;
+	bool								SS_setting_waitToReceivedFrame = true;
+	u32									SS_setting_smoothStepFrames = 2;		// this setting allow frame switch smoother if there is delay when received frame
+	u32									SS_setting_sourceQuality = 75;			// webp quality control
+	u32									SS_setting_sourceScale = 75;			// frame size control eg: 75% = 0.75 of real size
+private:
+	//----------------------------------------------------------------------
+	// audio
+	OggOpusFile*						SS_opusFile = nullptr;
 
 public:
 	void								SS_StartStream();

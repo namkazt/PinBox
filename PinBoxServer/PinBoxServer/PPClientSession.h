@@ -14,7 +14,7 @@
 #include "webp/encode.h"
 
 #include "PPMessage.h"
-
+#include "AudioStreamSession.h"
 
 enum PPSession_Type { PPSESSION_NONE, PPSESSION_MOVIE, PPSESSION_SCREEN_CAPTURE, PPSESSION_INPUT_CAPTURE };
 
@@ -35,6 +35,8 @@ enum PPSession_Type { PPSESSION_NONE, PPSESSION_MOVIE, PPSESSION_SCREEN_CAPTURE,
 #define MSG_CODE_REQUEST_CHANGE_SETTING_SCREEN_CAPTURE 12
 #define MSG_CODE_REQUEST_NEW_SCREEN_FRAME 15
 #define MSG_CODE_REQUEST_SCREEN_RECEIVED_FRAME 16
+#define MSG_CODE_REQUEST_NEW_AUDIO_FRAME 18
+#define MSG_CODE_REQUEST_RECEIVED_AUDIO_FRAME 19
 
 // 8Mb default size just enough
 #define DEFAULT_CONTINUOUS_BUFFER_SIZE 1024*1024* 8 
@@ -82,15 +84,18 @@ private:
 	//---------------------------------------------------------------------------------------------------------------------------
 
 	SL::Screen_Capture::ScreenCaptureManager	g_ss_framgrabber;
+	AudioStreamSession*							g_ss_audioCapturer;
 	bool										g_ss_isStartStreaming = false;
 	bool										g_ss_isReceivedLastFrame = true;
+	u32											g_ss_currentWaitedFrame = 0;
+	bool										g_ss_isReceivedLastAudio = true;
+	u32											g_ss_currentWaitedAudio = 0;
 	//---------------------------------------------------------------------------------------------------------------------------
 	//--------------------OPTIONS------------------------------------------------------------------------------------------------
 	//---------------------------------------------------------------------------------------------------------------------------
 	//											Server will wait until client received frame after send new frame. Default: true
 	bool										g_ss_waitForClientReceived = true;
 	u32											g_ss_waitForFrame = 2;
-	u32											g_ss_currentWaitedFrame = 0;
 	//											Output scale from 0 -> 100 percent [100 is best]
 	u32											g_ss_outputScale = 75;
 	//											Output quality from 0 -> 100 percent [100 is best]
@@ -100,6 +105,8 @@ private:
 	void										ss_stopFrameGraber();
 	void										ss_sendFrameToClient(const SL::Screen_Capture::Image& img);
 
+	void										ss_initAudioCapturer();
+	void										ss_stopAudioCapture();
 
 	//---------------------------------------------------------------------------------------------------------------------------
 	//---------------------------------------------------------------------------------------------------------------------------

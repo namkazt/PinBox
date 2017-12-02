@@ -67,7 +67,7 @@ LIBS	:=  -lwebp -lcitro3dd -lctrud -lm -lz
 # list of directories containing libraries, this must be the top level containing
 # include and lib
 #---------------------------------------------------------------------------------
-ADDITION_LIBS := $(DEVKITPRO)/libwebp  $(DEVKITPRO)/libimgui
+ADDITION_LIBS := $(DEVKITPRO)/libwebp
 LIBDIRS	:= $(CTRULIB) $(PORTLIBS) $(ADDITION_LIBS)
 
 
@@ -200,6 +200,12 @@ $(OUTPUT).elf	:	$(OFILES)
 	@$(bin2o)
 #---------------------------------------------------------------------------------
 %.ttf.o	:	%.ttf
+#---------------------------------------------------------------------------------
+	@echo $(notdir $<)
+	@$(bin2o)
+
+#---------------------------------------------------------------------------------
+%.webp.o: %.webp
 #---------------------------------------------------------------------------------
 	@echo $(notdir $<)
 	@$(bin2o)

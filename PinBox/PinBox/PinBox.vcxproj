@@ -32,6 +32,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="source\main.cpp" />
+    <ClCompile Include="source\Mutex.cpp" />
     <ClCompile Include="source\pp2d.c" />
     <ClCompile Include="source\PPGraphics.cpp" />
     <ClCompile Include="source\PPMessage.cpp" />
@@ -40,6 +41,7 @@
     <ClCompile Include="source\PPUI.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="include\Mutex.h" />
     <ClInclude Include="include\pp2d.h" />
     <ClInclude Include="include\PPGraphics.h" />
     <ClInclude Include="include\PPMessage.h" />
@@ -109,12 +111,12 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Citra|Win32'">
     <NMakeOutput>
     </NMakeOutput>
-    <NMakePreprocessorDefinitions>WIN32;_DEBUG;$(NMakePreprocessorDefinitions)</NMakePreprocessorDefinitions>
-    <IncludePath>C:\devkitPro\devkitARM\arm-none-eabi\include;C:\devkitPro\libctru\include;C:\devkitPro\libwebp\include;C:\devkitPro\libimgui\include;include;build;$(IncludePath)</IncludePath>
+    <NMakePreprocessorDefinitions>CITRA;_DEBUG;$(NMakePreprocessorDefinitions)</NMakePreprocessorDefinitions>
+    <IncludePath>C:\devkitPro\devkitARM\arm-none-eabi\include;C:\devkitPro\libctru\include;C:\devkitPro\libwebp\include;C:\devkitPro\libimgui\include;include;build;C:\devkitPro\portlibs\armv6k\include;$(IncludePath)</IncludePath>
     <NMakeBuildCommandLine>make &amp; start make citra</NMakeBuildCommandLine>
     <NMakeReBuildCommandLine>make clean all</NMakeReBuildCommandLine>
     <NMakeCleanCommandLine>make clean</NMakeCleanCommandLine>
-    <NMakeIncludeSearchPath>C:\devkitPro\libctru\include;C:\devkitPro\devkitARM\arm-none-eabi\include;include;C:\devkitPro\libwebp\include;build;C:\devkitPro\libimgui\include;$(NMakeIncludeSearchPath)</NMakeIncludeSearchPath>
+    <NMakeIncludeSearchPath>C:\devkitPro\libctru\include;C:\devkitPro\devkitARM\arm-none-eabi\include;include;C:\devkitPro\libwebp\include;build;C:\devkitPro\libimgui\include;C:\devkitPro\portlibs\armv6k\include;$(NMakeIncludeSearchPath)</NMakeIncludeSearchPath>
     <OutDir>..\tmp\out\$(Configuration)\</OutDir>
     <IntDir>..\tmp\intermediate\$(Configuration)\</IntDir>
   </PropertyGroup>
@@ -135,7 +137,7 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Netlink|Win32'">
     <NMakeOutput>
     </NMakeOutput>
-    <NMakePreprocessorDefinitions>WIN32;NDEBUG;$(NMakePreprocessorDefinitions)</NMakePreprocessorDefinitions>
+    <NMakePreprocessorDefinitions>$(NMakePreprocessorDefinitions)</NMakePreprocessorDefinitions>
     <IncludePath>C:\devkitPro\devkitARM\arm-none-eabi\include;C:\devkitPro\libctru\include;C:\devkitPro\libwebp\include;include;build;$(IncludePath)</IncludePath>
     <NMakeBuildCommandLine>make &amp; start make netlink</NMakeBuildCommandLine>
     <NMakeReBuildCommandLine>make clean all</NMakeReBuildCommandLine>
