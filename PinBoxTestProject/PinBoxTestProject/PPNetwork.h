@@ -27,6 +27,8 @@ typedef struct
 	int32_t			msgSize;
 } QueueMessage;
 
+class PPSession;
+
 class PPNetwork
 {
 private:
@@ -62,6 +64,8 @@ private:
 
 public:
 	~PPNetwork();
+
+	PPSession*					g_session;
 
 	void Start(const char *ip, const char *port);
 	void Stop();

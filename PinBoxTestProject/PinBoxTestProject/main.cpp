@@ -1,19 +1,36 @@
-#include "PPSession.h"
+
 #include <iostream>
-#include "opencv/cv.h"
+#include "PPSessionManager.h"
+
+void updateSessionManager(void* arg)
+{
+	PPSessionManager* sm = (PPSessionManager*)arg;
+	if( sm != nullptr)
+	{
+		while(true)
+		{
+			sm->UpdateFrameTracker();
+		}
+	}
+}
+
 
 int main()
 {
-	if (htonl(47) == 47)
-		printf("System using Big Endian\n");
-	else
-		printf("System using Little Endian\n");
+
+#ifdef _WIN32
+	WSADATA wsaData;
+	WSAStartup(MAKEWORD(2, 2), &wsaData);
+#endif
 
 	std::cout << "==============================================================\n";
 	std::cout << "= Test application for PinBox. Simulation client side (3ds)  =\n";
 	std::cout << "==============================================================\n";
-	PPSession* session = new PPSession();
-	session->InitScreenCaptureSession();
+	PPSessionManager* sm = new PPSessionManager();
+	sm->InitScreenCapture(1);
+
+	std::thread g_thread = std::thread(updateSessionManager, sm);
+	g_thread.detach();
 
 	std::cout << "Press Q to exit.\nInput: ";
 	char input;
@@ -21,20 +38,18 @@ int main()
 	{
 		std::cin >> input;
 		if (input == 'q') break;
-
-		if (input == 'x')
-			session->StartSession("192.168.31.222", "1234");
 		if(input == 'a')
 		{
-			session->SS_ChangeSetting();
-			session->SS_StartStream();
+			sm->StartStreaming("192.168.31.222", "1234");
 		}
-			
 		if (input == 's')
-			session->SS_StopStream();
+		{
+			sm->StopStreaming();
+		}
 		input = ' ';
+		//-----------------------------------------
 	}
 	std::cout << "\nClosing session.\n";
-	session->CloseSession();
+	sm->Close();
 	return 0;
 }

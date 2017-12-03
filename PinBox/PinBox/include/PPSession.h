@@ -97,16 +97,12 @@ private:
 	//----------------------------------------------------------------------
 	bool								SS_v_isStartStreaming = false;
 	bool								SS_setting_waitToReceivedFrame = true;
-	u32									SS_setting_smoothStepFrames = 2;		// this setting allow frame switch smoother if there is delay when received frame
-	u32									SS_setting_sourceQuality = 75;			// webp quality control
+	u32									SS_setting_smoothStepFrames = 6;		// this setting allow frame switch smoother if there is delay when received frame
+	u32									SS_setting_sourceQuality = 50;			// webp quality control
 	u32									SS_setting_sourceScale = 75;			// frame size control eg: 75% = 0.75 of real size
-
+	//----------------------------------------------------------------------
 	std::queue<QueueFrame*>				g_pendingFrame;
 	Mutex*								g_mutexFrame;
-private:
-	//----------------------------------------------------------------------
-	// audio
-	OggOpusFile*						SS_opusFile = nullptr;
 
 public:
 	void								SS_StartStream();

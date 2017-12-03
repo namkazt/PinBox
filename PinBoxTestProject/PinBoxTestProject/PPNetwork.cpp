@@ -1,5 +1,6 @@
 #include "PPNetwork.h"
-
+#include <iostream>
+#include "PPSession.h"
 
 /*
  * @brief: thread handler function
@@ -83,6 +84,7 @@ void PPNetwork::ppNetwork_sendMessage()
 				}
 				totalSent += sendAmount;
 			} while (totalSent < queueMsg->msgSize);
+			std::cout << "[Queue]Session: #" << g_session->sessionID << " send message done! " << std::endl;
 			//--------------------------------------------------------
 			// free message
 			free(queueMsg->msgBuffer);
@@ -93,11 +95,6 @@ void PPNetwork::ppNetwork_sendMessage()
 
 void PPNetwork::ppNetwork_connectToServer()
 {
-#ifdef _WIN32
-	WSADATA wsaData;
-	WSAStartup(MAKEWORD(2, 2), &wsaData);
-#endif
-
 	g_connect_state = CONNECTING;
 	//--------------------------------------------------
 	// Trying to get address information
@@ -298,6 +295,7 @@ void PPNetwork::ppNetwork_listenToServer()
 		return;
 	}else
 	{
+		std::cout << "Client: " << g_session->sessionID << " recv size: " << recvAmount << std::endl;
 		//--------------------------------------------------
 		if(g_receivedBuffer == nullptr)
 			g_receivedBuffer = (u8*)malloc(g_waitForSize);
@@ -429,12 +427,10 @@ void PPNetwork::SetRequestData(int32_t size, int32_t tag)
 {
 	if(g_waitForSize > 0)
 	{
-		printf("Some how it still waiting for : %d\n", g_waitForSize);
-		// already have some request data not finish yet
-		return;
+		std::cout << "Client: " << g_session->sessionID << " send wrong request data. Request for wait still have value: " << g_waitForSize << std::endl;
 	}else
 	{
-		printf("Register for new request data: %d - TAG: %d\n", size, tag);
+		std::cout << "Client: " << g_session->sessionID << " register wait for size: " << size << " with tag: " << tag << std::endl;
 		g_waitForSize = size;
 		g_tag = tag;
 	}
@@ -446,13 +442,13 @@ void PPNetwork::SetRequestData(int32_t size, int32_t tag)
 void PPNetwork::SendMessageData(u8 *msgBuffer, int32_t msgSize)
 {
 	if (g_connect_state == CONNECTED) {
-
-		//TODO: is it thread safe ? should we add mutex on this ?
-
 		QueueMessage* msg = new QueueMessage();
 		msg->msgBuffer = msgBuffer;
 		msg->msgSize = msgSize;
 		g_sendingMessage.push(msg);
+	}else
+	{
+		std::cout << "Session: #" << g_session->sessionID << " send message when not connected" << std::endl;
 	}
 }
 

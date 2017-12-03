@@ -17,21 +17,9 @@
 // at a time.
 //=======================================================================
 #include "PPNetwork.h"
-#include <webp/decode.h>
-#include "opusfile.h"
 #include <iostream>
-
-#ifdef _WIN32 
-//===========================================================
-// for test only
-// openCV
-#include <opencv2/core.hpp>
-#include <opencv2/imgcodecs.hpp>
-#include <opencv2/highgui.hpp>
-#include <opencv2/opencv.hpp>
-//===========================================================
-#endif
-
+#include <mutex>
+#include <map>
 
 enum PPSession_Type { PPSESSION_NONE, PPSESSION_MOVIE, PPSESSION_SCREEN_CAPTURE, PPSESSION_INPUT_CAPTURE};
 
@@ -59,13 +47,28 @@ enum PPSession_Type { PPSESSION_NONE, PPSESSION_MOVIE, PPSESSION_SCREEN_CAPTURE,
 
 #define AUDIO_CHANNEL	0x08
 
+typedef struct
+{
+	u32 frameIndex;
+	u32 pieceIndex;
+	u8* piece;
+	u32 pieceSize;
+	void release() { if (piece != nullptr) free(piece); }
+
+} FramePiece;
+
+class PPSessionManager;
+
 class PPSession
 {
 private:
+	
+	PPSessionManager				*g_manager;
 	PPSession_Type					g_sessionType = PPSESSION_NONE;
 	PPNetwork*						g_network = nullptr;
 	PPMessage*						g_tmpMessage = nullptr;
 	bool							g_authenticated = false;
+	PPNetworkCallback				g_onAuthenSuccessed = nullptr;
 private:
 	void initSession();
 
@@ -73,13 +76,14 @@ private:
 	void processScreenCaptureSession(u8* buffer, size_t size);
 	void processInputSession(u8* buffer, size_t size);
 public:
+	int								sessionID = -1;
 	~PPSession();
 
 	void InitMovieSession();
-	void InitScreenCaptureSession();
+	void InitScreenCaptureSession(PPSessionManager* manager);
 	void InitInputCaptureSession();
 
-	void StartSession(const char* ip ,const char* port);
+	void StartSession(const char* ip ,const char* port, PPNetworkCallback authenSuccessed);
 	void CloseSession();
 
 	//-----------------------------------------------------
@@ -90,22 +94,24 @@ private:
 	// profile setting
 	typedef struct
 	{
-		std::string profileName = "Default";
-		bool waitToReceivedFrame = false;
-		u32 smoothStepFrames = 0;
-		u32 sourceQuality = 100;
-		u32 sourceScale = 100;
+		std::string						profileName = "Default";
+		bool							waitToReceivedFrame = false;
+		u32								smoothStepFrames = 0;
+		u32								sourceQuality = 100;
+		u32								sourceScale = 100;
 	} SSProfile;
 	//----------------------------------------------------------------------
 	bool								SS_v_isStartStreaming = false;
 	bool								SS_setting_waitToReceivedFrame = true;
-	u32									SS_setting_smoothStepFrames = 2;		// this setting allow frame switch smoother if there is delay when received frame
-	u32									SS_setting_sourceQuality = 75;			// webp quality control
+	u32									SS_setting_smoothStepFrames = 1;		// this setting allow frame switch smoother if there is delay when received frame
+	u32									SS_setting_sourceQuality = 50;			// webp quality control
 	u32									SS_setting_sourceScale = 75;			// frame size control eg: 75% = 0.75 of real size
-private:
 	//----------------------------------------------------------------------
-	// audio
-	OggOpusFile*						SS_opusFile = nullptr;
+	// on each frame - each session store only 1 piece as a piece frame object
+	std::map<u32, FramePiece*>			SS_framePiecesCached;
+	std::mutex							SS_frameCachedMutex;
+private:
+
 
 public:
 	void								SS_StartStream();
@@ -113,6 +119,8 @@ public:
 	void								SS_ChangeSetting();
 
 	void								SS_Reset();
+	FramePiece*							SafeGetFramePiece(u32 index);
+	void								RequestForheader();
 	//-----------------------------------------------------
 	// movie
 	//-----------------------------------------------------

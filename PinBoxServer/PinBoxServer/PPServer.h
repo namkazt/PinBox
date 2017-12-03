@@ -13,17 +13,20 @@
 #include <evpp/tcp_conn.h>
 
 #include "PPClientSession.h"
+#include "ScreenCaptureSession.h"
 
 class PPServer
 {
-private:
-	std::map<std::string, PPClientSession*> clientSessions;
 
+	
 public:
+	std::map<std::string, PPClientSession*>			clientSessions;
+	u32												numberClients = 0;
+	std::mutex										mutexCloseServer;
 	static void PrintIPAddressList();
-
-
 public:
+	ScreenCaptureSession*							ScreenCapturer;
+
 	void InitServer();
 };
 

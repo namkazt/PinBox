@@ -115,13 +115,13 @@ void updateTexture()
 		//------------------------------------------------------
 		if(!frame->isInitTexture)
 		{
-			printf("init frame texture \n");
+			printf("init frame texture : %d - %d\n", frame->width, frame->height);
 			//--------------------------------------------------
 			// init texture and transfer data into GPU
 			frame->isInitTexture = true;
 
 			GSPGPU_FlushDataCache(frame->frameData, frameSize *  frame->strice);
-			C3D_TexInit(&frame->spriteTexture, frame->width, frame->height, frame->texCol);
+			C3D_TexInit(&frame->spriteTexture, frame->width, frame->height, GPU_RGB8);
 			u32 dim = GX_BUFFER_DIM(frame->width, frame->height);
 			C3D_SafeDisplayTransfer((u32*)frame->frameData, dim, (u32*)frame->spriteTexture.data, dim, TEXTURE_TRANSFER_FLAGS);
 			gspWaitForPPF();
@@ -129,7 +129,6 @@ void updateTexture()
 
 			C3D_TexSetFilter(&frame->spriteTexture, GPU_LINEAR, GPU_NEAREST);
 			C3D_TexBind(frame->id, &frame->spriteTexture);
-
 			//--------------------------------------------------
 			// Configure the first fragment shading substage to just pass through the texture color
 			// See https://www.opengl.org/sdk/docs/man2/xhtml/glTexEnv.xml for more insight
@@ -143,7 +142,8 @@ void updateTexture()
 			//--------------------------------------------------
 			// incase this texture already inited so we do not need to re-init
 			GSPGPU_FlushDataCache(frame->frameData, frameSize *  frame->strice);
-			C3D_SafeDisplayTransfer((u32*)frame->frameData, GX_BUFFER_DIM(frame->width, frame->height), (u32*)frame->spriteTexture.data, GX_BUFFER_DIM(frame->width, frame->height), TEXTURE_TRANSFER_FLAGS);
+			u32 dim = GX_BUFFER_DIM(frame->width, frame->height);
+			C3D_SafeDisplayTransfer((u32*)frame->frameData, dim, (u32*)frame->spriteTexture.data, dim, TEXTURE_TRANSFER_FLAGS);
 			gspWaitForPPF();
 		}
 		//--------------------------------------------------
@@ -178,6 +178,7 @@ void ppGraphicsInit()
 	C3D_Init(C3D_DEFAULT_CMDBUF_SIZE);
 	// we use RGB 565 for small frame size
 	initFrameRenderTarget(GFX_LEFT, GPU_RB_RGB8);
+	drawFrameVBO(0, 0, 0, FRAME_W, FRAME_H);
 }
 
 void ppGraphicsRender()
@@ -188,10 +189,9 @@ void ppGraphicsRender()
 		C3D_FrameDrawOn(targetTop);
 
 		// Update the uniforms
-		C3D_FVUnifMtx4x4(GPU_VERTEX_SHADER, uLoc_projection, &projection);
-		drawFrameVBO(0, 0, 0, FRAME_W, FRAME_H);
+		C3D_FVUnifMtx4x4(GPU_VERTEX_SHADER, uLoc_projection, &projection);	
+		
 		C3D_DrawArrays(GPU_TRIANGLES, 0, 6);
-
 		C3D_FrameEnd(0);
 	}
 }

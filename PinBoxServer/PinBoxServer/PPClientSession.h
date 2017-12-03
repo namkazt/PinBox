@@ -1,20 +1,14 @@
 #pragma once
 #include <fstream>
-
+#include "PPMessage.h"
 // evpp
 #include <glog/config.h>
 #include <evpp/tcp_server.h>
 #include <evpp/buffer.h>
 #include <evpp/tcp_conn.h>
 
-// frame capture
-#include "ScreenCapture.h"
 
-//webp
-#include "webp/encode.h"
 
-#include "PPMessage.h"
-#include "AudioStreamSession.h"
 
 enum PPSession_Type { PPSESSION_NONE, PPSESSION_MOVIE, PPSESSION_SCREEN_CAPTURE, PPSESSION_INPUT_CAPTURE };
 
@@ -37,14 +31,16 @@ enum PPSession_Type { PPSESSION_NONE, PPSESSION_MOVIE, PPSESSION_SCREEN_CAPTURE,
 #define MSG_CODE_REQUEST_SCREEN_RECEIVED_FRAME 16
 #define MSG_CODE_REQUEST_NEW_AUDIO_FRAME 18
 #define MSG_CODE_REQUEST_RECEIVED_AUDIO_FRAME 19
+// input capture
+#define MSG_CODE_REQUEST_RECEIVED_AUDIO_FRAME 30
 
 // 8Mb default size just enough
 #define DEFAULT_CONTINUOUS_BUFFER_SIZE 1024*1024* 8 
 // 24Kb for each step
 #define DEFAULT_CONTINUOUS_BUFFER_STEP 1024*24 
-
 #define CHOP_N(BUFFER, COUNT, LENGTH) memmove(BUFFER, BUFFER + COUNT, LENGTH)
 
+class PPServer;
 class PPClientSession
 {
 private:
@@ -68,13 +64,13 @@ private:
 	void						ProcessIncommingMessage();
 	void						ProcessAuthentication();
 public:
-	void						InitSession(evpp::TCPConnPtr conn);
+	PPServer*					m_server;
+
+	void						InitSession(evpp::TCPConnPtr conn, PPServer* parent);
 	void						ProcessMessage(evpp::Buffer* msg);
 	void						DisconnectFromServer();
 
 	bool						IsAuthenticated() const { return g_authenticated; }
-
-private:
 	//---------------------------------------------------------------------------------------------------------------------------
 	//---------------------------------------------------------------------------------------------------------------------------
 	//------------------------------------------------------/////////////////////////////////////////////////////////////////////
@@ -82,32 +78,9 @@ private:
 	//------------------------------------------------------/////////////////////////////////////////////////////////////////////
 	//---------------------------------------------------------------------------------------------------------------------------
 	//---------------------------------------------------------------------------------------------------------------------------
-
-	SL::Screen_Capture::ScreenCaptureManager	g_ss_framgrabber;
-	AudioStreamSession*							g_ss_audioCapturer;
-	bool										g_ss_isStartStreaming = false;
-	bool										g_ss_isReceivedLastFrame = true;
-	u32											g_ss_currentWaitedFrame = 0;
-	bool										g_ss_isReceivedLastAudio = true;
-	u32											g_ss_currentWaitedAudio = 0;
-	//---------------------------------------------------------------------------------------------------------------------------
-	//--------------------OPTIONS------------------------------------------------------------------------------------------------
-	//---------------------------------------------------------------------------------------------------------------------------
-	//											Server will wait until client received frame after send new frame. Default: true
-	bool										g_ss_waitForClientReceived = true;
-	u32											g_ss_waitForFrame = 2;
-	//											Output scale from 0 -> 100 percent [100 is best]
-	u32											g_ss_outputScale = 75;
-	//											Output quality from 0 -> 100 percent [100 is best]
-	u32											g_ss_outputQuality = 75;
-	//---------------------------------------------------------------------------------------------------------------------------
-	void										ss_initFrameGraber();
-	void										ss_stopFrameGraber();
-	void										ss_sendFrameToClient(const SL::Screen_Capture::Image& img);
-
-	void										ss_initAudioCapturer();
-	void										ss_stopAudioCapture();
-
+	bool										g_ss_isReceived = true;
+	u32											g_ss_currentWorkingFrame = 0;
+	void										GetPieceDataAndSend();
 	//---------------------------------------------------------------------------------------------------------------------------
 	//---------------------------------------------------------------------------------------------------------------------------
 	//------------------------------------------------------/////////////////////////////////////////////////////////////////////

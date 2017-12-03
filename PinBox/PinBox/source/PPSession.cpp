@@ -237,28 +237,27 @@ void PPSession::processScreenCaptureSession(u8* buffer, size_t size)
 
 			//-------------------------------------------
 			// init webp decode config
+			u32 nW = 512, nH = 256;
 			WebPDecoderConfig config;
 			WebPInitDecoderConfig(&config);
 			config.options.no_fancy_upsampling = 1;
 			config.options.use_scaling = 1;
-			config.options.scaled_width = FRAME_W;
-			config.options.scaled_height = FRAME_H;
+			config.options.scaled_width = nW;
+			config.options.scaled_height = nH;
 			if (!WebPGetFeatures(buffer, size, &config.input) == VP8_STATUS_OK)
 				return;
 			config.output.colorspace = MODE_BGR;
 			if (!WebPDecode(buffer, size, &config) == VP8_STATUS_OK)
 				return;
-
 			//-------------------------------------------
-			//TODO: Decode frame data [3DS]
 			g_mutexFrame->Lock();
 			//-------------------------------------------
 			// mutex lock
 			QueueFrame *qF = new QueueFrame();
-			qF->size = FRAME_W * FRAME_H * 3;
+			qF->size = nW * nH * 3;
 			qF->start = (u8*)linearAlloc(qF->size);
-			qF->width = FRAME_W;
-			qF->height = FRAME_H;
+			qF->width = nW;
+			qF->height = nH;
 			memcpy(qF->start, config.output.private_memory, qF->size);
 			g_pendingFrame.push(qF);
 			//-------------------------------------------
@@ -437,12 +436,9 @@ void PPSession::SS_Reset()
 QueueFrame*	PPSession::SS_PopPendingQueue(){
 
 	if (g_pendingFrame.size() == 0) return nullptr;
-	//printf("Request 1 frame.\n");
 	g_mutexFrame->Lock();
 	QueueFrame* frame = (QueueFrame*)g_pendingFrame.front();
 	g_pendingFrame.pop();
-	//printf("Pop 1 frame -> size left: %d\n", g_pendingFrame.size());
 	g_mutexFrame->Unlock();
-
 	return frame;
 }

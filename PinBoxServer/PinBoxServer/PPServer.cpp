@@ -34,18 +34,17 @@ void PPServer::PrintIPAddressList()
 
 void PPServer::InitServer()
 {
-	if (htonl(47) == 47)
-		printf("System using Big Endian\n");
-	else
-		printf("System using Little Endian\n");
-
-	clientSessions = std::map<std::string, PPClientSession*>();
 	google::InitGoogleLogging("PinBoxServer");
 	google::SetCommandLineOption("GLOG_minloglevel", "2");
 	//===========================================================================
 	int cfgPort = 1234;
 	int cfgMonitorIndex = -1;
 	int cfgThreadNum = 8;
+	//===========================================================================
+	// Screen capture session
+	//===========================================================================
+	ScreenCapturer = new ScreenCaptureSession();
+	ScreenCapturer->initSCreenCapturer(this);
 	//===========================================================================
 	// Socket server part
 	//===========================================================================
@@ -56,12 +55,19 @@ void PPServer::InitServer()
 	//===========================================================================
 	server.SetMessageCallback([&](const evpp::TCPConnPtr& conn, evpp::Buffer* msg)
 	{
+		mutexCloseServer.lock();
 		auto iter = clientSessions.find(conn->remote_addr());
 		if(iter != clientSessions.end())
 		{
 			PPClientSession* session = iter->second;
+			mutexCloseServer.unlock();
 			session->ProcessMessage(msg);
+		}else
+		{
+			mutexCloseServer.unlock();
+			std::cout << "[Error]Received Message but do not know from where ??" << std::endl;
 		}
+		
 		//--------------------------------------
 		// need reset to empty msg after using.
 		msg->Reset();
@@ -76,9 +82,18 @@ void PPServer::InitServer()
 			// remove session
 			if (!conn->IsConnected())
 			{
-				iter->second->DisconnectFromServer();
-				std::cout << "Client: " << addrID << " disconnected!" <<std::endl;
-				clientSessions.erase(iter);
+				ScreenCapturer->registerForStopStream([=]()
+				{
+					ScreenCapturer->stopStream();
+					for(auto it = clientSessions.begin(); it != clientSessions.end();++it)
+					{
+						it->second->DisconnectFromServer();
+						std::cout << "Client: " << addrID << " disconnected!" << std::endl;
+					}
+					clientSessions.clear();
+					ScreenCapturer->removeForStopStream();
+				});
+				
 			}
 		}
 		else
@@ -88,8 +103,10 @@ void PPServer::InitServer()
 			{
 				std::cout << "Client: " << addrID << " connected to server!" << std::endl;
 				PPClientSession* session = new PPClientSession();
-				session->InitSession(conn);
+				session->InitSession(conn, this);
+				mutexCloseServer.lock();
 				clientSessions.insert(std::pair<std::string, PPClientSession*>(addrID, session));
+				mutexCloseServer.unlock();
 			}
 		}
 	});

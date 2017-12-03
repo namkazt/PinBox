@@ -116,11 +116,13 @@
     <ClCompile Include="PPMessage.cpp" />
     <ClCompile Include="PPNetwork.cpp" />
     <ClCompile Include="PPSession.cpp" />
+    <ClCompile Include="PPSessionManager.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="PPMessage.h" />
     <ClInclude Include="PPNetwork.h" />
     <ClInclude Include="PPSession.h" />
+    <ClInclude Include="PPSessionManager.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

@@ -19,7 +19,7 @@
 
 
 #define SOC_ALIGN       0x1000
-#define SOC_BUFFERSIZE  0x100000
+#define SOC_BUFFERSIZE  0x800000
 
 void initDbgConsole()
 {

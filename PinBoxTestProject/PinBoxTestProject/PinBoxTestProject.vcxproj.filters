@@ -23,6 +23,9 @@
     <ClCompile Include="main.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="PPSessionManager.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="PPMessage.h">
@@ -32,6 +35,9 @@
       <Filter>Source Files</Filter>
     </ClInclude>
     <ClInclude Include="PPSession.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="PPSessionManager.h">
       <Filter>Source Files</Filter>
     </ClInclude>
   </ItemGroup>

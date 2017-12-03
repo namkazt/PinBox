@@ -39,6 +39,9 @@
     <ClInclude Include="AudioStreamSession.h">
       <Filter>Source Files</Filter>
     </ClInclude>
+    <ClInclude Include="ScreenCaptureSession.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="stdafx.cpp">
@@ -57,6 +60,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="AudioStreamSession.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="ScreenCaptureSession.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
