@@ -21,6 +21,8 @@
 #include <webp/decode.h>
 #include "opusfile.h"
 #include "Mutex.h"
+#include <map>
+
 
 enum PPSession_Type { PPSESSION_NONE, PPSESSION_MOVIE, PPSESSION_SCREEN_CAPTURE, PPSESSION_INPUT_CAPTURE};
 
@@ -54,14 +56,26 @@ typedef struct
 	u32			height;
 } QueueFrame;
 
+typedef struct
+{
+	u32 frameIndex;
+	u32 pieceIndex;
+	u8* piece;
+	u32 pieceSize;
+	void release() { if (piece != nullptr) linearFree(piece); }
+
+} FramePiece;
+class PPSessionManager;
 
 class PPSession
 {
 private:
+	PPSessionManager				*g_manager;
 	PPSession_Type					g_sessionType = PPSESSION_NONE;
 	PPNetwork*						g_network = nullptr;
 	PPMessage*						g_tmpMessage = nullptr;
 	bool							g_authenticated = false;
+	PPNetworkCallback				g_onAuthenSuccessed = nullptr;
 
 private:
 	void initSession();
@@ -71,13 +85,14 @@ private:
 	void processInputSession(u8* buffer, size_t size);
 
 public:
+	int								sessionID = -1;
 	~PPSession();
 
 	void InitMovieSession();
-	void InitScreenCaptureSession();
+	void InitScreenCaptureSession(PPSessionManager* manager);
 	void InitInputCaptureSession();
 
-	void StartSession(const char* ip, const char* port);
+	void StartSession(const char* ip, const char* port, PPNetworkCallback authenSuccessed);
 	void CloseSession();
 
 	//-----------------------------------------------------
@@ -97,12 +112,14 @@ private:
 	//----------------------------------------------------------------------
 	bool								SS_v_isStartStreaming = false;
 	bool								SS_setting_waitToReceivedFrame = true;
-	u32									SS_setting_smoothStepFrames = 6;		// this setting allow frame switch smoother if there is delay when received frame
+	u32									SS_setting_smoothStepFrames = 2;		// this setting allow frame switch smoother if there is delay when received frame
 	u32									SS_setting_sourceQuality = 50;			// webp quality control
 	u32									SS_setting_sourceScale = 75;			// frame size control eg: 75% = 0.75 of real size
 	//----------------------------------------------------------------------
-	std::queue<QueueFrame*>				g_pendingFrame;
-	Mutex*								g_mutexFrame;
+	//----------------------------------------------------------------------
+	// on each frame - each session store only 1 piece as a piece frame object
+	std::map<u32, FramePiece*>			SS_framePiecesCached;
+	Mutex*								SS_frameCachedMutex;
 
 public:
 	void								SS_StartStream();
@@ -111,7 +128,9 @@ public:
 
 	void								SS_Reset();
 
-	QueueFrame*							SS_PopPendingQueue();
+	//QueueFrame*							SS_PopPendingQueue();
+	FramePiece*							SafeGetFramePiece(u32 index);
+	void								RequestForheader();
 	//-----------------------------------------------------
 	// movie
 	//-----------------------------------------------------

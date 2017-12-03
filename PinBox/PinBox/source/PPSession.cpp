@@ -1,6 +1,6 @@
 #include "PPSession.h"
 #include "PPGraphics.h"
-
+#include "PPSessionManager.h"
 
 PPSession::~PPSession()
 {
@@ -12,8 +12,8 @@ void PPSession::initSession()
 {
 	if (g_network != nullptr) return;
 	g_network = new PPNetwork();
-	g_pendingFrame = std::queue<QueueFrame*>();
-	printf("Init new session.\n");
+	g_network->g_session = this;
+	printf("#%d : Init new session.\n", sessionID);
 	//------------------------------------------------------
 	// callback when request data is received
 	g_network->SetOnReceivedRequest([=](u8* buffer, u32 size, u32 tag) {
@@ -30,18 +30,19 @@ void PPSession::initSession()
 				{
 					if (authenMsg->GetMessageCode() == MSG_CODE_RESULT_AUTHENTICATION_SUCCESS)
 					{
-						printf("Authentication sucessfully.\n");
+						printf("#%d : Authentication successted.\n", sessionID);
 						g_authenticated = true;
+						if (g_onAuthenSuccessed != nullptr) g_onAuthenSuccessed(nullptr, 0);
 					}
 					else
 					{
-						printf("Authentication failed.\n");
+						printf("#%d : Authenticaiton failed.\n", sessionID);
 						return;
 					}
 				}
 				else
 				{
-					printf("Authentication failed.\n");
+					printf("#%d : Authenticaiton failed.\n", sessionID);
 					return;
 				}
 				delete authenMsg;
@@ -129,13 +130,15 @@ void PPSession::InitMovieSession()
 	printf("Init movie session.\n");
 }
 
-void PPSession::InitScreenCaptureSession()
+void PPSession::InitScreenCaptureSession(PPSessionManager* manager)
 {
+	g_manager = manager;
 	initSession();
 	//--------------------------------------
 	// init specific for movie session
 	g_sessionType = PPSESSION_SCREEN_CAPTURE;
-	printf("Init screen capture session.\n");
+	//--------------------------------------
+	SS_framePiecesCached = std::map<u32, FramePiece*>();
 }
 
 void PPSession::InitInputCaptureSession()
@@ -148,13 +151,13 @@ void PPSession::InitInputCaptureSession()
 }
 
 
-void PPSession::StartSession(const char* ip, const char* port)
+void PPSession::StartSession(const char* ip, const char* port, PPNetworkCallback authenSuccessed)
 {
 	if (g_network == nullptr) return;
-	g_mutexFrame = new Mutex();
+	g_onAuthenSuccessed = authenSuccessed;
+	SS_frameCachedMutex = new Mutex();
 	g_network->SetOnConnectionSuccessed([=](u8* data, u32 size)
 	{
-		printf("Note: this called is not on main thread.\n");
 		//NOTE: this not called on main thread !
 		//--------------------------------------------------
 		int8_t code = 0;
@@ -163,9 +166,10 @@ void PPSession::StartSession(const char* ip, const char* port)
 		else if (g_sessionType == PPSESSION_INPUT_CAPTURE) code = MSG_CODE_REQUEST_AUTHENTICATION_INPUT;
 		if (code == 0)
 		{
-			printf("Invalid session type.\n");
+			printf("#%d : Invalid session type\n", sessionID);
 			return;
 		}
+		printf("#%d : Send Authentication Message.\n", sessionID);
 		//--------------------------------------------------
 		// screen capture session authen
 		PPMessage *authenMsg = new PPMessage();
@@ -182,14 +186,14 @@ void PPSession::StartSession(const char* ip, const char* port)
 	g_network->SetOnConnectionClosed([=](u8* data, u32 size)
 	{
 		//NOTE: this not called on main thread !
-		printf("Connection was interupted.\n");
+		printf("#%d : Connection interupted.\n", sessionID);
 	});
 	g_network->Start(ip, port);
 }
 
 void PPSession::CloseSession()
 {
-	delete g_mutexFrame;
+	delete SS_frameCachedMutex;
 	if (g_network == nullptr) return;
 	g_network->Stop();
 	g_authenticated = false;
@@ -221,11 +225,9 @@ void PPSession::processScreenCaptureSession(u8* buffer, size_t size)
 	{
 		try {
 			// If using waiting for new frame then we need:
-			//TODO: send request that client received frame and want new one
-			if (SS_setting_waitToReceivedFrame)
+			//--------------------------------------------------
+			// send request that client received frame
 			{
-				//--------------------------------------------------
-				// send request that client received frame
 				PPMessage *msgObj = new PPMessage();
 				msgObj->BuildMessageHeader(MSG_CODE_REQUEST_SCREEN_RECEIVED_FRAME);
 				u8* msgBuffer = msgObj->BuildMessageEmpty();
@@ -235,35 +237,22 @@ void PPSession::processScreenCaptureSession(u8* buffer, size_t size)
 				delete msgObj;
 			}
 
-			//-------------------------------------------
-			// init webp decode config
-			u32 nW = 512, nH = 256;
-			WebPDecoderConfig config;
-			WebPInitDecoderConfig(&config);
-			config.options.no_fancy_upsampling = 1;
-			config.options.use_scaling = 1;
-			config.options.scaled_width = nW;
-			config.options.scaled_height = nH;
-			if (!WebPGetFeatures(buffer, size, &config.input) == VP8_STATUS_OK)
-				return;
-			config.output.colorspace = MODE_BGR;
-			if (!WebPDecode(buffer, size, &config) == VP8_STATUS_OK)
-				return;
-			//-------------------------------------------
-			g_mutexFrame->Lock();
-			//-------------------------------------------
-			// mutex lock
-			QueueFrame *qF = new QueueFrame();
-			qF->size = nW * nH * 3;
-			qF->start = (u8*)linearAlloc(qF->size);
-			qF->width = nW;
-			qF->height = nH;
-			memcpy(qF->start, config.output.private_memory, qF->size);
-			g_pendingFrame.push(qF);
-			//-------------------------------------------
-			g_mutexFrame->Unlock();
-			//-------------------------------------------
-			WebPFreeDecBuffer(&config.output);
+			//------------------------------------------------------
+			// process piece
+			//------------------------------------------------------
+			FramePiece* framePiece = new FramePiece();
+			framePiece->frameIndex = READ_U32(buffer, 0);
+			framePiece->pieceIndex = READ_U8(buffer, 4);
+			framePiece->pieceSize = size - 5;
+			framePiece->piece = (u8*)linearAlloc(framePiece->pieceSize);
+			memcpy(framePiece->piece, buffer + 5, framePiece->pieceSize);
+			SS_frameCachedMutex->Lock();
+			SS_framePiecesCached.insert(std::pair<u32, FramePiece*>(framePiece->frameIndex, framePiece));
+			SS_frameCachedMutex->Unlock();
+			////------------------------------------------------------
+			//// trigger event when session received 1 pieces 
+			////------------------------------------------------------
+			g_manager->SafeTrack(framePiece->frameIndex);
 		}
 		catch (...)
 		{
@@ -379,16 +368,15 @@ void PPSession::SS_StopStream()
 {
 	//--------------------------------------
 	// clear pending frame
-	g_mutexFrame->Lock();
-	while (g_pendingFrame.size() > 0)
+	SS_frameCachedMutex->Lock();
+	for(auto iter = SS_framePiecesCached.begin(); iter != SS_framePiecesCached.end();++iter)
 	{
-		QueueFrame* frame = g_pendingFrame.front();
-		g_pendingFrame.pop();
-		linearFree(frame->start);
+		FramePiece* frame = iter->second;
+		frame->release();
 		delete frame;
 	}
-	std::queue<QueueFrame*>().swap(g_pendingFrame);
-	g_mutexFrame->Unlock();
+	SS_framePiecesCached.clear();
+	SS_frameCachedMutex->Unlock();
 	//--------------------------------------
 	PPMessage *authenMsg = new PPMessage();
 	authenMsg->BuildMessageHeader(MSG_CODE_REQUEST_STOP_SCREEN_CAPTURE);
@@ -433,12 +421,26 @@ void PPSession::SS_Reset()
 	SS_v_isStartStreaming = false;
 }
 
-QueueFrame*	PPSession::SS_PopPendingQueue(){
+FramePiece* PPSession::SafeGetFramePiece(u32 index)
+{
+	SS_frameCachedMutex->Lock();
+	auto iter = SS_framePiecesCached.find(index);
+	if (iter != SS_framePiecesCached.end())
+	{
+		FramePiece* piece = iter->second;
+		SS_framePiecesCached.erase(iter);
+		SS_frameCachedMutex->Unlock();
+		return piece;
+	}
+	else
+	{
+		SS_frameCachedMutex->Unlock();
+		return nullptr;
+	}
 
-	if (g_pendingFrame.size() == 0) return nullptr;
-	g_mutexFrame->Lock();
-	QueueFrame* frame = (QueueFrame*)g_pendingFrame.front();
-	g_pendingFrame.pop();
-	g_mutexFrame->Unlock();
-	return frame;
+}
+
+void PPSession::RequestForheader()
+{
+	g_network->SetRequestData(MSG_COMMAND_SIZE, PPREQUEST_HEADER);
 }

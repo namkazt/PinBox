@@ -38,6 +38,7 @@
     <ClCompile Include="source\PPMessage.cpp" />
     <ClCompile Include="source\PPNetwork.cpp" />
     <ClCompile Include="source\PPSession.cpp" />
+    <ClCompile Include="source\PPSessionManager.cpp" />
     <ClCompile Include="source\PPUI.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -47,6 +48,7 @@
     <ClInclude Include="include\PPMessage.h" />
     <ClInclude Include="include\PPNetwork.h" />
     <ClInclude Include="include\PPSession.h" />
+    <ClInclude Include="include\PPSessionManager.h" />
     <ClInclude Include="include\PPUI.h" />
   </ItemGroup>
   <PropertyGroup Label="Globals">

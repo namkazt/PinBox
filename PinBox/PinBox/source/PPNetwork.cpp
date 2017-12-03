@@ -1,5 +1,5 @@
 #include "PPNetwork.h"
-
+#include "PPSession.h"
 
 /*
  * @brief: thread handler function
@@ -422,11 +422,10 @@ void PPNetwork::SetRequestData(u32 size, u32 tag)
 {
 	if(g_waitForSize > 0)
 	{
-		printf("Some how it still waiting for : %d\n", g_waitForSize);
-		// already have some request data not finish yet
-		return;
+		printf("#%d : Old request data not solved yet! (%d bytes).\n", g_session->sessionID, g_waitForSize);
 	}else
 	{
+		printf("#%d : new request data tag: %d - (%d bytes).\n", g_session->sessionID, tag, size);
 		g_waitForSize = size;
 		g_tag = tag;
 	}

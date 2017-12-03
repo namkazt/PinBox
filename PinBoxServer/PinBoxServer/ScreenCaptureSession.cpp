@@ -73,7 +73,6 @@ void ScreenCaptureSession::initSCreenCapturer(PPServer* parent)
 					g_ss_currentWaitFrame++;
 					if (g_ss_currentWaitFrame > g_ss_waitForFrame)
 					{
-						std::cout << ">>> Smooth frame happen" << std::endl;
 						splitFrameToMultiPieces(img);
 						g_ss_currentWaitFrame = 0;
 					}
@@ -172,7 +171,6 @@ void ScreenCaptureSession::splitFrameToMultiPieces(const SL::Screen_Capture::Ima
 		m_frameCacheMap[m_frameIndex] = framePieces;
 		m_frameCacheState[m_frameIndex] = 0;
 
-		std::cout << "SPLIT frame: " << m_frameIndex << std::endl;
 		//===============================================================
 		// clean up 
 		WebPMemoryWriterClear(&writer);

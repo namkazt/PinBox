@@ -12,7 +12,7 @@
 #include <arpa/inet.h>
 
 #include "PPGraphics.h"
-#include "PPSession.h"
+#include "PPSessionManager.h"
 
 #include "dog_webp.h"
 
@@ -78,9 +78,9 @@ int main()
 	// Init session manager
 	//---------------------------------------------
 
-	PPSession* session = new PPSession();
-	session->InitScreenCaptureSession();
-	session->StartSession("192.168.31.222", "1234");
+	PPSessionManager* sm = new PPSessionManager();
+	sm->InitScreenCapture(2);
+
 	bool isStart = false;
 	//---------------------------------------------
 	// Main loop
@@ -98,24 +98,17 @@ int main()
 		{
 			isStart = true;
 			printf("COMMAND: start stream\n");
-			session->SS_ChangeSetting();
-			session->SS_StartStream();
+			sm->StartStreaming("192.168.31.222", "1234");
 		}
 		if (kDown & KEY_B && isStart)
 		{
 			isStart = false;
 			printf("COMMAND: stop session\n");
-			session->SS_StopStream();
+			sm->StopStreaming();
 		}
 
 
-		QueueFrame* frame = session->SS_PopPendingQueue();
-		if (frame != nullptr) {
-			ppGraphicsDrawFrame(frame->start, frame->size, frame->width, frame->height);
-			if (frame->start != nullptr) linearFree(frame->start);
-			delete frame;
-		}
-
+		sm->UpdateFrameTracker();
 		ppGraphicsRender();
 	}
 
@@ -123,7 +116,7 @@ int main()
 	//---------------------------------------------
 	// End
 	//---------------------------------------------
-	session->CloseSession();
+	sm->StopStreaming();
 	ppGraphicsExit();
 
 	socExit();

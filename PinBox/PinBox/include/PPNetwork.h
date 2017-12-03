@@ -19,7 +19,7 @@
 enum ppConectState { IDLE, CONNECTING, CONNECTED, FAIL };
 typedef std::function<void(u8* buffer, u32 size, u32 tag)> PPNetworkReceivedRequest;
 typedef std::function<void(u8* data, u32 code)> PPNetworkCallback;
-
+class PPSession;
 typedef struct
 {
 	void		*msgBuffer;
@@ -61,6 +61,7 @@ private:
 
 public:
 	~PPNetwork();
+	PPSession*					g_session;
 
 	void Start(const char *ip, const char *port);
 	void Stop();

@@ -208,6 +208,7 @@ void PPClientSession::ProcessAuthentication()
 	g_currentReadState = PPREQUEST_HEADER;
 	//----------------------------------------------------
 	// send back to client to validate authentication successfully
+	std::cout << "[Authentication Successed] Session: #" << g_connection->remote_addr()  << std::endl;
 	sendMessageWithCode(MSG_CODE_RESULT_AUTHENTICATION_SUCCESS);
 }
 
