@@ -11,7 +11,7 @@ u8* PPMessage::BuildMessage(u8* contentBuffer, u32 contentSize)
 	g_contentSize = contentSize;
 	//-----------------------------------------------
 	// alloc msg buffer block
-	u8* msgBuffer = (u8*)linearAlloc(sizeof(u8) * (contentSize + 9));
+	u8* msgBuffer = (u8*)malloc(sizeof(u8) * (contentSize + 9));
 	//-----------------------------------------------
 	// build header
 	u8* pointer = msgBuffer;
@@ -44,17 +44,13 @@ void PPMessage::BuildMessageHeader(u8 code)
 
 bool PPMessage::ParseHeader(u8* buffer)
 {
-	char* validateCode = (char*)linearAlloc(4);
-	size_t readIndex = 0;
-	memcpy(validateCode, buffer + readIndex, 4); readIndex += 4;
-	if (!std::strcmp(validateCode, "PPBX"))
+	if (IS_INVALID_CODE(buffer, 0))
 	{
-		printf("Parse header failed. Validate code is incorrect : %s", validateCode);
+		printf("Parse header failed. Validate code is incorrect: %c%c%c%c \n", buffer[0], buffer[1], buffer[2], buffer[3]);
 		return false;
 	}
-	linearFree(validateCode);
-	validateCode = nullptr;
 	//-----------------------------------------------------------
+	size_t readIndex = 4;
 	g_code = READ_U8(buffer, readIndex); readIndex += 1;
 	g_contentSize = READ_U32(buffer, readIndex); readIndex += 4;
 	return true;

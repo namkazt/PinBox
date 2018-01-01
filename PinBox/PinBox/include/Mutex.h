@@ -5,7 +5,7 @@ class Mutex
 {
 private:
 	Handle								g_mutexHandle = 0;
-	volatile bool						g_isLocked = false;
+	bool								g_isLocked = false;
 
 public:
 	Mutex();

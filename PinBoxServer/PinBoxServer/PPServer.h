@@ -14,6 +14,7 @@
 
 #include "PPClientSession.h"
 #include "ScreenCaptureSession.h"
+#include "InputStreamSession.h"
 
 class PPServer
 {
@@ -26,6 +27,7 @@ public:
 	static void PrintIPAddressList();
 public:
 	ScreenCaptureSession*							ScreenCapturer;
+	InputStreamSession*								InputStreamer;
 
 	void InitServer();
 };

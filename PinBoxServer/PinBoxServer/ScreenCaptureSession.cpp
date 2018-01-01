@@ -26,7 +26,7 @@ void ScreenCaptureSession::initSCreenCapturer(PPServer* parent)
 		auto mons = SL::Screen_Capture::GetMonitors();
 		std::vector<SL::Screen_Capture::Monitor> selectedMonitor = std::vector<SL::Screen_Capture::Monitor>();
 		//-------------------------- >> Index 0
-		selectedMonitor.push_back(mons[1]);
+		selectedMonitor.push_back(mons[2]);
 		return selectedMonitor;
 	}).onNewFrame([&](const SL::Screen_Capture::Image& img, const SL::Screen_Capture::Monitor& monitor)
 		{
@@ -37,10 +37,14 @@ void ScreenCaptureSession::initSCreenCapturer(PPServer* parent)
 				return;
 			}
 			//-------------------------------------------------
+			// progress input on each frame
+			m_server->InputStreamer->ProcessInput();
+
+			//-------------------------------------------------
 			// clean up our frame cached
 			for(auto iter = m_frameCacheState.begin(); iter != m_frameCacheState.end();)
 			{
-				if(iter->second == m_numberClients || iter->first < m_frameIndex)
+				if(iter->second == m_numberClients)
 				{
 					// free memory
 					for (char i = 0; i <  m_numberClients; i++)

@@ -46,6 +46,10 @@ void PPServer::InitServer()
 	ScreenCapturer = new ScreenCaptureSession();
 	ScreenCapturer->initSCreenCapturer(this);
 	//===========================================================================
+	// Screen capture session
+	//===========================================================================
+	InputStreamer = new InputStreamSession();
+	//===========================================================================
 	// Socket server part
 	//===========================================================================
 	std::string addr = "0.0.0.0:" + std::to_string(cfgPort);

@@ -47,14 +47,13 @@ void PPMessage::BuildMessageHeader(u8 code)
 
 bool PPMessage::ParseHeader(u8* buffer)
 {
-	char* validateCode = (char*)malloc(4);
-	size_t readIndex = 0;
-	memcpy(validateCode, buffer + readIndex, 4); readIndex += 4;
-	if (!std::strcmp(validateCode, "PPBX"))
+	
+	if (IS_INVALID_CODE(buffer, 0))
 	{
-		printf("Parse header failed. Validate code is incorrect : %s", validateCode);
+		printf("Parse header failed. Validate code is incorrect \n");
 		return false;
 	}
+	size_t readIndex = 4;
 	g_code = READ_U8(buffer, readIndex); readIndex += 1;
 	g_contentSize = READ_U32(buffer, readIndex); readIndex += 4;
 	return true;

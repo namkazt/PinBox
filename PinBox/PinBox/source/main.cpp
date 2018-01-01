@@ -19,7 +19,7 @@
 
 
 #define SOC_ALIGN       0x1000
-#define SOC_BUFFERSIZE  0x800000
+#define SOC_BUFFERSIZE  0x100000
 
 void initDbgConsole()
 {
@@ -36,7 +36,9 @@ int main()
 	//---------------------------------------------
 	// Init svc
 	//---------------------------------------------
+	acInit();
 	aptInit();
+	irrstInit();
 	
 	//---------------------------------------------
 	// Init SOCKET
@@ -53,75 +55,113 @@ int main()
 	// Init Graphics
 	//---------------------------------------------
 	ppGraphicsInit();
-	initDbgConsole();
+	//initDbgConsole();
 
 
-	// init webp decode config
-	/*WebPDecoderConfig config;
-	WebPInitDecoderConfig(&config);
-	config.options.no_fancy_upsampling = 1;
-	config.options.use_scaling = 1;
-	config.options.scaled_width = 400;
-	config.options.scaled_height = 240;
-	if (!WebPGetFeatures(dog_webp, dog_webp_size, &config.input) == VP8_STATUS_OK)
-		return;
-	config.output.colorspace = MODE_BGR;
-	if (!WebPDecode(dog_webp, dog_webp_size, &config) == VP8_STATUS_OK)
-		return;
-
-	ppGraphicsDrawFrame(config.output.private_memory, 400 * 240 * 3, 400, 240);
-	
-	WebPFreeDecBuffer(&config.output);*/
-
-	
 	//---------------------------------------------
-	// Init session manager
+	// Wifi Check
 	//---------------------------------------------
+	u32 wifiStatus = 0;
+	while (aptMainLoop()) { /* Wait for WiFi; break when WiFiStatus is truthy */
+		ACU_GetWifiStatus(&wifiStatus);
+		if (wifiStatus) break;
 
-	PPSessionManager* sm = new PPSessionManager();
-	sm->InitScreenCapture(2);
-
-	bool isStart = false;
-	//---------------------------------------------
-	// Main loop
-	//---------------------------------------------
-	while (aptMainLoop())
-	{
-		//Scan all the inputs. This should be done once for each frame
 		hidScanInput();
+		printf("Waiting for WiFi connection...\n");
 
-		//hidKeysDown returns information about which buttons have been just pressed (and they weren't in the previous frame)
-		u32 kDown = hidKeysDown();
-		if (kDown & KEY_START) break; // break in order to return to hbmenu
-
-		if(kDown & KEY_A && !isStart)
+		u32 kHeld = hidKeysHeld();
+		if (kHeld & KEY_START)
 		{
-			isStart = true;
-			printf("COMMAND: start stream\n");
-			sm->StartStreaming("192.168.31.222", "1234");
+			break;
 		}
-		if (kDown & KEY_B && isStart)
+			
+		gfxFlushBuffers();
+		gspWaitForVBlank();
+		gfxSwapBuffers();
+	}
+	
+	//---------------------------------------------
+	// wifiStatus = 0 : not connected to internet
+	// wifiStatus = 1 : Old 3DS internet
+	// wifiStatus = 2 : New 3DS internet
+	//---------------------------------------------
+
+	if (wifiStatus) {
+		osSetSpeedupEnable(1);
+		//---------------------------------------------
+		// Init session manager
+		//---------------------------------------------
+		PPSessionManager* sm = new PPSessionManager();
+		sm->InitScreenCapture(3);
+		sm->InitInputStream();
+		bool isStart = false;
+		//---------------------------------------------
+		// Main loop
+		//---------------------------------------------
+		while (aptMainLoop())
 		{
-			isStart = false;
-			printf("COMMAND: stop session\n");
-			sm->StopStreaming();
+			//Scan all the inputs. This should be done once for each frame
+			hidScanInput();
+			irrstScanInput();
+			//---------------------------------------------
+			// Update Input
+			//---------------------------------------------
+			u32 kDown = hidKeysDown();
+			u32 kHeld = hidKeysHeld();
+			u32 kUp = hidKeysUp();
+			circlePosition pos;
+			hidCircleRead(&pos);
+
+			circlePosition cStick;
+			irrstCstickRead(&cStick);
+
+			sm->UpdateInputStream(kDown, kHeld, kUp, pos.dx, pos.dy, cStick.dx, cStick.dy);
+
+
+			if (kHeld & KEY_START && kHeld & KEY_SELECT) break; // break in order to return to hbmenu
+
+
+
+			if (kHeld & KEY_L && kHeld & KEY_A && !isStart)
+			{
+				isStart = true;
+				printf("COMMAND: start stream\n");
+				sm->StartStreaming("192.168.31.183", "1234");
+			}
+			if (kHeld & KEY_L && kHeld & KEY_B && isStart)
+			{
+				isStart = false;
+				printf("COMMAND: stop session\n");
+				sm->StopStreaming();
+			}
+
+			//---------------------------------------------
+			// Update graphics
+			//---------------------------------------------
+			sm->UpdateFrameTracker();
+			ppGraphicsRender();
+
+
+			gfxFlushBuffers();
+			gspWaitForVBlank();
+			gfxSwapBuffers();
 		}
+		//---------------------------------------------
+		// End
+		//---------------------------------------------
+		sm->StopStreaming();
+		sm->Close();
 
-
-		sm->UpdateFrameTracker();
-		ppGraphicsRender();
 	}
 
-	
-	//---------------------------------------------
-	// End
-	//---------------------------------------------
-	sm->StopStreaming();
 	ppGraphicsExit();
 
+	irrstExit();
 	socExit();
 	free(SOC_buffer);
 	aptExit();
+	acExit();
+
 
 	return 0;
 }

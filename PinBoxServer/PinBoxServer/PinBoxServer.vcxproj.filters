@@ -15,7 +15,9 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <Text Include="ReadMe.txt" />
+    <Text Include="input.cfg">
+      <Filter>Resource Files</Filter>
+    </Text>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="stdafx.h">
@@ -42,6 +44,9 @@
     <ClInclude Include="ScreenCaptureSession.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="InputStreamSession.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="stdafx.cpp">
@@ -63,6 +68,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="ScreenCaptureSession.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="InputStreamSession.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

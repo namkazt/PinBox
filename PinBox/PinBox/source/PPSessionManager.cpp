@@ -13,6 +13,13 @@ PPSessionManager::~PPSessionManager()
 	delete m_frameTrackerMutex;
 }
 
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////////
+/// SCREEN STREAM
+///////////////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 void PPSessionManager::InitScreenCapture(u32 numberOfSessions)
 {
 	if (numberOfSessions <= 0) numberOfSessions = 1;
@@ -27,60 +34,42 @@ void PPSessionManager::InitScreenCapture(u32 numberOfSessions)
 	}
 }
 
-void PPSessionManager::StartStreaming(const char* ip, const char* port)
-{
-	m_currentDisplayFrame = 0;
-	m_frameTracker.clear();
-	m_connectedSession = 0;
-	for (int i = 0; i < m_screenCaptureSessions.size(); i++)
-	{
-		// start connect all session to server
-		m_screenCaptureSessions[i]->StartSession(ip, port, [=](u8* data, u32 code)
-		{
-			printf("#%d: Authen add ", i);
-			m_connectedSession++;
-			if(m_connectedSession == m_screenCaptureSessions.size())
-			{
-				// when all session is authenticated
-				// start streaming here
-				//std::cout << "All sessions is connected to server : Start Streaming" << std::endl;
-				_startStreaming();
-			}
-		});
-	}
-}
-
-void PPSessionManager::StopStreaming()
-{
-	for (int i = 0; i < m_screenCaptureSessions.size(); i++)
-	{
-		m_screenCaptureSessions[i]->SS_StopStream();
-	}
-}
-
-void PPSessionManager::Close()
-{
-	for (int i = 0; i < m_screenCaptureSessions.size(); i++)
-	{
-		m_screenCaptureSessions[i]->CloseSession();
-	}
-}
-
-void PPSessionManager::SafeTrack(u32 index)
+void PPSessionManager::SafeTrack(FramePiece* piece)
 {
 	m_frameTrackerMutex->Lock();
-	auto iter = m_frameTracker.find(index);
-	if(iter == m_frameTracker.end())
+	// update into tracker temp
+	bool isNewFrame = true;
+	for(int i = 0; i < m_frameTrackTemp.size(); i++)
 	{
-		m_frameTracker.insert(std::pair<u32, u32>(index, 1));
-		auto lastiter = m_frameTracker.find(index - 1);
-		if(lastiter != m_frameTracker.end())
+		if(m_frameTrackTemp[i]->frameIndex == piece->frameIndex)
 		{
-			m_frameTracker.erase(lastiter);
+			m_frameTrackTemp[i]->pieces.push_back(piece);
+			m_frameTrackTemp[i]->receivedPieces++;
+			// if this frame is complete then move it to complete list
+			if(m_frameTrackTemp[i]->receivedPieces == m_connectedSession)
+			{
+				printf("Add new frame into pool : \n");
+				m_frameTracker[m_frameTrackTemp[i]->frameIndex] = m_frameTrackTemp[i];
+				// remove this track when all complete
+				m_frameTrackTemp.erase(m_frameTrackTemp.begin() + i);
+			}
+			isNewFrame = false;
+			break;
 		}
-	}else
+	}
+	if(isNewFrame)
 	{
-		iter->second++;
+		FrameSet* set = new FrameSet();
+		set->frameIndex = piece->frameIndex;
+		set->receivedPieces = 1;
+		set->pieces.push_back(piece);
+		if(m_connectedSession > 1)
+		{
+			m_frameTrackTemp.push_back(set);
+		}else
+		{
+			m_frameTracker[set->frameIndex] = set;
+		}
 	}
 	m_frameTrackerMutex->Unlock();
 }
@@ -93,81 +82,100 @@ void PPSessionManager::UpdateFrameTracker()
 	//---------------------------------------------------
 	u8* frameData = nullptr;
 	u32 totalSize = 0;
-	// get first frame in tracker
+	// get first frame in tracker ( first frame alway is the newest )
 	m_frameTrackerMutex->Lock();
+
 	auto iter = m_frameTracker.begin();
 	if (iter != m_frameTracker.end())
 	{
-		if(iter->second == m_connectedSession)
+		FrameSet* set = iter->second;
+		if (m_connectedSession == 1)
 		{
-			if(m_connectedSession == 1)
-			{
-				//--------------------------------------------------
-				// incase only 1 session then it is all data we have
-				FramePiece* firstPiece = m_screenCaptureSessions[0]->SafeGetFramePiece(iter->first);
+			//--------------------------------------------------
+			// incase only 1 session then it is all data we have
+			FramePiece* firstPiece = set->pieces[0];
+			if (firstPiece != nullptr) {
 				frameData = (u8*)malloc(firstPiece->pieceSize);
 				memcpy(frameData, firstPiece->piece, firstPiece->pieceSize);
 				totalSize = firstPiece->pieceSize;
 				// free piece data
 				firstPiece->release();
 				delete firstPiece;
+				set->pieces.clear();
 			}
-			else {
-				//--------------------------------------------------
-				// generate frame
-				u32 normalPieceSize = 0;
-				u32 lastPieceSize = 0;
-				FramePiece* firstPiece = m_screenCaptureSessions[0]->SafeGetFramePiece(iter->first);
-				FramePiece* secondPiece = m_screenCaptureSessions[1]->SafeGetFramePiece(iter->first);
-				//--------------------------------------------------
-				if(firstPiece->pieceSize == secondPiece->pieceSize)
-				{
-					// this case we only know normal piece size
-					normalPieceSize = firstPiece->pieceSize;
-					// we alloc more than 1 pieces size to ensure it enough memory
-					totalSize = normalPieceSize * m_connectedSession + normalPieceSize;
-					frameData = (u8*)malloc(totalSize);
-				}else if(firstPiece->pieceSize < secondPiece->pieceSize)
-				{
-					normalPieceSize = firstPiece->pieceSize;
-					lastPieceSize = secondPiece->pieceSize;
-					totalSize = normalPieceSize * (m_connectedSession - 1) + lastPieceSize;
-					frameData = (u8*)malloc(totalSize);
-				}else
-				{
-					normalPieceSize = secondPiece->pieceSize;
-					lastPieceSize = firstPiece->pieceSize;
-					totalSize = normalPieceSize * (m_connectedSession - 1) + lastPieceSize;
-					frameData = (u8*)malloc(totalSize);
-				}
-				//--------------------------------------------------
-				memcpy(frameData + (firstPiece->pieceIndex *normalPieceSize), firstPiece->piece, firstPiece->pieceSize);
-				memcpy(frameData + (secondPiece->pieceIndex *normalPieceSize), secondPiece->piece, secondPiece->pieceSize);
-				// free piece data
-				firstPiece->release();
-				delete firstPiece;
-				// free piece data
-				secondPiece->release();
-				delete secondPiece;
-				//--------------------------------------------------
-				for (int i = 2; i < m_connectedSession; i++)
-				{
-					FramePiece* piece = m_screenCaptureSessions[i]->SafeGetFramePiece(iter->first);
-					memcpy(frameData + (piece->pieceIndex *normalPieceSize), piece->piece, piece->pieceSize);
-					if(piece->pieceSize != normalPieceSize)
-					{
-						lastPieceSize = piece->pieceSize;
-					}
-					// free piece data
-					piece->release();
-					delete piece;
-				}
-				//--------------------------------------------------
-				if (lastPieceSize == 0) lastPieceSize = normalPieceSize;
-				totalSize = normalPieceSize * (m_connectedSession - 1) + lastPieceSize;
-			}
-			m_frameTracker.erase(iter);
 		}
+		else {
+			//--------------------------------------------------
+			// generate frame
+			u32 normalPieceSize = 0;
+			u32 lastPieceSize = 0;
+			// we get first 2 piece to use as data to guess message size
+			FramePiece* firstPiece = set->pieces[0];
+			FramePiece* secondPiece = set->pieces[1];
+			//--------------------------------------------------
+			if (firstPiece->pieceSize == secondPiece->pieceSize)
+			{
+				// this case we only know normal piece size
+				normalPieceSize = firstPiece->pieceSize;
+				// we alloc more than 1 pieces size to ensure it enough memory
+				totalSize = normalPieceSize * m_connectedSession + normalPieceSize;
+				frameData = (u8*)malloc(totalSize);
+			}
+			else if (firstPiece->pieceSize < secondPiece->pieceSize)
+			{
+				normalPieceSize = firstPiece->pieceSize;
+				lastPieceSize = secondPiece->pieceSize;
+				totalSize = normalPieceSize * (m_connectedSession - 1) + lastPieceSize;
+				frameData = (u8*)malloc(totalSize);
+			}
+			else
+			{
+				normalPieceSize = secondPiece->pieceSize;
+				lastPieceSize = firstPiece->pieceSize;
+				totalSize = normalPieceSize * (m_connectedSession - 1) + lastPieceSize;
+				frameData = (u8*)malloc(totalSize);
+			}
+			//--------------------------------------------------
+			memcpy(frameData + (firstPiece->pieceIndex *normalPieceSize), firstPiece->piece, firstPiece->pieceSize);
+			memcpy(frameData + (secondPiece->pieceIndex *normalPieceSize), secondPiece->piece, secondPiece->pieceSize);
+			// free piece data
+			firstPiece->release();
+			delete firstPiece;
+			// free piece data
+			secondPiece->release();
+			delete secondPiece;
+			//--------------------------------------------------
+			for (int i = 2; i < m_connectedSession; i++)
+			{
+				FramePiece* piece = set->pieces[i];
+				memcpy(frameData + (piece->pieceIndex *normalPieceSize), piece->piece, piece->pieceSize);
+				if (piece->pieceSize != normalPieceSize)
+				{
+					lastPieceSize = piece->pieceSize;
+				}
+				// free piece data
+				piece->release();
+				delete piece;
+			}
+			set->pieces.clear();
+			//--------------------------------------------------
+			if (lastPieceSize == 0) lastPieceSize = normalPieceSize;
+			totalSize = normalPieceSize * (m_connectedSession - 1) + lastPieceSize;
+		}
+
+		
+		//--------------------------------------------------
+		// clear frame tracker map from current iter
+		++iter;
+		for (;iter != m_frameTracker.end(); ++iter)
+		{
+			for(int i = 0; i < iter->second->receivedPieces; i++)
+			{
+				iter->second->pieces[i]->release();
+			}
+			iter->second->pieces.clear();
+		}
+		m_frameTracker.clear();
 	}
 	m_frameTrackerMutex->Unlock();
 	//----------------------------------------------------
@@ -206,5 +214,115 @@ void PPSessionManager::_startStreaming()
 	for (int i = 1; i < m_screenCaptureSessions.size(); i++)
 	{
 		m_screenCaptureSessions[i]->RequestForheader();
+	}
+}
+
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////////
+/// INPUT
+///////////////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void PPSessionManager::InitInputStream()
+{
+	if (m_inputStreamSession != nullptr) return;
+	m_inputStreamSession = new PPSession();
+	m_inputStreamSession->sessionID = 0;
+	m_inputStreamSession->InitInputCaptureSession(this);
+	m_initInputFirstFrame = false;
+}
+
+void PPSessionManager::UpdateInputStream(u32 down, u32 hold, u32 up, short cx, short cy, short ctx, short cty)
+{
+	if (m_inputStreamSession == nullptr) return;
+	if(down != m_OldDown || hold != m_OldHold || up != m_OldUp || cx != m_OldCX || cy != m_OldCY || ctx != m_OldCTX || cty != m_OldCTY || !m_initInputFirstFrame)
+	{
+		if(m_inputStreamSession->IN_SendInputData(down, hold, up, cx, cy, ctx, cty))
+		{
+			m_initInputFirstFrame = true;
+			m_OldDown = down;
+			m_OldHold = hold;
+			m_OldUp = up;
+			m_OldCX = cx;
+			m_OldCY = cy;
+			m_OldCTX = ctx;
+			m_OldCTY = cty;
+		}
+	}
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////////
+/// COMMON
+///////////////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+void PPSessionManager::StartStreaming(const char* ip, const char* port)
+{
+	m_currentDisplayFrame = 0;
+	m_frameTrackTemp.clear();
+	m_frameTracker.clear();
+	m_connectedSession = 0;
+
+	//--------------------------------------------------
+	// get current thread priority
+	s32 prio = 0;
+	svcGetThreadPriority(&prio, CUR_THREAD_HANDLE);
+
+	//--------------------------------------------------
+	// start now
+	for (int i = 0; i < m_screenCaptureSessions.size(); i++)
+	{
+		//--------------------------------------------------
+		// start connect all session to server
+		m_screenCaptureSessions[i]->StartSession(ip, port, prio, [=](PPNetwork *self, u8* data, u32 code)
+		{
+			m_connectedSession++;
+			if (m_connectedSession == m_screenCaptureSessions.size())
+			{
+				//--------------------------------------------------
+				// when all session is authenticated
+				// start streaming here
+				printf("All clients is connected to server \n");
+				_startStreaming();
+			}
+		});
+	}
+
+	//--------------------------------------------------
+	//start input
+	if (m_inputStreamSession != nullptr) {
+		m_inputStreamSession->StartSession(ip, port, prio, [=](PPNetwork *self, u8* data, u32 code)
+		{
+			m_inputStreamSession->IN_Start();
+		});
+	}
+}
+
+void PPSessionManager::StopStreaming()
+{
+	for (int i = 0; i < m_screenCaptureSessions.size(); i++)
+	{
+		m_screenCaptureSessions[i]->SS_StopStream();
+	}
+
+	if (m_inputStreamSession != nullptr)
+	{
+		m_inputStreamSession->IN_Stop();
+	}
+}
+
+void PPSessionManager::Close()
+{
+	for (int i = 0; i < m_screenCaptureSessions.size(); i++)
+	{
+		m_screenCaptureSessions[i]->CloseSession();
+	}
+
+	if (m_inputStreamSession != nullptr)
+	{
+		m_inputStreamSession->CloseSession();
 	}
 }

@@ -4,15 +4,35 @@
 #include <webp/decode.h>
 #include "opusfile.h"
 #include <map>
+#include <stack>
+
+typedef struct
+{
+	u32 frameIndex = 0;
+	u32 receivedPieces = 0;
+	std::vector<FramePiece*> pieces;
+} FrameSet;
 
 class PPSessionManager
 {
 private:
+	PPSession*										m_inputStreamSession = nullptr;
+	u32												m_OldDown;
+	u32												m_OldHold;
+	u32												m_OldUp;
+	short											m_OldCX;
+	short											m_OldCY;
+	short											m_OldCTX;
+	short											m_OldCTY;
+	bool											m_initInputFirstFrame = false;
+
 	std::vector<PPSession*>							m_screenCaptureSessions;
 	int												m_commandSessionIndex = 0;
 	u32												m_connectedSession = 0;
 	void											_startStreaming();
-	std::map<u32, u32>								m_frameTracker;
+
+	std::vector<FrameSet*>							m_frameTrackTemp;
+	std::map<int, FrameSet*>						m_frameTracker;
 	Mutex*											m_frameTrackerMutex;
 	u32												m_currentDisplayFrame = 0;
 public:
@@ -24,7 +44,10 @@ public:
 	void StopStreaming();
 	void Close();
 
-	void SafeTrack(u32 index);
+	void InitInputStream();
+	void UpdateInputStream(u32 down, u32 hold, u32 up, short cx, short cy, short ctx, short cty);
+
+	void SafeTrack(FramePiece* piece);
 	void UpdateFrameTracker();
 };
 

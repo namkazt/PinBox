@@ -1,1 +1,1 @@
-start "target remote 192.168.31.173:4000" C:\devkitPro\devkitARM\bin\arm-none-eabi-gdb.exe E:\3ds\PinBoxStreaming\PinBox\PinBox\PinBox.elf
+start "" powershell.exe C:\devkitPro\devkitARM\bin\arm-none-eabi-gdb.exe E:\3ds\PinBoxStreaming\PinBox\PinBox\PinBox.elf

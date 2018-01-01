@@ -16,7 +16,7 @@ void PPSession::initSession()
 	printf("#%d : Init new session.\n", sessionID);
 	//------------------------------------------------------
 	// callback when request data is received
-	g_network->SetOnReceivedRequest([=](u8* buffer, u32 size, u32 tag) {
+	g_network->SetOnReceivedRequest([=](PPNetwork *self, u8* buffer, u32 size, u32 tag) {
 		//------------------------------------------------------
 		// verify authentication
 		//------------------------------------------------------
@@ -32,7 +32,8 @@ void PPSession::initSession()
 					{
 						printf("#%d : Authentication successted.\n", sessionID);
 						g_authenticated = true;
-						if (g_onAuthenSuccessed != nullptr) g_onAuthenSuccessed(nullptr, 0);
+						if (g_onAuthenSuccessed != nullptr) 
+							g_onAuthenSuccessed(self, nullptr, 0);
 					}
 					else
 					{
@@ -64,7 +65,7 @@ void PPSession::initSession()
 			{
 				//----------------------------------------------------
 				// request body part of this message
-				g_network->SetRequestData(g_tmpMessage->GetContentSize(), PPREQUEST_BODY);
+				self->SetRequestData(g_tmpMessage->GetContentSize(), PPREQUEST_BODY);
 			}
 			else
 			{
@@ -104,7 +105,7 @@ void PPSession::initSession()
 
 				//----------------------------------------------------------
 				// Request for next message
-				g_network->SetRequestData(MSG_COMMAND_SIZE, PPREQUEST_HEADER);
+				self->SetRequestData(MSG_COMMAND_SIZE, PPREQUEST_HEADER);
 			}
 			//------------------------------------------------------
 			// remove message after use
@@ -116,7 +117,7 @@ void PPSession::initSession()
 		}
 		//------------------------------------------------------
 		// free buffer after use
-		linearFree(buffer);
+		free(buffer);
 	});
 }
 
@@ -138,11 +139,11 @@ void PPSession::InitScreenCaptureSession(PPSessionManager* manager)
 	// init specific for movie session
 	g_sessionType = PPSESSION_SCREEN_CAPTURE;
 	//--------------------------------------
-	SS_framePiecesCached = std::map<u32, FramePiece*>();
 }
 
-void PPSession::InitInputCaptureSession()
+void PPSession::InitInputCaptureSession(PPSessionManager* manager)
 {
+	g_manager = manager;
 	initSession();
 	//--------------------------------------
 	// init specific for movie session
@@ -151,12 +152,11 @@ void PPSession::InitInputCaptureSession()
 }
 
 
-void PPSession::StartSession(const char* ip, const char* port, PPNetworkCallback authenSuccessed)
+void PPSession::StartSession(const char* ip, const char* port, s32 prio, PPNetworkCallback authenSuccessed)
 {
 	if (g_network == nullptr) return;
 	g_onAuthenSuccessed = authenSuccessed;
-	SS_frameCachedMutex = new Mutex();
-	g_network->SetOnConnectionSuccessed([=](u8* data, u32 size)
+	g_network->SetOnConnectionSuccessed([=](PPNetwork *self, u8* data, u32 size)
 	{
 		//NOTE: this not called on main thread !
 		//--------------------------------------------------
@@ -169,7 +169,6 @@ void PPSession::StartSession(const char* ip, const char* port, PPNetworkCallback
 			printf("#%d : Invalid session type\n", sessionID);
 			return;
 		}
-		printf("#%d : Send Authentication Message.\n", sessionID);
 		//--------------------------------------------------
 		// screen capture session authen
 		PPMessage *authenMsg = new PPMessage();
@@ -177,23 +176,22 @@ void PPSession::StartSession(const char* ip, const char* port, PPNetworkCallback
 		u8* msgBuffer = authenMsg->BuildMessageEmpty();
 		//--------------------------------------------------
 		// send authentication message
-		g_network->SendMessageData(msgBuffer, authenMsg->GetMessageSize());
+		self->SendMessageData(msgBuffer, authenMsg->GetMessageSize());
 		//--------------------------------------------------
 		// set request to get result message
-		g_network->SetRequestData(MSG_COMMAND_SIZE, PPREQUEST_AUTHEN);
+		self->SetRequestData(MSG_COMMAND_SIZE, PPREQUEST_AUTHEN);
 		delete authenMsg;
 	});
-	g_network->SetOnConnectionClosed([=](u8* data, u32 size)
+	g_network->SetOnConnectionClosed([=](PPNetwork *self, u8* data, u32 size)
 	{
 		//NOTE: this not called on main thread !
 		printf("#%d : Connection interupted.\n", sessionID);
 	});
-	g_network->Start(ip, port);
+	g_network->Start(ip, port, prio);
 }
 
 void PPSession::CloseSession()
 {
-	delete SS_frameCachedMutex;
 	if (g_network == nullptr) return;
 	g_network->Stop();
 	g_authenticated = false;
@@ -244,15 +242,14 @@ void PPSession::processScreenCaptureSession(u8* buffer, size_t size)
 			framePiece->frameIndex = READ_U32(buffer, 0);
 			framePiece->pieceIndex = READ_U8(buffer, 4);
 			framePiece->pieceSize = size - 5;
-			framePiece->piece = (u8*)linearAlloc(framePiece->pieceSize);
+			framePiece->piece = (u8*)malloc(framePiece->pieceSize); //TODO: crash here on malloc ?
 			memcpy(framePiece->piece, buffer + 5, framePiece->pieceSize);
-			SS_frameCachedMutex->Lock();
-			SS_framePiecesCached.insert(std::pair<u32, FramePiece*>(framePiece->frameIndex, framePiece));
-			SS_frameCachedMutex->Unlock();
-			////------------------------------------------------------
-			//// trigger event when session received 1 pieces 
-			////------------------------------------------------------
-			g_manager->SafeTrack(framePiece->frameIndex);
+			
+			//------------------------------------------------------
+			// go tell session manager that we received 1 piece from 1 frame and need
+			// to store it for process later
+			//------------------------------------------------------
+			g_manager->SafeTrack(framePiece);
 		}
 		catch (...)
 		{
@@ -355,36 +352,28 @@ void PPSession::processInputSession(u8* buffer, size_t size)
 //-----------------------------------------------------
 void PPSession::SS_StartStream()
 {
-	PPMessage *authenMsg = new PPMessage();
-	authenMsg->BuildMessageHeader(MSG_CODE_REQUEST_START_SCREEN_CAPTURE);
-	u8* msgBuffer = authenMsg->BuildMessageEmpty();
-	g_network->SendMessageData(msgBuffer, authenMsg->GetMessageSize());
+	PPMessage *msg = new PPMessage();
+	msg->BuildMessageHeader(MSG_CODE_REQUEST_START_SCREEN_CAPTURE);
+	u8* msgBuffer = msg->BuildMessageEmpty();
+	g_network->SendMessageData(msgBuffer, msg->GetMessageSize());
 	g_network->SetRequestData(MSG_COMMAND_SIZE, PPREQUEST_HEADER);
 	SS_v_isStartStreaming = true;
-	delete authenMsg;
+	delete msg;
 }
 
 void PPSession::SS_StopStream()
 {
+	if (!SS_v_isStartStreaming) return;
 	//--------------------------------------
-	// clear pending frame
-	SS_frameCachedMutex->Lock();
-	for(auto iter = SS_framePiecesCached.begin(); iter != SS_framePiecesCached.end();++iter)
-	{
-		FramePiece* frame = iter->second;
-		frame->release();
-		delete frame;
-	}
-	SS_framePiecesCached.clear();
-	SS_frameCachedMutex->Unlock();
-	//--------------------------------------
-	PPMessage *authenMsg = new PPMessage();
-	authenMsg->BuildMessageHeader(MSG_CODE_REQUEST_STOP_SCREEN_CAPTURE);
-	u8* msgBuffer = authenMsg->BuildMessageEmpty();
-	g_network->SendMessageData(msgBuffer, authenMsg->GetMessageSize());
+	PPMessage *msg = new PPMessage();
+	msg->BuildMessageHeader(MSG_CODE_REQUEST_STOP_SCREEN_CAPTURE);
+	u8* msgBuffer = msg->BuildMessageEmpty();
+	g_network->SendMessageData(msgBuffer, msg->GetMessageSize());
 	g_network->SetRequestData(MSG_COMMAND_SIZE, PPREQUEST_HEADER);
 	SS_v_isStartStreaming = false;
-	delete authenMsg;
+	delete msg;
+	//--------------------------------------
+	this->CloseSession();
 }
 
 void PPSession::SS_ChangeSetting()
@@ -395,7 +384,7 @@ void PPSession::SS_ChangeSetting()
 	//-----------------------------------------------
 	// alloc msg content block
 	size_t contentSize = 13;
-	u8* contentBuffer = (u8*)linearAlloc(sizeof(u8) * contentSize);
+	u8* contentBuffer = (u8*)malloc(sizeof(u8) * contentSize);
 	u8* pointer = contentBuffer;
 	//----------------------------------------------
 	// setting: wait for received frame
@@ -412,7 +401,7 @@ void PPSession::SS_ChangeSetting()
 	u8* msgBuffer = authenMsg->BuildMessage(contentBuffer, contentSize);
 	g_network->SendMessageData(msgBuffer, authenMsg->GetMessageSize());
 	g_network->SetRequestData(MSG_COMMAND_SIZE, PPREQUEST_HEADER);
-	linearFree(contentBuffer);
+	free(contentBuffer);
 	delete authenMsg;
 }
 
@@ -421,26 +410,70 @@ void PPSession::SS_Reset()
 	SS_v_isStartStreaming = false;
 }
 
-FramePiece* PPSession::SafeGetFramePiece(u32 index)
-{
-	SS_frameCachedMutex->Lock();
-	auto iter = SS_framePiecesCached.find(index);
-	if (iter != SS_framePiecesCached.end())
-	{
-		FramePiece* piece = iter->second;
-		SS_framePiecesCached.erase(iter);
-		SS_frameCachedMutex->Unlock();
-		return piece;
-	}
-	else
-	{
-		SS_frameCachedMutex->Unlock();
-		return nullptr;
-	}
-
-}
+//-----------------------------------------------------
+// common
+//-----------------------------------------------------
 
 void PPSession::RequestForheader()
 {
 	g_network->SetRequestData(MSG_COMMAND_SIZE, PPREQUEST_HEADER);
+}
+
+//-----------------------------------------------------
+// Input
+//-----------------------------------------------------
+void PPSession::IN_Start()
+{
+	if (IN_isStart) return;
+	PPMessage *msg = new PPMessage();
+	msg->BuildMessageHeader(MSG_CODE_REQUEST_START_INPUT_CAPTURE);
+	u8* msgBuffer = msg->BuildMessageEmpty();
+	g_network->SendMessageData(msgBuffer, msg->GetMessageSize());
+	g_network->SetRequestData(MSG_COMMAND_SIZE, PPREQUEST_HEADER);
+	delete msg;
+
+	IN_isStart = true;
+}
+
+bool PPSession::IN_SendInputData(u32 down, u32 hold, u32 up, short cx, short cy, short ctx, short cty)
+{
+	if (!IN_isStart) return false;
+	PPMessage *msg = new PPMessage();
+	msg->BuildMessageHeader(MSG_CODE_SEND_INPUT_CAPTURE);
+	//-----------------------------------------------
+	// alloc msg content block
+	size_t contentSize = 20;
+	u8* contentBuffer = (u8*)malloc(sizeof(u8) * contentSize);
+	u8* pointer = contentBuffer;
+	//----------------------------------------------
+	WRITE_U32(pointer, down);
+	WRITE_U32(pointer, hold);
+	WRITE_U32(pointer, up);
+	WRITE_U16(pointer, cx);
+	WRITE_U16(pointer, cy);
+	WRITE_U16(pointer, ctx);
+	WRITE_U16(pointer, cty);
+	//-----------------------------------------------
+	// build message and send
+	u8* msgBuffer = msg->BuildMessage(contentBuffer, contentSize);
+	g_network->SendMessageData(msgBuffer, msg->GetMessageSize());
+	g_network->SetRequestData(MSG_COMMAND_SIZE, PPREQUEST_HEADER);
+	delete msg;
+	return true;
+}
+
+
+void PPSession::IN_Stop()
+{
+	if (!IN_isStart) return;
+	PPMessage *msg = new PPMessage();
+	msg->BuildMessageHeader(MSG_CODE_REQUEST_STOP_INPUT_CAPTURE);
+	u8* msgBuffer = msg->BuildMessageEmpty();
+	g_network->SendMessageData(msgBuffer, msg->GetMessageSize());
+	g_network->SetRequestData(MSG_COMMAND_SIZE, PPREQUEST_HEADER);
+	delete msg;
+
+	IN_isStart = false;
+
+	this->CloseSession();
 }

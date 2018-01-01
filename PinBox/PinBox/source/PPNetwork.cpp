@@ -11,44 +11,35 @@ void PPNetwork::ppNetwork_threadRun(void * arg)
 	//--------------------------------------------------
 	u64 sleepDuration = 1000000ULL * 16;
 	while(!network->g_threadExit){
-		switch (network->g_connect_state)
-		{
-			case IDLE:
-			{
-				//--------------------------------------------------
-				// try to connect if not connected to server yet
-				network->ppNetwork_connectToServer();
-				break;
-			}
-			case CONNECTING:
-			{
-				// connecting state
-				break;
-			}
-			case CONNECTED:
-			{
-				//--------------------------------------------------
-				//send queue message
-				network->ppNetwork_sendMessage();
+		
+		printf("#dwa Thread run");
 
-				//--------------------------------------------------
-				// listen to server when it connected successfully
-				network->ppNetwork_listenToServer();
-				
-				break;
-			}
-			case FAIL:
-			{
-				//--------------------------------------------------
-				// Exit thread when connection fail
-				network->g_threadExit = true;
-				break;
-			}
-			default:
-			{
-				break;
-			}
+		if(network->g_connect_state == ppConectState::IDLE)
+		{
+			//--------------------------------------------------
+			// try to connect if not connected to server yet
+			network->ppNetwork_connectToServer();
 		}
+
+		if (network->g_connect_state == ppConectState::CONNECTED)
+		{
+			//--------------------------------------------------
+			//send queue message
+			network->ppNetwork_sendMessage();
+
+			//--------------------------------------------------
+			// listen to server when it connected successfully
+			network->ppNetwork_listenToServer();
+		}
+
+		if (network->g_connect_state == ppConectState::FAIL)
+		{
+			//--------------------------------------------------
+			// Exit thread when connection fail
+			network->g_threadExit = true;
+			printf("#%d : Connection failed -> exit thread.\n", network->g_session->sessionID);
+		}
+
 		svcSleepThread(sleepDuration);
 	}
 	//--------------------------------------------------
@@ -58,9 +49,10 @@ void PPNetwork::ppNetwork_threadRun(void * arg)
 
 void PPNetwork::ppNetwork_sendMessage()
 {
-	//TODO: is it thread safe ? should we add mutex on this ?
+	g_queueMessageMutex->Lock();
 	if (this->g_sendingMessage.size() > 0)
 	{
+		printf("#%d : Check for message.\n", this->g_session->sessionID);
 		QueueMessage* queueMsg = (QueueMessage*)this->g_sendingMessage.front();
 		this->g_sendingMessage.pop();
 		//--------------------------------------------------
@@ -71,6 +63,7 @@ void PPNetwork::ppNetwork_sendMessage()
 			// send message
 			do
 			{
+				printf("#%d : Send message.\n", this->g_session->sessionID);
 				int sendAmount = send(this->g_sock, queueMsg->msgBuffer, queueMsg->msgSize, 0);
 				if (sendAmount < 0)
 				{
@@ -81,10 +74,11 @@ void PPNetwork::ppNetwork_sendMessage()
 			} while (totalSent < queueMsg->msgSize);
 			//--------------------------------------------------------
 			// free message
-			linearFree(queueMsg->msgBuffer);
+			free(queueMsg->msgBuffer);
 			delete queueMsg;
 		}
 	}
+	g_queueMessageMutex->Unlock();
 }
 
 void PPNetwork::ppNetwork_connectToServer()
@@ -168,34 +162,32 @@ void PPNetwork::ppNetwork_connectToServer()
 		// set socket to non blocking so we can easy control it
 		//fcntl(sockManager->sock, F_SETFL, O_NONBLOCK);
 		fcntl(g_sock, F_SETFL, fcntl(g_sock, F_GETFL, 0) | O_NONBLOCK);
-
+		printf("#%d : Connected to server.\n", g_session->sessionID);
 		//--------------------------------------------------
 		// callback when connected to server
 		if (g_onConnectionSuccessed != nullptr)
 		{
-			g_onConnectionSuccessed(nullptr, 1);
+			g_onConnectionSuccessed(this, nullptr, 1);
 		}
-
-		printf("Connected to server.\n");
 	}else
 	{
-		printf("Could not connect to server.\n");
+		printf("#%d :Could not connect to server.\n", g_session->sessionID);
 	}
 }
 
-void PPNetwork::ppNetwork_onReceivedRequet()
+void PPNetwork::ppNetwork_onReceivedRequest()
 {
 	//--------------------------------------------------
 	// NOTE: callback step
 	//--------------------------------------------------
 	// we pass a copy version received buffer to where it need to process
-	u8 *resultBuffer =(u8*) linearAlloc(g_waitForSize);
+	u8 *resultBuffer =(u8*) malloc(g_waitForSize);
 	memcpy(resultBuffer, g_receivedBuffer, g_waitForSize);
 	int32_t tmpSize = g_waitForSize;
 	int32_t tmpTag = g_tag;
 	//--------------------------------------------------
 	// free this data and point to nullptr
-	linearFree(g_receivedBuffer);
+	free(g_receivedBuffer);
 	g_receivedBuffer = nullptr;
 	g_waitForSize = 0;
 	g_receivedCounter = 0;
@@ -203,7 +195,7 @@ void PPNetwork::ppNetwork_onReceivedRequet()
 	//--------------------------------------------------
 	// this buffer need to be free whenever it finish it's job
 	if (g_onReceivedRequest != nullptr)
-		g_onReceivedRequest(resultBuffer, tmpSize, tmpTag);
+		g_onReceivedRequest(this, resultBuffer, tmpSize, tmpTag);
 }
 
 /*
@@ -227,7 +219,7 @@ bool PPNetwork::ppNetwork_processTmpBufferData()
 		//--------------------------------------------------
 		// copy data into current received buffer
 		if (!g_receivedBuffer)
-			g_receivedBuffer = (u8*)linearAlloc(g_waitForSize);
+			g_receivedBuffer = (u8*)malloc(g_waitForSize);
 		if (!g_receivedBuffer) return false;
 		memcpy(g_receivedBuffer + g_receivedCounter, g_tmpReceivedBuffer, pieceSize);
 		g_receivedCounter += pieceSize;
@@ -236,24 +228,24 @@ bool PPNetwork::ppNetwork_processTmpBufferData()
 		{
 			//--------------------------------------------------
 			// we finished current request
-			ppNetwork_onReceivedRequet();
+			ppNetwork_onReceivedRequest();
 			//--------------------------------------------------
 			// if there is still have data left
 			if (dataLeft > 0)
 			{
 				//--------------------------------------------------
 				// cut off received part and create new data
-				u8* tmpBuffer = (u8*)linearAlloc(dataLeft);
+				u8* tmpBuffer = (u8*)malloc(dataLeft);
 				memcpy(tmpBuffer, g_tmpReceivedBuffer + pieceSize, dataLeft);
 				g_tmpReceivedSize = dataLeft;
-				linearFree(g_tmpReceivedBuffer);
+				free(g_tmpReceivedBuffer);
 				g_tmpReceivedBuffer = tmpBuffer;
 
 				// return false to stop current listen process
 				return false;
 			}
 		}
-		linearFree(g_tmpReceivedBuffer);
+		free(g_tmpReceivedBuffer);
 		g_tmpReceivedBuffer = nullptr;
 		g_tmpReceivedSize = 0;
 	}
@@ -268,6 +260,7 @@ void PPNetwork::ppNetwork_listenToServer()
 	// continue our threads
 	if (g_waitForSize <= 0)
 	{
+		//printf("#%d : no request wait for size request.\n", g_session->sessionID);
 		return;
 	}
 
@@ -280,31 +273,35 @@ void PPNetwork::ppNetwork_listenToServer()
 	// request message
 	if (!ppNetwork_processTmpBufferData()) return;
 
+	printf("#%d : start recv data.\n", g_session->sessionID);
 	//--------------------------------------------------
 	// Recevie data from server 
-	const u32 bufferSize = 8191; // 24Kb buffer size
-	u8* recvBuffer = (u8*)linearAlloc(bufferSize);
-	u32 recvAmount = recv(g_sock, recvBuffer, bufferSize, 0);
+	const u32 bufferSize = 1024 * 10; 
+	u8* recvBuffer = (u8*)malloc(bufferSize);
+	int recvAmount = recv(g_sock, recvBuffer, bufferSize, 0);
 	//--------------------------------------------------
 	// exit thread when have connecting problem
 	if (recvAmount < 0) {
-		if (errno != EWOULDBLOCK) g_threadExit = true;
+		if (errno != EWOULDBLOCK) 
+			g_threadExit = true;
 		//--------------------------------------------------
 		// free data
-		linearFree(recvBuffer);
+		free(recvBuffer);
 		return;
 	}
 	else if (recvAmount > bufferSize)
 	{
+		printf("#%d : recv too much: %d.\n", g_session->sessionID, recvAmount);
 		//--------------------------------------------------
 		// free data
-		linearFree(recvBuffer);
+		free(recvBuffer);
 		return;
 	}else
 	{
+		printf("#%d : process recv data.\n", g_session->sessionID);
 		//--------------------------------------------------
 		if(g_receivedBuffer == nullptr)
-			g_receivedBuffer = (u8*)linearAlloc(g_waitForSize);
+			g_receivedBuffer = (u8*)malloc(g_waitForSize);
 		//--------------------------------------------------
 		u32 pieceSize = recvAmount;
 		u32 dataLeft = 0;
@@ -324,7 +321,7 @@ void PPNetwork::ppNetwork_listenToServer()
 		if (isFullyReceived) {
 			//--------------------------------------------------
 			// set received request and free g_receivedBuffer
-			ppNetwork_onReceivedRequet();
+			ppNetwork_onReceivedRequest();
 			//--------------------------------------------------
 			// store data left into temp buffer
 			if (dataLeft > 0)
@@ -333,10 +330,10 @@ void PPNetwork::ppNetwork_listenToServer()
 				// free tmp buffer if it not null 
 				//NOTE: is it possible if going to this part without being nullptr ?
 				if (g_tmpReceivedBuffer != nullptr) {
-					linearFree(g_tmpReceivedBuffer);
+					free(g_tmpReceivedBuffer);
 					g_tmpReceivedBuffer = nullptr;
 				}
-				g_tmpReceivedBuffer = (u8*)linearAlloc(dataLeft);
+				g_tmpReceivedBuffer = (u8*)malloc(dataLeft);
 				memcpy(g_tmpReceivedBuffer, recvBuffer + pieceSize, dataLeft);
 				g_tmpReceivedSize = dataLeft;
 			}
@@ -345,7 +342,7 @@ void PPNetwork::ppNetwork_listenToServer()
 
 	//--------------------------------------------------
 	// free data
-	linearFree(recvBuffer);
+	free(recvBuffer);
 }
 
 void PPNetwork::ppNetwork_closeConnection()
@@ -364,7 +361,7 @@ void PPNetwork::ppNetwork_closeConnection()
 	//--------------------------------------------------
 	//clear all buffer data if need
 	if (g_receivedBuffer) {
-		linearFree(g_receivedBuffer);
+		free(g_receivedBuffer);
 		g_receivedBuffer = nullptr;
 		g_waitForSize = 0;
 		g_receivedCounter = 0;
@@ -372,18 +369,29 @@ void PPNetwork::ppNetwork_closeConnection()
 	}
 	if(g_tmpReceivedBuffer)
 	{
-		linearFree(g_tmpReceivedBuffer);
+		free(g_tmpReceivedBuffer);
 		g_tmpReceivedBuffer = nullptr;
 		g_tmpReceivedSize = 0;
 	}
 	//--------------------------------------------------
-	//TODO: clear all message sending buffer
-	// for each g_sendingMessage -> delete msg
+	// clear all message sending buffer
+	//--------------------------------------------------
+	while (g_sendingMessage.size() > 0)
+	{
+		QueueMessage* queueMsg = (QueueMessage*)g_sendingMessage.front();
+		g_sendingMessage.pop();
+		//--------------------------------------------------------
+		// free message
+		free(queueMsg->msgBuffer);
+		delete queueMsg;
+	}
+	std::queue<QueueMessage*>().swap(g_sendingMessage);
+	delete g_queueMessageMutex;
 	//--------------------------------------------------
 	// callback when connection closed
 	if (g_onConnectionClosed != nullptr)
 	{
-		g_onConnectionClosed(nullptr, -1);
+		g_onConnectionClosed(this, nullptr, -1);
 	}
 }
 
@@ -391,11 +399,12 @@ void PPNetwork::ppNetwork_closeConnection()
 //===============================================================================================
 // Controller functions
 //===============================================================================================
-#define STACKSIZE (30 * 1024)
-void PPNetwork::Start(const char* ip, const char* port)
+#define STACKSIZE (3 * 1024 * 1024)
+void PPNetwork::Start(const char* ip, const char* port, s32 prio)
 {
 	if (g_connect_state == IDLE) {
 		printf("Start connect to server...\n");
+		g_queueMessageMutex = new Mutex();
 		g_sendingMessage = std::queue<QueueMessage*>();
 		//---------------------------------------------------
 		// init variables
@@ -404,9 +413,8 @@ void PPNetwork::Start(const char* ip, const char* port)
 		g_threadExit = false;
 		//---------------------------------------------------
 		// start thread
-		s32 prio = 0;
-		svcGetThreadPriority(&prio, CUR_THREAD_HANDLE);
-		g_thread = threadCreate(ppNetwork_threadRun, this, STACKSIZE, prio - 1, -2, true);
+		
+		g_thread = threadCreate(ppNetwork_threadRun, this, STACKSIZE, prio - 2, -1, true);
 	}else
 	{
 		// log -> already start network connection
@@ -422,10 +430,10 @@ void PPNetwork::SetRequestData(u32 size, u32 tag)
 {
 	if(g_waitForSize > 0)
 	{
-		printf("#%d : Old request data not solved yet! (%d bytes).\n", g_session->sessionID, g_waitForSize);
+		//printf("#%d : Old request data not solved yet! (%d bytes).\n", g_session->sessionID, g_waitForSize);
 	}else
 	{
-		printf("#%d : new request data tag: %d - (%d bytes).\n", g_session->sessionID, tag, size);
+		//printf("#%d : new request data tag: %d - (%d bytes).\n", g_session->sessionID, tag, size);
 		g_waitForSize = size;
 		g_tag = tag;
 	}
@@ -437,13 +445,17 @@ void PPNetwork::SetRequestData(u32 size, u32 tag)
 void PPNetwork::SendMessageData(u8 *msgBuffer, int32_t msgSize)
 {
 	if (g_connect_state == CONNECTED) {
-
-		//TODO: is it thread safe ? should we add mutex on this ?
-
+		printf("#%d : add mesage to query.\n", g_session->sessionID);
+		g_queueMessageMutex->Lock();
 		QueueMessage* msg = new QueueMessage();
 		msg->msgBuffer = msgBuffer;
 		msg->msgSize = msgSize;
 		g_sendingMessage.push(msg);
+		g_queueMessageMutex->Unlock();
+		printf("#%d : added message successfully.\n", g_session->sessionID);
+	}else
+	{
+		printf("#%d : Try to send but not connected yet.\n", g_session->sessionID);
 	}
 }
 
@@ -451,6 +463,6 @@ PPNetwork::~PPNetwork()
 {
 	free(&g_ip);
 	free(&g_port);
-	if (g_receivedBuffer != nullptr) linearFree(g_receivedBuffer);
-	if (g_tmpReceivedBuffer != nullptr) linearFree(g_tmpReceivedBuffer);
+	if (g_receivedBuffer != nullptr) free(g_receivedBuffer);
+	if (g_tmpReceivedBuffer != nullptr) free(g_tmpReceivedBuffer);
 }

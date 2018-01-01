@@ -50,7 +50,7 @@ APP_ENCRYPTED				:= false
 #---------------------------------------------------------------------------------
 ARCH	:=	-march=armv6k -mtune=mpcore -mtp=soft -mfloat-abi=hard
 
-CFLAGS	:=	-ggdb -Wall -Og -mword-relocations \
+CFLAGS	:=	-ggdb -Wall -Og -mword-relocations -DDEBUG=1 \
 			-ffunction-sections \
 			$(ARCH)
 

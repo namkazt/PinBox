@@ -47,6 +47,13 @@ enum PPSession_Type { PPSESSION_NONE, PPSESSION_MOVIE, PPSESSION_SCREEN_CAPTURE,
 #define MSG_CODE_REQUEST_RECEIVED_AUDIO_FRAME 19
 
 
+// input
+#define MSG_CODE_REQUEST_START_INPUT_CAPTURE 40
+#define MSG_CODE_REQUEST_STOP_INPUT_CAPTURE 41
+#define MSG_CODE_SEND_INPUT_CAPTURE 42
+
+
+// audio
 #define AUDIO_CHANNEL	0x08
 typedef struct
 {
@@ -62,7 +69,7 @@ typedef struct
 	u32 pieceIndex;
 	u8* piece;
 	u32 pieceSize;
-	void release() { if (piece != nullptr) linearFree(piece); }
+	void release() { if (piece != nullptr) free(piece); }
 
 } FramePiece;
 class PPSessionManager;
@@ -90,47 +97,61 @@ public:
 
 	void InitMovieSession();
 	void InitScreenCaptureSession(PPSessionManager* manager);
-	void InitInputCaptureSession();
+	void InitInputCaptureSession(PPSessionManager* manager);
 
-	void StartSession(const char* ip, const char* port, PPNetworkCallback authenSuccessed);
+	void StartSession(const char* ip, const char* port, s32 prio, PPNetworkCallback authenSuccessed);
 	void CloseSession();
+
+
+
 
 	//-----------------------------------------------------
 	// screen capture
 	//-----------------------------------------------------
 private:
-	//----------------------------------------------------------------------
+	//-----------------------------------------------------
 	// profile setting
 	typedef struct
 	{
 		std::string profileName = "Default";
 		bool waitToReceivedFrame = false;
-		u32 smoothStepFrames = 0;
-		u32 sourceQuality = 100;
+		u32 smoothStepFrames = 3;
+		u32 sourceQuality = 75;
 		u32 sourceScale = 100;
 	} SSProfile;
-	//----------------------------------------------------------------------
+	//----------------------------------------------------
 	bool								SS_v_isStartStreaming = false;
 	bool								SS_setting_waitToReceivedFrame = true;
-	u32									SS_setting_smoothStepFrames = 2;		// this setting allow frame switch smoother if there is delay when received frame
-	u32									SS_setting_sourceQuality = 50;			// webp quality control
-	u32									SS_setting_sourceScale = 75;			// frame size control eg: 75% = 0.75 of real size
-	//----------------------------------------------------------------------
-	//----------------------------------------------------------------------
-	// on each frame - each session store only 1 piece as a piece frame object
-	std::map<u32, FramePiece*>			SS_framePiecesCached;
-	Mutex*								SS_frameCachedMutex;
+	u32									SS_setting_smoothStepFrames = 4;		// this setting allow frame switch smoother if there is delay when received frame
+	u32									SS_setting_sourceQuality = 55;			// webp quality control
+	u32									SS_setting_sourceScale = 90;			// frame size control eg: 75% = 0.75 of real size
+	//----------------------------------------------------
+
+
+	//-----------------------------------------------------
+	// input
+	//-----------------------------------------------------
+private:
+	bool								IN_isStart = false;
+
 
 public:
+	//-----------------------------------------------------
+	// common
+	//-----------------------------------------------------
+	void								RequestForheader();
+
+
+
+
+	//-----------------------------------------------------
+	// screen capture
+	//-----------------------------------------------------
 	void								SS_StartStream();
 	void								SS_StopStream();
 	void								SS_ChangeSetting();
 
 	void								SS_Reset();
-
-	//QueueFrame*							SS_PopPendingQueue();
-	FramePiece*							SafeGetFramePiece(u32 index);
-	void								RequestForheader();
 	//-----------------------------------------------------
 	// movie
 	//-----------------------------------------------------
@@ -139,6 +160,9 @@ public:
 	//-----------------------------------------------------
 	// input
 	//-----------------------------------------------------
+	void								IN_Start();
+	bool								IN_SendInputData(u32 down, u32 hold, u32 up, short cx, short cy, short ctx, short cty);
+	void								IN_Stop();
 };
 
 #endif

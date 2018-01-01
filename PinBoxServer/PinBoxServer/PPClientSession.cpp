@@ -48,7 +48,7 @@ void PPClientSession::GetPieceDataAndSend()
 		memcpy(pointer, piece->piece, piece->size);
 		g_ss_currentWorkingFrame = piece->frameIndex;
 		//-------------------------------------------------------
-		std::cout << "SEND MESSAGE FRAME #" << piece->frameIndex << " PIECE #" << (u32)piece->index << " to " << g_connection->remote_addr() << " | msg size: " << (piece->size + 5) << std::endl;
+		//std::cout << "SEND MESSAGE FRAME #" << piece->frameIndex << " PIECE #" << (u32)piece->index << " to " << g_connection->remote_addr() << " | msg size: " << (piece->size + 5) << std::endl;
 		sendMessageWithCodeAndData(MSG_CODE_REQUEST_NEW_SCREEN_FRAME, rebuildData, piece->size + 5);
 		//-------------------------------------------------------
 		// no need to free framePiece here. screen capture will take care of it.
@@ -92,7 +92,7 @@ void PPClientSession::ProcessMessage(evpp::Buffer* msg)
 	// process message data
 	if (this->IsAuthenticated())
 	{
-		std::cout << "Incomming message from: " << g_connection->remote_addr() << std::endl;
+		//std::cout << "Incomming message from: " << g_connection->remote_addr() << std::endl;
 		// not enough data for header so we just leave it
 		if (g_bufferWriteIndex < 9 && g_currentReadState == PPREQUEST_HEADER) return;
 		// start process data
@@ -100,7 +100,7 @@ void PPClientSession::ProcessMessage(evpp::Buffer* msg)
 	}
 	else
 	{
-		std::cout << "Process authentication from: " << g_connection->remote_addr() << std::endl;
+		//std::cout << "Process authentication from: " << g_connection->remote_addr() << std::endl;
 		this->ProcessAuthentication();
 		//--------------------------------------------
 		// remove 9 bytes of authentication message
@@ -256,7 +256,7 @@ void PPClientSession::preprocessMessageCode(u8 code)
 			}
 			break;
 		case MSG_CODE_REQUEST_SCREEN_RECEIVED_FRAME: {
-			std::cout << "Client " << g_connection->remote_addr() << " send RECEIVED_FRAME" << std::endl;
+			//std::cout << "Client " << g_connection->remote_addr() << " send RECEIVED_FRAME" << std::endl;
 			g_ss_isReceived = true;
 			break;
 		}
@@ -275,7 +275,15 @@ void PPClientSession::preprocessMessageCode(u8 code)
 	}
 	else if (g_sessionType == PPSESSION_INPUT_CAPTURE)
 	{
-
+		switch (code)
+		{
+		case MSG_CODE_REQUEST_START_INPUT_CAPTURE:
+			//TODO: start input
+			break;		
+		case MSG_CODE_REQUEST_STOP_INPUT_CAPTURE:
+			//TODO: stop input 
+			break;
+		}
 	}
 }
 
@@ -300,6 +308,11 @@ void PPClientSession::processMessageBody(u8* buffer, u8 code)
 			// smoother frame
 			u32 _outputScale = READ_U32(buffer, 9);
 			///-----------------------------------
+			std::cout << "Change Stream Setting: "<< std::endl;
+			std::cout << "Smooth Frame: " << _waitForFrame << std::endl;
+			std::cout << "Quality: " << _outputQuality << std::endl;
+			std::cout << "Scale: " << _outputScale << std::endl;
+			///-----------------------------------
 			m_server->ScreenCapturer->changeSetting(_waitForClientReceived, _waitForFrame, _outputQuality, _outputScale);
 			break;
 		}
@@ -308,7 +321,28 @@ void PPClientSession::processMessageBody(u8* buffer, u8 code)
 	}
 	else if (g_sessionType == PPSESSION_INPUT_CAPTURE)
 	{
-
+		switch (code)
+		{
+		case MSG_CODE_SEND_INPUT_CAPTURE:
+		{
+			//--------------------------------------
+			//read input data
+			u32 down = READ_U32(buffer, 0);
+			u32 held = READ_U32(buffer, 4);
+			u32 up = READ_U32(buffer, 8);
+			short cx = READ_U16(buffer, 12);
+			short cy = READ_U16(buffer, 14);
+			short ctx = READ_U16(buffer, 16);
+			short cty = READ_U16(buffer, 18);
+			//--------------------------------------
+			m_server->InputStreamer->UpdateInput(down, held, up, cx, cy, ctx, cty);
+			break;
+		}
+		default: 
+			std::cout << "[INPUT] Client " << g_connection->remote_addr() << " send UNKNOW COMMAND" << std::endl << std::flush;
+			break;
+		
+		}
 	}
 }
 
