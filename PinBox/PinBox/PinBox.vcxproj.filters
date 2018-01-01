@@ -38,9 +38,6 @@
     <ClCompile Include="source\PPUI.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="source\pp2d.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="source\PPMessage.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -62,9 +59,6 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="include\PPUI.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="include\pp2d.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="include\PPMessage.h">

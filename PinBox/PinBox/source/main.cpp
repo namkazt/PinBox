@@ -54,15 +54,40 @@ int main()
 	//---------------------------------------------
 	// Init Graphics
 	//---------------------------------------------
-	ppGraphicsInit();
+	PPGraphics::Get()->GraphicsInit();
 	//initDbgConsole();
 
 
+	
+
+	while (aptMainLoop())
+	{
+		//Scan all the inputs. This should be done once for each frame
+		hidScanInput();
+		u32 kDown = hidKeysDown();
+		u32 kHeld = hidKeysHeld();
+		u32 kUp = hidKeysUp();
+		if (kHeld & KEY_START && kHeld & KEY_SELECT) break; // break in order to return to hbmenu
+
+
+		PPGraphics::Get()->BeginRender(GFX_BOTTOM);
+		PPGraphics::Get()->DrawRectangle(10, 10, 10, 10, ppColor{ 255, 150, 0, 255 });
+		PPGraphics::Get()->DrawText("Test System Text", 10, 50, 0.5f, 0.5f, ppColor{ 0, 255, 0, 255 }, false);
+		PPGraphics::Get()->EndRender();
+
+
+		//gfxFlushBuffers();
+		//gspWaitForVBlank();
+		//gfxSwapBuffers();
+	}
+
+	/*
+	
 	//---------------------------------------------
 	// Wifi Check
 	//---------------------------------------------
 	u32 wifiStatus = 0;
-	while (aptMainLoop()) { /* Wait for WiFi; break when WiFiStatus is truthy */
+	while (aptMainLoop()) {
 		ACU_GetWifiStatus(&wifiStatus);
 		if (wifiStatus) break;
 
@@ -152,16 +177,19 @@ int main()
 		sm->StopStreaming();
 		sm->Close();
 
+		
 	}
+	
+	*/
 
-	ppGraphicsExit();
 
+
+	PPGraphics::Get()->GraphicExit();
 	irrstExit();
 	socExit();
 	free(SOC_buffer);
 	aptExit();
 	acExit();
-
 
 	return 0;
 }

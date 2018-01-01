@@ -198,7 +198,7 @@ void PPSessionManager::UpdateFrameTracker()
 			return;
 		//-------------------------------------------
 		// draw
-		ppGraphicsDrawFrame(config.output.private_memory, nW * nH * 3, nW, nH);
+		//ppGraphicsDrawFrame(config.output.private_memory, nW * nH * 3, nW, nH);
 		//-------------------------------------------
 		// free data
 		free(frameData);

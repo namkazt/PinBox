@@ -33,7 +33,6 @@
   <ItemGroup>
     <ClCompile Include="source\main.cpp" />
     <ClCompile Include="source\Mutex.cpp" />
-    <ClCompile Include="source\pp2d.c" />
     <ClCompile Include="source\PPGraphics.cpp" />
     <ClCompile Include="source\PPMessage.cpp" />
     <ClCompile Include="source\PPNetwork.cpp" />
@@ -43,7 +42,6 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="include\Mutex.h" />
-    <ClInclude Include="include\pp2d.h" />
     <ClInclude Include="include\PPGraphics.h" />
     <ClInclude Include="include\PPMessage.h" />
     <ClInclude Include="include\PPNetwork.h" />
