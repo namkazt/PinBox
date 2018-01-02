@@ -316,6 +316,7 @@ void PPSessionManager::StopStreaming()
 	if (m_inputStreamSession != nullptr)
 	{
 		m_inputStreamSession->IN_Stop();
+		m_inputStreamSession->CloseSession();
 	}
 }
 

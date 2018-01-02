@@ -380,19 +380,17 @@ void PPGraphics::UpdateTopScreenSprite(u8* data, u32 size, u32 width, u32 height
 	{
 		mTopScreenSprite->initialized = true;
 		GSPGPU_FlushDataCache(linearData, size);
-		C3D_TexInit(&mTopScreenSprite->spriteTexture, next_pow2(mTopScreenSprite->width), next_pow2(mTopScreenSprite->height), GPU_RGB8);
-		u32 dimOrigin = GX_BUFFER_DIM(mTopScreenSprite->width, mTopScreenSprite->height);
-		u32 dim = GX_BUFFER_DIM(next_pow2(mTopScreenSprite->width), next_pow2(mTopScreenSprite->height));
-		C3D_SafeDisplayTransfer((u32*)linearData, dimOrigin, (u32*)mTopScreenSprite->spriteTexture.data, dim, TEXTURE_TRANSFER_FLAGS);
+		C3D_TexInit(&mTopScreenSprite->spriteTexture, width, height, GPU_RGB8);
+		u32 dim = GX_BUFFER_DIM(width, height);
+		C3D_SafeDisplayTransfer((u32*)linearData, dim, (u32*)mTopScreenSprite->spriteTexture.data, dim, TEXTURE_TRANSFER_FLAGS);
 		gspWaitForPPF();
 		C3D_TexSetFilter(&mTopScreenSprite->spriteTexture, GPU_LINEAR, GPU_NEAREST);
 		C3D_TexSetWrap(&mTopScreenSprite->spriteTexture, GPU_CLAMP_TO_BORDER, GPU_CLAMP_TO_BORDER);
 	}else
 	{
-		GSPGPU_FlushDataCache(linearData, size * 3);
-		u32 dimOrigin = GX_BUFFER_DIM(mTopScreenSprite->width, mTopScreenSprite->height);
-		u32 dim = GX_BUFFER_DIM(next_pow2(mTopScreenSprite->width), next_pow2(mTopScreenSprite->height));
-		C3D_SafeDisplayTransfer((u32*)linearData, dimOrigin, (u32*)mTopScreenSprite->spriteTexture.data, dim, TEXTURE_TRANSFER_FLAGS);
+		GSPGPU_FlushDataCache(linearData, size);
+		u32 dim = GX_BUFFER_DIM(width, height);
+		C3D_SafeDisplayTransfer((u32*)linearData, dim, (u32*)mTopScreenSprite->spriteTexture.data, dim, TEXTURE_TRANSFER_FLAGS);
 		gspWaitForPPF();
 	}
 	linearFree(linearData);
@@ -419,10 +417,7 @@ void PPGraphics::DrawTopScreenSprite()
 	if (!vertices)
 		return; // out of memory in pool
 
-	float x = 0, y = 0, w = (float)mTopScreenSprite->width, h = (float)mTopScreenSprite->height;
-	float u = mTopScreenSprite->width / (float)mTopScreenSprite->spriteTexture.width;
-	float v = mTopScreenSprite->height / (float)mTopScreenSprite->spriteTexture.height;
-
+	float x = 0, y = 0, w = 400.0f, h = 240.0f;
 	// set position
 	vertices[0].position = (ppVector3) { x, y, 0.5f };
 	vertices[1].position = (ppVector3) { x + w, y, 0.5f };
@@ -431,9 +426,9 @@ void PPGraphics::DrawTopScreenSprite()
 
 	// set color
 	vertices[0].textcoord = (ppVector2) { 0.0f, 0.0f };
-	vertices[1].textcoord = (ppVector2) { u, 0.0f };
-	vertices[2].textcoord = (ppVector2) { 0.0f, v };
-	vertices[3].textcoord = (ppVector2) { u, v };
+	vertices[1].textcoord = (ppVector2) { 1.0f, 0.0f };
+	vertices[2].textcoord = (ppVector2) { 0.0f, 1.0f};
+	vertices[3].textcoord = (ppVector2) { 1.0f, 1.0f };
 
 	C3D_BufInfo* bufInfo = C3D_GetBufInfo();
 	BufInfo_Init(bufInfo);
