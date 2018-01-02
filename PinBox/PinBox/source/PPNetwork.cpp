@@ -9,10 +9,11 @@ void PPNetwork::ppNetwork_threadRun(void * arg)
 	PPNetwork* network = (PPNetwork*)arg;
 	if (network == nullptr) return;
 	//--------------------------------------------------
-	u64 sleepDuration = 1000000ULL * 16;
+	u64 sleepDuration = 1000000ULL * 30;
 	while(!network->g_threadExit){
 		
-		printf("#dwa Thread run");
+		//printf("#dwa Thread run\n");
+		//gfxFlushBuffers();
 
 		if(network->g_connect_state == ppConectState::IDLE)
 		{
@@ -38,8 +39,8 @@ void PPNetwork::ppNetwork_threadRun(void * arg)
 			// Exit thread when connection fail
 			network->g_threadExit = true;
 			printf("#%d : Connection failed -> exit thread.\n", network->g_session->sessionID);
+			gfxFlushBuffers();
 		}
-
 		svcSleepThread(sleepDuration);
 	}
 	//--------------------------------------------------
@@ -52,7 +53,8 @@ void PPNetwork::ppNetwork_sendMessage()
 	g_queueMessageMutex->Lock();
 	if (this->g_sendingMessage.size() > 0)
 	{
-		printf("#%d : Check for message.\n", this->g_session->sessionID);
+		//printf("#%d : Check for message.\n", this->g_session->sessionID);
+		//gfxFlushBuffers();
 		QueueMessage* queueMsg = (QueueMessage*)this->g_sendingMessage.front();
 		this->g_sendingMessage.pop();
 		//--------------------------------------------------
@@ -63,7 +65,8 @@ void PPNetwork::ppNetwork_sendMessage()
 			// send message
 			do
 			{
-				printf("#%d : Send message.\n", this->g_session->sessionID);
+				//printf("#%d : Send message.\n", this->g_session->sessionID);
+				//gfxFlushBuffers();
 				int sendAmount = send(this->g_sock, queueMsg->msgBuffer, queueMsg->msgSize, 0);
 				if (sendAmount < 0)
 				{
@@ -85,22 +88,22 @@ void PPNetwork::ppNetwork_connectToServer()
 {
 	g_connect_state = CONNECTING;
 
-	//--------------------------------------------------
-	// Trying to get address information
-	struct addrinfo hints, *servinfo, *p;
-	memset(&hints, 0, sizeof hints);
-	hints.ai_family = AF_INET;
-	hints.ai_socktype = SOCK_STREAM;
-	hints.ai_protocol = IPPROTO_TCP;
-	int rv = getaddrinfo(g_ip, g_port, &hints, &servinfo);
-	if(rv != 0)
-	{
-		printf("Can't get address information: %s\n", gai_strerror(rv));
-		// Error: fail to get address
-		g_connect_state = FAIL;
-		//continue;
-		return;
-	}
+	////--------------------------------------------------
+	//// Trying to get address information
+	//struct addrinfo hints, *servinfo, *p;
+	//memset(&hints, 0, sizeof hints);
+	//hints.ai_family = AF_INET;
+	//hints.ai_socktype = SOCK_STREAM;
+	//hints.ai_protocol = IPPROTO_TCP;
+	//int rv = getaddrinfo(g_ip, g_port, &hints, &servinfo);
+	//if(rv != 0)
+	//{
+	//	printf("Can't get address information: %s\n", gai_strerror(rv));
+	//	// Error: fail to get address
+	//	g_connect_state = FAIL;
+	//	//continue;
+	//	return;
+	//}
 
 	//--------------------------------------------------
 	// define socket
@@ -108,51 +111,51 @@ void PPNetwork::ppNetwork_connectToServer()
 	if (g_sock == -1)
 	{
 		printf("Can't create new socket.\n");
+		gfxFlushBuffers();
 		// Error: can't create socket
 		g_connect_state = FAIL;
 		//continue;
 		return;
 	}
 
-	//--------------------------------------------------
-	// loop thought all result and connect
-	for (p = servinfo; p != NULL; p = p->ai_next)
-	{
-		//--------------------------------------------------
-		// try to connect to server
-		auto ret = connect(g_sock, p->ai_addr, p->ai_addrlen);
-		if (ret == -1)
-		{
-			// Error: can't connect to this ai -> try next
-			g_connect_state = FAIL;
-			continue;
-		}
-
-		//--------------------------------------------------
-		// if it run here so it already connecteds
-		g_connect_state = CONNECTED;
-
-		break;
-	}
-	freeaddrinfo(servinfo);
-
-
-	//struct sockaddr_in addr = { 0 };
-	//addr.sin_family = AF_INET;
-	//unsigned short nPort = (unsigned short)strtoul(g_port, NULL, 0);
-	//addr.sin_port = htons(nPort);
-	//inet_pton(addr.sin_family, g_ip, &addr.sin_addr);
-	//auto ret = connect(g_sock, (struct sockaddr *) &addr, sizeof(addr));
-	//if (ret == -1)
+	////--------------------------------------------------
+	//// loop thought all result and connect
+	//for (p = servinfo; p != NULL; p = p->ai_next)
 	//{
-	//	// Error: can't connect to this ai -> try next
-	//	g_connect_state = FAIL;
-	//}
-	//else
-	//{
+	//	//--------------------------------------------------
+	//	// try to connect to server
+	//	auto ret = connect(g_sock, p->ai_addr, p->ai_addrlen);
+	//	if (ret == -1)
+	//	{
+	//		// Error: can't connect to this ai -> try next
+	//		g_connect_state = FAIL;
+	//		continue;
+	//	}
+
+	//	//--------------------------------------------------
+	//	// if it run here so it already connecteds
 	//	g_connect_state = CONNECTED;
-	//}
 
+	//	break;
+	//}
+	//freeaddrinfo(servinfo);
+
+
+	struct sockaddr_in addr = { 0 };
+	addr.sin_family = AF_INET;
+	unsigned short nPort = (unsigned short)strtoul(g_port, NULL, 0);
+	addr.sin_port = htons(nPort);
+	inet_pton(addr.sin_family, g_ip, &addr.sin_addr);
+	auto ret = connect(g_sock, (struct sockaddr *) &addr, sizeof(addr));
+	if (ret == -1)
+	{
+		// Error: can't connect to this ai -> try next
+		g_connect_state = FAIL;
+	}
+	else
+	{
+		g_connect_state = CONNECTED;
+	}
 
 	//--------------------------------------------------
 	// Note: check if connected
@@ -163,6 +166,7 @@ void PPNetwork::ppNetwork_connectToServer()
 		//fcntl(sockManager->sock, F_SETFL, O_NONBLOCK);
 		fcntl(g_sock, F_SETFL, fcntl(g_sock, F_GETFL, 0) | O_NONBLOCK);
 		printf("#%d : Connected to server.\n", g_session->sessionID);
+		gfxFlushBuffers();
 		//--------------------------------------------------
 		// callback when connected to server
 		if (g_onConnectionSuccessed != nullptr)
@@ -172,6 +176,7 @@ void PPNetwork::ppNetwork_connectToServer()
 	}else
 	{
 		printf("#%d :Could not connect to server.\n", g_session->sessionID);
+		gfxFlushBuffers();
 	}
 }
 
@@ -273,7 +278,8 @@ void PPNetwork::ppNetwork_listenToServer()
 	// request message
 	if (!ppNetwork_processTmpBufferData()) return;
 
-	printf("#%d : start recv data.\n", g_session->sessionID);
+	//printf("#%d : start recv data.\n", g_session->sessionID);
+	//gfxFlushBuffers();
 	//--------------------------------------------------
 	// Recevie data from server 
 	const u32 bufferSize = 1024 * 10; 
@@ -291,14 +297,16 @@ void PPNetwork::ppNetwork_listenToServer()
 	}
 	else if (recvAmount > bufferSize)
 	{
-		printf("#%d : recv too much: %d.\n", g_session->sessionID, recvAmount);
+		//printf("#%d : recv too much: %d.\n", g_session->sessionID, recvAmount);
+		//gfxFlushBuffers();
 		//--------------------------------------------------
 		// free data
 		free(recvBuffer);
 		return;
 	}else
 	{
-		printf("#%d : process recv data.\n", g_session->sessionID);
+		//printf("#%d : process recv data.\n", g_session->sessionID);
+		//gfxFlushBuffers();
 		//--------------------------------------------------
 		if(g_receivedBuffer == nullptr)
 			g_receivedBuffer = (u8*)malloc(g_waitForSize);
@@ -404,6 +412,7 @@ void PPNetwork::Start(const char* ip, const char* port, s32 prio)
 {
 	if (g_connect_state == IDLE) {
 		printf("Start connect to server...\n");
+		gfxFlushBuffers();
 		g_queueMessageMutex = new Mutex();
 		g_sendingMessage = std::queue<QueueMessage*>();
 		//---------------------------------------------------
@@ -414,7 +423,7 @@ void PPNetwork::Start(const char* ip, const char* port, s32 prio)
 		//---------------------------------------------------
 		// start thread
 		
-		g_thread = threadCreate(ppNetwork_threadRun, this, STACKSIZE, prio - 2, -1, true);
+		g_thread = threadCreate(ppNetwork_threadRun, this, STACKSIZE, prio - 1, -2, true);
 	}else
 	{
 		// log -> already start network connection
@@ -445,17 +454,20 @@ void PPNetwork::SetRequestData(u32 size, u32 tag)
 void PPNetwork::SendMessageData(u8 *msgBuffer, int32_t msgSize)
 {
 	if (g_connect_state == CONNECTED) {
-		printf("#%d : add mesage to query.\n", g_session->sessionID);
+		//printf("#%d : add mesage to query.\n", g_session->sessionID);
+		//gfxFlushBuffers();
 		g_queueMessageMutex->Lock();
 		QueueMessage* msg = new QueueMessage();
 		msg->msgBuffer = msgBuffer;
 		msg->msgSize = msgSize;
 		g_sendingMessage.push(msg);
 		g_queueMessageMutex->Unlock();
-		printf("#%d : added message successfully.\n", g_session->sessionID);
+		//printf("#%d : added message successfully.\n", g_session->sessionID);
+		//gfxFlushBuffers();
 	}else
 	{
 		printf("#%d : Try to send but not connected yet.\n", g_session->sessionID);
+		gfxFlushBuffers();
 	}
 }
 

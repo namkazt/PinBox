@@ -1,6 +1,7 @@
 #include "PPGraphics.h"
 #include "vshader_shbin.h"
 #include <cstdio>
+#include <cstdlib>
 
 
 /*
@@ -252,6 +253,11 @@ void PPGraphics::GraphicsInit()
 	C3D_RenderTargetSetOutput(mRenderTargetBtm, GFX_BOTTOM, GFX_LEFT, DISPLAY_TRANSFER_FLAGS);
 
 	//---------------------------------------------------------------------
+	// Setup top screen sprite ( for video render )
+	//---------------------------------------------------------------------
+	mTopScreenSprite = new ppSprite();
+
+	//---------------------------------------------------------------------
 	// Init memory pool
 	// @Code borrow from libsf2d
 	//---------------------------------------------------------------------
@@ -299,6 +305,11 @@ void PPGraphics::GraphicsInit()
 
 void PPGraphics::GraphicExit()
 {
+	if(mTopScreenSprite->initialized)
+	{
+		C3D_TexDelete(&mTopScreenSprite->spriteTexture);
+	}
+	delete mTopScreenSprite;
 	linearFree(memoryPoolAddr);
 	free(mGlyphSheets);
 	shaderProgramFree(&mShaderProgram);
@@ -307,27 +318,127 @@ void PPGraphics::GraphicExit()
 	gfxExit();
 }
 
-void PPGraphics::BeginRender(gfxScreen_t screen)
+void PPGraphics::checkStartRendering()
+{
+
+}
+
+void PPGraphics::BeginRender()
 {
 	resetMemoryPool();
-	mCurrentDrawScreen = screen;
 	C3D_FrameBegin(C3D_FRAME_SYNCDRAW);
-	if(screen == GFX_TOP)
+}
+
+void PPGraphics::RenderOn(gfxScreen_t screen)
+{
+	mCurrentDrawScreen = screen;
+	if (screen == GFX_TOP)
 	{
 		C3D_FrameDrawOn(mRenderTargetTop);
 		// set uniform projection
 		C3D_FVUnifMtx4x4(GPU_VERTEX_SHADER, mULocProjection, &mProjectionTop);
+		// draw a transparent and small dot to avoid soft lock
+		// @ref : https://github.com/fincs/citro3d/issues/35
+		DrawRectangle(0, 0, 1, 1, ppColor{ 0,0,0,255 });
 	}
 	else {
 		C3D_FrameDrawOn(mRenderTargetBtm);
 		// set uniform projection
 		C3D_FVUnifMtx4x4(GPU_VERTEX_SHADER, mULocProjection, &mProjectionBtm);
+		// draw a transparent and small dot to avoid soft lock
+		// @ref : https://github.com/fincs/citro3d/issues/35
+		DrawRectangle(0, 0, 1, 1, ppColor{ 0,0,0,255 });
 	}
 }
 
 void PPGraphics::EndRender()
 {
 	C3D_FrameEnd(0);
+}
+
+unsigned int next_pow2(unsigned int v)
+{
+	v--;
+	v |= v >> 1;
+	v |= v >> 2;
+	v |= v >> 4;
+	v |= v >> 8;
+	v |= v >> 16;
+	v++;
+	return v >= 64 ? v : 64;
+}
+
+void PPGraphics::UpdateTopScreenSprite(u8* data, u32 size, u32 width, u32 height)
+{
+	mTopScreenSprite->width = width;
+	mTopScreenSprite->height = height;
+
+	u8* linearData = (u8*)linearAlloc(sizeof(u8) * size);
+	memcpy(linearData, data, size);
+
+	if(!mTopScreenSprite->initialized)
+	{
+		mTopScreenSprite->initialized = true;
+		GSPGPU_FlushDataCache(linearData, size);
+		C3D_TexInit(&mTopScreenSprite->spriteTexture, next_pow2(mTopScreenSprite->width), next_pow2(mTopScreenSprite->height), GPU_RGB8);
+		u32 dimOrigin = GX_BUFFER_DIM(mTopScreenSprite->width, mTopScreenSprite->height);
+		u32 dim = GX_BUFFER_DIM(next_pow2(mTopScreenSprite->width), next_pow2(mTopScreenSprite->height));
+		C3D_SafeDisplayTransfer((u32*)linearData, dimOrigin, (u32*)mTopScreenSprite->spriteTexture.data, dim, TEXTURE_TRANSFER_FLAGS);
+		gspWaitForPPF();
+		C3D_TexSetFilter(&mTopScreenSprite->spriteTexture, GPU_LINEAR, GPU_NEAREST);
+		C3D_TexSetWrap(&mTopScreenSprite->spriteTexture, GPU_CLAMP_TO_BORDER, GPU_CLAMP_TO_BORDER);
+	}else
+	{
+		GSPGPU_FlushDataCache(linearData, size * 3);
+		u32 dimOrigin = GX_BUFFER_DIM(mTopScreenSprite->width, mTopScreenSprite->height);
+		u32 dim = GX_BUFFER_DIM(next_pow2(mTopScreenSprite->width), next_pow2(mTopScreenSprite->height));
+		C3D_SafeDisplayTransfer((u32*)linearData, dimOrigin, (u32*)mTopScreenSprite->spriteTexture.data, dim, TEXTURE_TRANSFER_FLAGS);
+		gspWaitForPPF();
+	}
+	linearFree(linearData);
+	
+}
+
+void PPGraphics::DrawTopScreenSprite()
+{
+	if (!mTopScreenSprite->initialized) {
+		return;
+	}
+
+	C3D_TexBind(getTextUnit(GPU_TEXUNIT0), &mTopScreenSprite->spriteTexture);
+	C3D_TexEnv* env = C3D_GetTexEnv(0);
+	C3D_TexEnvSrc(env, C3D_Both, GPU_TEXTURE0, 0, 0);
+	C3D_TexEnvOp(env, C3D_Both, 0, 0, 0);
+	C3D_TexEnvFunc(env, C3D_Both, GPU_REPLACE);
+
+	C3D_AttrInfo* attrInfo = C3D_GetAttrInfo();
+	AttrInfo_Init(attrInfo);
+	AttrInfo_AddLoader(attrInfo, 0, GPU_FLOAT, 3);
+	AttrInfo_AddLoader(attrInfo, 1, GPU_FLOAT, 2);
+	ppVertexPosTex* vertices = (ppVertexPosTex*)allocMemoryPoolAligned(sizeof(ppVertexPosTex) * 4, 8);
+	if (!vertices)
+		return; // out of memory in pool
+
+	float x = 0, y = 0, w = (float)mTopScreenSprite->width, h = (float)mTopScreenSprite->height;
+	float u = mTopScreenSprite->width / (float)mTopScreenSprite->spriteTexture.width;
+	float v = mTopScreenSprite->height / (float)mTopScreenSprite->spriteTexture.height;
+
+	// set position
+	vertices[0].position = (ppVector3) { x, y, 0.5f };
+	vertices[1].position = (ppVector3) { x + w, y, 0.5f };
+	vertices[2].position = (ppVector3) { x, y + h, 0.5f };
+	vertices[3].position = (ppVector3) { x + w, y + h, 0.5f };
+
+	// set color
+	vertices[0].textcoord = (ppVector2) { 0.0f, 0.0f };
+	vertices[1].textcoord = (ppVector2) { u, 0.0f };
+	vertices[2].textcoord = (ppVector2) { 0.0f, v };
+	vertices[3].textcoord = (ppVector2) { u, v };
+
+	C3D_BufInfo* bufInfo = C3D_GetBufInfo();
+	BufInfo_Init(bufInfo);
+	BufInfo_Add(bufInfo, vertices, sizeof(ppVertexPosTex), 2, 0x10);
+	C3D_DrawArrays(GPU_TRIANGLE_STRIP, 0, 4);
 }
 
 void PPGraphics::setupForPosCollEnv(void* vertices)

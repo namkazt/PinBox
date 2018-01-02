@@ -13,7 +13,6 @@ void PPSession::initSession()
 	if (g_network != nullptr) return;
 	g_network = new PPNetwork();
 	g_network->g_session = this;
-	printf("#%d : Init new session.\n", sessionID);
 	//------------------------------------------------------
 	// callback when request data is received
 	g_network->SetOnReceivedRequest([=](PPNetwork *self, u8* buffer, u32 size, u32 tag) {
@@ -128,7 +127,9 @@ void PPSession::InitMovieSession()
 	//--------------------------------------
 	// init specific for movie session
 	g_sessionType = PPSESSION_MOVIE;
-	printf("Init movie session.\n");
+
+	printf("#%d : Init new MOVIE session.\n", sessionID);
+	gfxFlushBuffers();
 }
 
 void PPSession::InitScreenCaptureSession(PPSessionManager* manager)
@@ -139,6 +140,8 @@ void PPSession::InitScreenCaptureSession(PPSessionManager* manager)
 	// init specific for movie session
 	g_sessionType = PPSESSION_SCREEN_CAPTURE;
 	//--------------------------------------
+	printf("#%d : Init new SCREEN CAPTURE session.\n", sessionID);
+	gfxFlushBuffers();
 }
 
 void PPSession::InitInputCaptureSession(PPSessionManager* manager)
@@ -148,7 +151,9 @@ void PPSession::InitInputCaptureSession(PPSessionManager* manager)
 	//--------------------------------------
 	// init specific for movie session
 	g_sessionType = PPSESSION_INPUT_CAPTURE;
-	printf("Init input session.\n");
+
+	printf("#%d : Init new INPUT session.\n", sessionID);
+	gfxFlushBuffers();
 }
 
 
@@ -167,6 +172,7 @@ void PPSession::StartSession(const char* ip, const char* port, s32 prio, PPNetwo
 		if (code == 0)
 		{
 			printf("#%d : Invalid session type\n", sessionID);
+			gfxFlushBuffers();
 			return;
 		}
 		//--------------------------------------------------
@@ -186,6 +192,7 @@ void PPSession::StartSession(const char* ip, const char* port, s32 prio, PPNetwo
 	{
 		//NOTE: this not called on main thread !
 		printf("#%d : Connection interupted.\n", sessionID);
+		gfxFlushBuffers();
 	});
 	g_network->Start(ip, port, prio);
 }
@@ -254,6 +261,7 @@ void PPSession::processScreenCaptureSession(u8* buffer, size_t size)
 		catch (...)
 		{
 			printf("Error when process frame.\n");
+			gfxFlushBuffers();
 		}
 		break;
 	}

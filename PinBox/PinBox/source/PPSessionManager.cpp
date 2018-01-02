@@ -25,7 +25,7 @@ void PPSessionManager::InitScreenCapture(u32 numberOfSessions)
 	if (numberOfSessions <= 0) numberOfSessions = 1;
 	if (m_screenCaptureSessions.size() > 0) return;
 	m_screenCaptureSessions = std::vector<PPSession*>();
-	for(int i = 0; i < numberOfSessions; i++)
+	for(int i = 1; i <= numberOfSessions; i++)
 	{
 		PPSession* session = new PPSession();
 		session->sessionID = i;
@@ -48,7 +48,7 @@ void PPSessionManager::SafeTrack(FramePiece* piece)
 			// if this frame is complete then move it to complete list
 			if(m_frameTrackTemp[i]->receivedPieces == m_connectedSession)
 			{
-				printf("Add new frame into pool : \n");
+				//printf("Add new frame into pool : \n");
 				m_frameTracker[m_frameTrackTemp[i]->frameIndex] = m_frameTrackTemp[i];
 				// remove this track when all complete
 				m_frameTrackTemp.erase(m_frameTrackTemp.begin() + i);
@@ -198,7 +198,7 @@ void PPSessionManager::UpdateFrameTracker()
 			return;
 		//-------------------------------------------
 		// draw
-		//ppGraphicsDrawFrame(config.output.private_memory, nW * nH * 3, nW, nH);
+		PPGraphics::Get()->UpdateTopScreenSprite(config.output.private_memory, nW * nH * 3, nW, nH);
 		//-------------------------------------------
 		// free data
 		free(frameData);
@@ -258,6 +258,21 @@ void PPSessionManager::UpdateInputStream(u32 down, u32 hold, u32 up, short cx, s
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+void PPSessionManager::_oneByOneConnectScreenCapture(int index, const char* ip, const char* port, PPNotifyCallback callback)
+{
+	m_screenCaptureSessions[index]->StartSession(ip, port, mMainThreadPrio, [=](PPNetwork *self, u8* data, u32 code)
+	{
+		m_connectedSession++;
+		if (m_connectedSession == m_screenCaptureSessions.size())
+		{
+			if (callback != nullptr) callback(0);
+		}else
+		{
+			_oneByOneConnectScreenCapture(m_connectedSession, ip, port, callback);
+		}
+	});
+}
+
 
 void PPSessionManager::StartStreaming(const char* ip, const char* port)
 {
@@ -268,37 +283,27 @@ void PPSessionManager::StartStreaming(const char* ip, const char* port)
 
 	//--------------------------------------------------
 	// get current thread priority
-	s32 prio = 0;
-	svcGetThreadPriority(&prio, CUR_THREAD_HANDLE);
-
-	//--------------------------------------------------
-	// start now
-	for (int i = 0; i < m_screenCaptureSessions.size(); i++)
+	svcGetThreadPriority(&mMainThreadPrio, CUR_THREAD_HANDLE);
+	_oneByOneConnectScreenCapture(m_connectedSession, ip, port, [=](int ret)
 	{
 		//--------------------------------------------------
-		// start connect all session to server
-		m_screenCaptureSessions[i]->StartSession(ip, port, prio, [=](PPNetwork *self, u8* data, u32 code)
-		{
-			m_connectedSession++;
-			if (m_connectedSession == m_screenCaptureSessions.size())
+		//start input connect when all other connect is done
+		if (m_inputStreamSession != nullptr) {
+			m_inputStreamSession->StartSession(ip, port, mMainThreadPrio, [=](PPNetwork *self, u8* data, u32 code)
 			{
+				m_inputStreamSession->IN_Start();
+
 				//--------------------------------------------------
 				// when all session is authenticated
 				// start streaming here
-				printf("All clients is connected to server \n");
+				printf("[Success] All clients is connected to server \n");
+				gfxFlushBuffers();
 				_startStreaming();
-			}
-		});
-	}
+			});
+		}
+	});
 
-	//--------------------------------------------------
-	//start input
-	if (m_inputStreamSession != nullptr) {
-		m_inputStreamSession->StartSession(ip, port, prio, [=](PPNetwork *self, u8* data, u32 code)
-		{
-			m_inputStreamSession->IN_Start();
-		});
-	}
+	
 }
 
 void PPSessionManager::StopStreaming()

@@ -5,15 +5,18 @@
 #include <3ds.h>
 #include <3ds/gfx.h>
 #include <citro3d.h>
-#include <list>
-#include <vector>
 
 //=========================================================================================
 // Const
 //=========================================================================================
 
 #define CLEAR_COLOR 0x000000FF
-// Used to transfer the final rendered display to the framebuffer
+
+#define DISPLAY_TRANSFER_FLAGS_TOP \
+	(GX_TRANSFER_FLIP_VERT(0) | GX_TRANSFER_OUT_TILED(0) | GX_TRANSFER_RAW_COPY(0) | \
+	GX_TRANSFER_IN_FORMAT(GX_TRANSFER_FMT_RGB8) | GX_TRANSFER_OUT_FORMAT(GX_TRANSFER_FMT_RGB8) | \
+	GX_TRANSFER_SCALING(GX_TRANSFER_SCALE_NO))
+
 #define DISPLAY_TRANSFER_FLAGS \
 	(GX_TRANSFER_FLIP_VERT(0) | GX_TRANSFER_OUT_TILED(0) | GX_TRANSFER_RAW_COPY(0) | \
 	GX_TRANSFER_IN_FORMAT(GX_TRANSFER_FMT_RGBA8) | GX_TRANSFER_OUT_FORMAT(GX_TRANSFER_FMT_RGB8) | \
@@ -69,12 +72,26 @@ typedef struct
 	ppVector2 textcoord;
 }ppVertexPosTex;
 
+typedef struct 
+{
+	C3D_Tex spriteTexture;
+	u32 width;
+	u32 height;
+	bool initialized = false;
+}ppSprite;
 
 //=========================================================================================
 // Class
 //=========================================================================================
 class PPGraphics
 {
+public:
+	ppColor PrimaryColor = ppColor{ 76, 175, 80, 255 };
+	ppColor PrimaryDarkColor = ppColor{ 0, 150, 136, 255 };
+	ppColor AccentColor = ppColor{ 255, 193, 7, 255 };
+	ppColor PrimaryTextColor = ppColor{ 38, 50, 56, 255 };
+	ppColor AccentTextColor = ppColor{ 255, 255, 255, 255 };
+
 private:
 	C3D_RenderTarget*				mRenderTargetTop = nullptr;
 	C3D_Mtx							mProjectionTop;
@@ -88,13 +105,17 @@ private:
 	// system font
 	C3D_Tex*						mGlyphSheets;
 
+	// top screen sprite
+	ppSprite*						mTopScreenSprite;
+	
+
 	// Temporary memory pool
 	void							*memoryPoolAddr = NULL;
 	u32								memoryPoolIndex = 0;
 	u32								memoryPoolSize = 0;
 
 	gfxScreen_t						mCurrentDrawScreen = GFX_TOP;
-
+	int								mRendering = 0;
 
 	void setupForPosCollEnv(void* vertices);
 	void setupForPosTexlEnv(void* vertices, u32 color, int texID);
@@ -106,6 +127,7 @@ private:
 	void resetMemoryPool() { memoryPoolIndex = 0; }
 	u32 getMemoryFreeSpace() const { return memoryPoolSize - memoryPoolIndex; };
 
+	void checkStartRendering();
 public:
 	static PPGraphics* Get();
 
@@ -113,8 +135,12 @@ public:
 	void GraphicExit();
 
 	// draw functions
-	void BeginRender(gfxScreen_t screen);
+	void BeginRender();
+	void RenderOn(gfxScreen_t screen);
 	void EndRender();
+
+	void UpdateTopScreenSprite(u8* data, u32 size, u32 width, u32 height);
+	void DrawTopScreenSprite();
 
 	void DrawRectangle(float x, float y, float w, float h, ppColor color);
 	void DrawText(const char* text, float x, float y, float scaleX, float scaleY, ppColor color, bool baseline);

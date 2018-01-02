@@ -13,9 +13,12 @@ typedef struct
 	std::vector<FramePiece*> pieces;
 } FrameSet;
 
+typedef std::function<void(int code)> PPNotifyCallback;
+
 class PPSessionManager
 {
 private:
+
 	PPSession*										m_inputStreamSession = nullptr;
 	u32												m_OldDown;
 	u32												m_OldHold;
@@ -26,10 +29,13 @@ private:
 	short											m_OldCTY;
 	bool											m_initInputFirstFrame = false;
 
+	s32												mMainThreadPrio = 0;
+
 	std::vector<PPSession*>							m_screenCaptureSessions;
 	int												m_commandSessionIndex = 0;
 	u32												m_connectedSession = 0;
 	void											_startStreaming();
+	void											_oneByOneConnectScreenCapture(int index, const char* ip, const char* port, PPNotifyCallback callback);
 
 	std::vector<FrameSet*>							m_frameTrackTemp;
 	std::map<int, FrameSet*>						m_frameTracker;
