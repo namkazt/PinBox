@@ -184,6 +184,7 @@ void PPSessionManager::UpdateFrameTracker()
 	{
 		//-------------------------------------------
 		// init webp decode config
+		//TODO: set fixed size to scale is : 512x256 ( that is bad but we need save time for this later )
 		u32 nW = 512, nH = 256;
 		WebPDecoderConfig config;
 		WebPInitDecoderConfig(&config);

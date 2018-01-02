@@ -59,6 +59,7 @@ typedef struct
 	u8 a;
 	u32 toU32() const { return (((a) & 0xFF) << 24) | (((b) & 0xFF) << 16) | (((g) & 0xFF) << 8) | (((r) & 0xFF) << 0); }
 }ppColor;
+#define rgb(r,g,b)(ppColor {r, g, b, 255})
 
 typedef struct
 {
@@ -144,6 +145,7 @@ public:
 
 	void DrawRectangle(float x, float y, float w, float h, ppColor color);
 	void DrawText(const char* text, float x, float y, float scaleX, float scaleY, ppColor color, bool baseline);
+	ppVector2 GetTextSize(const char* text, float scaleX, float scaleY);
 };
 
 

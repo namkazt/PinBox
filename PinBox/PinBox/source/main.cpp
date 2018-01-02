@@ -15,6 +15,7 @@
 #include "PPSessionManager.h"
 
 #include "dog_webp.h"
+#include "PPUI.h"
 
 #define SOC_ALIGN       0x1000
 #define SOC_BUFFERSIZE  0x100000
@@ -42,7 +43,7 @@ int main()
 	// Init Graphics
 	//---------------------------------------------
 	PPGraphics::Get()->GraphicsInit();
-	initDbgConsole();
+	//initDbgConsole();
 
 	//---------------------------------------------
 	// Init SOCKET
@@ -159,42 +160,36 @@ int main()
 		//---------------------------------------------
 		// Update Input
 		//---------------------------------------------
-		u32 kDown = hidKeysDown();
-		u32 kHeld = hidKeysHeld();
-		u32 kUp = hidKeysUp();
-		circlePosition pos;
-		hidCircleRead(&pos);
-		circlePosition cStick;
-		irrstCstickRead(&cStick);
-		sm->UpdateInputStream(kDown, kHeld, kUp, pos.dx, pos.dy, cStick.dx, cStick.dy);
-		sm->UpdateFrameTracker();
+		PPUI::UpdateInput();
+
+		//sm->UpdateInputStream(PPUI::kDown, PPUI::kHeld, PPUI::kUp, PPUI::cPos.dx, PPUI::cPos.dy, PPUI::cStick.dx, PPUI::cStick.dy);
+		
 
 
-		if (kHeld & KEY_START && kHeld & KEY_SELECT) break; // break in order to return to hbmenu
-		if (kHeld & KEY_L &&kHeld & KEY_A && !isStart)
-		{
-			isStart = true;
-			printf("COMMAND: start stream \n");
-			gfxFlushBuffers();
-			sm->StartStreaming("192.168.31.183", "1234");
-		}
-		if (kHeld & KEY_L && kHeld & KEY_B && isStart)
-		{
-			isStart = false;
-			printf("COMMAND: start stream \n");
-			gfxFlushBuffers();
-			sm->StopStreaming();
-		}
+		//if (kHeld & KEY_START && kHeld & KEY_SELECT) break; // break in order to return to hbmenu
+		//if (kHeld & KEY_L &&kHeld & KEY_A && !isStart)
+		//{
+		//	isStart = true;
+		//	printf("COMMAND: start stream \n");
+		//	gfxFlushBuffers();
+		//	sm->StartStreaming("192.168.31.183", "1234");
+		//}
+		//if (kHeld & KEY_L && kHeld & KEY_B && isStart)
+		//{
+		//	isStart = false;
+		//	printf("COMMAND: start stream \n");
+		//	gfxFlushBuffers();
+		//	sm->StopStreaming();
+		//}
 
 		PPGraphics::Get()->BeginRender();
 		PPGraphics::Get()->RenderOn(GFX_TOP);
+		sm->UpdateFrameTracker();
 		PPGraphics::Get()->DrawTopScreenSprite();
 			
 		// draw on bottom screen
-		//PPGraphics::Get()->RenderOn(GFX_BOTTOM);
-		//PPGraphics::Get()->DrawRectangle(0, 0, 320, 240, PPGraphics::Get()->PrimaryColor);
-		//PPGraphics::Get()->DrawRectangle(0, 0, 320, 30, PPGraphics::Get()->PrimaryDarkColor);
-		//PPGraphics::Get()->DrawText("Test System Text", 10, 50, 0.5f, 0.5f, PPGraphics::Get()->PrimaryTextColor, false);
+		PPGraphics::Get()->RenderOn(GFX_BOTTOM);
+		PPUI::DrawNumberInputScreen();
 
 		PPGraphics::Get()->EndRender();
 

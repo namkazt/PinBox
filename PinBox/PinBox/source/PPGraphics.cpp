@@ -385,7 +385,10 @@ void PPGraphics::UpdateTopScreenSprite(u8* data, u32 size, u32 width, u32 height
 		C3D_SafeDisplayTransfer((u32*)linearData, dim, (u32*)mTopScreenSprite->spriteTexture.data, dim, TEXTURE_TRANSFER_FLAGS);
 		gspWaitForPPF();
 		C3D_TexSetFilter(&mTopScreenSprite->spriteTexture, GPU_LINEAR, GPU_NEAREST);
-		C3D_TexSetWrap(&mTopScreenSprite->spriteTexture, GPU_CLAMP_TO_BORDER, GPU_CLAMP_TO_BORDER);
+
+		//TODO: this function should be in order to draw dynamic size 
+
+		//C3D_TexSetWrap(&mTopScreenSprite->spriteTexture, GPU_CLAMP_TO_BORDER, GPU_CLAMP_TO_BORDER);
 	}else
 	{
 		GSPGPU_FlushDataCache(linearData, size);
@@ -560,7 +563,7 @@ void PPGraphics::DrawText(const char* text, float x, float y, float scaleX, floa
 			vertices[2].position = (ppVector3) { x + data.vtxcoord.left, y + data.vtxcoord.top, 0.5f };
 			vertices[3].position = (ppVector3) { x + data.vtxcoord.right, y + data.vtxcoord.top, 0.5f };
 
-			// set color
+			// set uv
 			vertices[0].textcoord = (ppVector2) { data.texcoord.left , data.texcoord.bottom };
 			vertices[1].textcoord = (ppVector2) { data.texcoord.right, data.texcoord.bottom };
 			vertices[2].textcoord = (ppVector2) { data.texcoord.left, data.texcoord.top };
@@ -574,4 +577,34 @@ void PPGraphics::DrawText(const char* text, float x, float y, float scaleX, floa
 		}
 
 	} while (code > 0);
+}
+
+ppVector2 PPGraphics::GetTextSize(const char* text, float scaleX, float scaleY)
+{
+	ssize_t  units;
+	u32 code;
+
+	ppVector2 result;
+
+	const u8* p = (const u8*)text;
+	u32 flags = GLYPH_POS_CALC_VTXCOORD | 0;
+	result.y = scaleY * fontGetInfo()->lineFeed;
+	do
+	{
+		if (!*p) break;
+		units = decode_utf8(&code, p);
+		if (units == -1)
+			break;
+		p += units;
+		if (code > 0)
+		{
+			int glyphIdx = fontGlyphIndexFromCodePoint(code);
+			fontGlyphPos_s data;
+			fontCalcGlyphPos(&data, glyphIdx, flags, scaleX, scaleY);
+			result.x += data.vtxcoord.right;
+		}
+
+	} while (code > 0);
+
+	return result;
 }
