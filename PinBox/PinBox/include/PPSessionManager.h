@@ -41,6 +41,12 @@ private:
 	std::map<int, FrameSet*>						m_frameTracker;
 	Mutex*											m_frameTrackerMutex;
 	u32												m_currentDisplayFrame = 0;
+
+	//------------------------------------------
+	// UI ref variables
+	//------------------------------------------
+	int												mManagerState = -1;
+	char											mIPAddress[100];
 public:
 	PPSessionManager();
 	~PPSessionManager();
@@ -55,5 +61,13 @@ public:
 
 	void SafeTrack(FramePiece* piece);
 	void UpdateFrameTracker();
+
+	int GetManagerState() { return mManagerState; };
+
+	//------------------------------------------
+	// UI ref functions
+	//------------------------------------------
+	char* getIPAddress() { return &mIPAddress[0]; }
+	void setIPAddress(const char* ip) { snprintf(mIPAddress, sizeof mIPAddress, "%s", ip); }
 };
 

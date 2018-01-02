@@ -32,6 +32,7 @@ void PPSessionManager::InitScreenCapture(u32 numberOfSessions)
 		session->InitScreenCaptureSession(this);
 		m_screenCaptureSessions.push_back(session);
 	}
+	mManagerState = 0;
 }
 
 void PPSessionManager::SafeTrack(FramePiece* piece)
@@ -277,11 +278,14 @@ void PPSessionManager::_oneByOneConnectScreenCapture(int index, const char* ip, 
 
 void PPSessionManager::StartStreaming(const char* ip, const char* port)
 {
+	if (!strcmp(ip, "") || !strcmp(port, "")) return;
+
 	m_currentDisplayFrame = 0;
 	m_frameTrackTemp.clear();
 	m_frameTracker.clear();
 	m_connectedSession = 0;
 
+	mManagerState = 1;
 	//--------------------------------------------------
 	// get current thread priority
 	svcGetThreadPriority(&mMainThreadPrio, CUR_THREAD_HANDLE);
@@ -292,6 +296,8 @@ void PPSessionManager::StartStreaming(const char* ip, const char* port)
 		if (m_inputStreamSession != nullptr) {
 			m_inputStreamSession->StartSession(ip, port, mMainThreadPrio, [=](PPNetwork *self, u8* data, u32 code)
 			{
+				mManagerState = 2;
+
 				m_inputStreamSession->IN_Start();
 
 				//--------------------------------------------------
