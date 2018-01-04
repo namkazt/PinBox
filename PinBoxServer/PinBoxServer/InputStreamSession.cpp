@@ -293,8 +293,8 @@ void InputStreamSession::ProcessInput()
 		float pCx = (float)m_OldCX / (float)c_cpadMax;
 		float pCy = (float)m_OldCY / (float)c_cpadMax;
 		
-		m_x360Report.sThumbLX = pCx * MAXINT16;
-		m_x360Report.sThumbLY = pCy * MAXINT16;
+		m_x360Report.sThumbLX = (short)(pCx * 30000);
+		m_x360Report.sThumbLY = (short)(pCy * 30000);
 
 		// Right stick
 		if (m_OldCTX > 0 && m_OldCTX < c_cpadDeadZone) m_OldCTX = 0;
@@ -305,8 +305,8 @@ void InputStreamSession::ProcessInput()
 		float pCtx = (float)m_OldCTX / (float)c_cpadMax;
 		float pCty = (float)m_OldCTY / (float)c_cpadMax;
 
-		m_x360Report.sThumbRX = pCtx * MAXINT16;
-		m_x360Report.sThumbRY = pCty * MAXINT16;
+		m_x360Report.sThumbRX = (short)(pCtx * 30000);
+		m_x360Report.sThumbRY = (short)(pCty * 30000);
 
 		// update
 		if(!VIGEM_SUCCESS(vigem_target_x360_update(m_vDriver, m_x360Controller, m_x360Report)))
@@ -314,6 +314,7 @@ void InputStreamSession::ProcessInput()
 			std::cout << "[Error] Error when submit report update to X360." << std::endl << std::flush;
 		}
 
+		std::cout << "[DEBUG] LStick: " << m_x360Report.sThumbLX << " : " << m_x360Report.sThumbLY << " RStick: " << m_x360Report.sThumbRX << " : " << m_x360Report.sThumbRX  << std::endl << std::flush;
 
 		// reset
 		m_OldDown = 0;

@@ -34,6 +34,8 @@ static circlePosition cStick;
 static touchPosition kTouch;
 static touchPosition last_kTouch;
 
+static u32 sleepModeState = 0;
+
 static std::vector<PopupCallback> mPopupList;
 static std::string mTemplateInputString = "";
 
@@ -62,6 +64,11 @@ circlePosition PPUI::getLeftCircle()
 circlePosition PPUI::getRightCircle()
 {
 	return cStick;
+}
+
+u32 PPUI::getSleepModeState()
+{
+	return sleepModeState;
 }
 
 void PPUI::UpdateInput()
@@ -256,6 +263,13 @@ int PPUI::DrawBottomScreenUI(PPSessionManager* sessionManager)
 		sessionManager->StartStreaming(ip, port);
 	}
 
+	// Sleep mode
+	if (FlatColorButton(200, 90, 50, 30, "Sleep", rgb(39, 174, 96), rgb(46, 204, 113), rgb(255, 255, 255)))
+	{
+		if (sleepModeState == 1) sleepModeState = 0;
+	}
+
+
 
 	// Exit Button
 	if (FlatColorButton(260, 200, 50, 30, "Exit", rgb(192, 57, 43), rgb(231, 76, 60), rgb(255, 255, 255)))
@@ -265,6 +279,18 @@ int PPUI::DrawBottomScreenUI(PPSessionManager* sessionManager)
 	return 0;
 }
 
+int PPUI::DrawIdleBottomScreen(PPSessionManager* sessionManager)
+{
+
+	// touch screen to wake up
+	if(TouchUpOnArea(0,0, 320, 240))
+	{
+		sleepModeState = 1;
+	}
+	// label
+	LabelBox(0, 0, 320, 240, "Touch screen to wake up", rgb(26, 188, 156), rgb(255, 255, 255));
+	return 0;
+}
 
 
 ///////////////////////////////////////////////////////////////////////////

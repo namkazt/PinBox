@@ -107,7 +107,7 @@ int main()
 		//---------------------------------------------
 		while (aptMainLoop())
 		{
-			gspWaitForVBlank();
+			//gspWaitForVBlank();
 			hidScanInput();
 			irrstScanInput();
 			//---------------------------------------------
@@ -151,15 +151,24 @@ int main()
 			//---------------------------------------------
 			PPGraphics::Get()->RenderOn(GFX_BOTTOM);
 			int ret = 0;
-			if(PPUI::HasPopup())
+			// TODO: should be option : auto set idle mode when start streaming
+			if(sm->GetManagerState() == 2 && PPUI::getSleepModeState() == 0)
 			{
-				PopupCallback popupFunc = PPUI::GetPopup();
-				ret = popupFunc();
+				ret = PPUI::DrawIdleBottomScreen(sm);
 			}else
 			{
-				// if there is no popup then render main UI
-				ret = PPUI::DrawBottomScreenUI(sm);
+				if (PPUI::HasPopup())
+				{
+					PopupCallback popupFunc = PPUI::GetPopup();
+					ret = popupFunc();
+				}
+				else
+				{
+					// if there is no popup then render main UI
+					ret = PPUI::DrawBottomScreenUI(sm);
+				}
 			}
+			
 			//---------------------------------------------
 			PPGraphics::Get()->EndRender();
 			if (ret == -1) break;
