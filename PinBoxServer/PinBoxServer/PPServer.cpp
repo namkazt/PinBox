@@ -1,6 +1,6 @@
 #include "stdafx.h"
 #include "PPServer.h"
-
+#include "ServerConfig.h"
 
 
 void PPServer::PrintIPAddressList()
@@ -26,7 +26,7 @@ void PPServer::PrintIPAddressList()
 		memcpy(&SocketAddress.sin_addr, pHost->h_addr_list[iCnt], pHost->h_length);
 		strcpy(aszIPAddresses[iCnt], inet_ntoa(SocketAddress.sin_addr));
 
-		std::cout << "IP: " << aszIPAddresses[iCnt] << std::endl;
+		std::cout << "IP: " << aszIPAddresses[iCnt] << std::endl << std::flush;
 	}
 }
 
@@ -38,8 +38,11 @@ void PPServer::InitServer()
 	google::SetCommandLineOption("GLOG_minloglevel", "2");
 	//===========================================================================
 	int cfgPort = 1234;
-	int cfgMonitorIndex = -1;
-	int cfgThreadNum = 8;
+	int cfgThreadNum = 4;
+	//===========================================================================
+	// Init config
+	//===========================================================================
+	ServerConfig::Get();
 	//===========================================================================
 	// Screen capture session
 	//===========================================================================
@@ -53,7 +56,7 @@ void PPServer::InitServer()
 	// Socket server part
 	//===========================================================================
 	std::string addr = "0.0.0.0:" + std::to_string(cfgPort);
-	std::cout << "Running on address: " << addr << std::endl;
+	std::cout << "Running on address: " << addr << std::endl << std::flush;
 	evpp::EventLoop loop;
 	evpp::TCPServer server(&loop, addr, "PinBoxServer", cfgThreadNum);
 	//===========================================================================
@@ -69,7 +72,7 @@ void PPServer::InitServer()
 		}else
 		{
 			mutexCloseServer.unlock();
-			std::cout << "[Error]Received Message but do not know from where ??" << std::endl;
+			std::cout << "[Error]Received Message but do not know from where ??" << std::endl << std::flush;
 		}
 		
 		//--------------------------------------
@@ -92,12 +95,11 @@ void PPServer::InitServer()
 					for(auto it = clientSessions.begin(); it != clientSessions.end();++it)
 					{
 						it->second->DisconnectFromServer();
-						std::cout << "Client: " << addrID << " disconnected!" << std::endl;
+						std::cout << "Client: " << addrID << " disconnected!" << std::endl << std::flush;
 					}
 					clientSessions.clear();
 					ScreenCapturer->removeForStopStream();
 				});
-				
 			}
 		}
 		else
@@ -105,7 +107,7 @@ void PPServer::InitServer()
 			// add new session
 			if (conn->IsConnected())
 			{
-				std::cout << "Client: " << addrID << " connected to server!" << std::endl;
+				std::cout << "Client: " << addrID << " connected to server!" << std::endl << std::flush;
 				PPClientSession* session = new PPClientSession();
 				session->InitSession(conn, this);
 				mutexCloseServer.lock();
@@ -119,14 +121,14 @@ void PPServer::InitServer()
 	//===========================================================================
 	// print screen
 	//===========================================================================
-	std::cout << "Init Server : Successfully" << std::endl;
-	std::cout << "-------------------------------------------" << std::endl;
-	std::cout << "Please use one of those IP in your 3DS client to connect to server:" << std::endl;
-	std::cout << "(normally it should be the last one)" << std::endl;
-	std::cout << "-------------------------------------------" << std::endl;
+	std::cout << "Init Server : Successfully" << std::endl << std::flush;
+	std::cout << "-------------------------------------------" << std::endl << std::flush;
+	std::cout << "Please use one of those IP in your 3DS client to connect to server:" << std::endl << std::flush;
+	std::cout << "(normally it should be the last one)" << std::endl << std::flush;
+	std::cout << "-------------------------------------------" << std::endl << std::flush;
 	PrintIPAddressList();
-	std::cout << "-------------------------------------------" << std::endl;
-	std::cout << "Wait for connection..." << std::endl;
+	std::cout << "-------------------------------------------" << std::endl << std::flush;
+	std::cout << "Wait for connection..." << std::endl << std::flush;
 	//===========================================================================
 	loop.Run();
 }

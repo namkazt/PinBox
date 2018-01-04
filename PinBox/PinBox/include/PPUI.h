@@ -37,6 +37,8 @@ public:
 	static bool TouchDownOnArea(float x, float y, float w, float h);
 	static bool TouchUpOnArea(float x, float y, float w, float h);
 
+	// SCREEN
+	static int DrawIdleTopScreen(PPSessionManager *sessionManager);
 	static int DrawNumberInputScreen( const char* label, ResultCallback cancel, ResultCallback ok);
 	static int DrawBottomScreenUI(PPSessionManager *sessionManager);
 	

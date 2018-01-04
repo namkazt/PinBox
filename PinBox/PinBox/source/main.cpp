@@ -125,20 +125,27 @@ int main()
 			//---------------------------------------------
 			// Debug
 			//---------------------------------------------
-			if (PPUI::getKeyHold() & KEY_START && PPUI::getKeyHold() & KEY_SELECT) break; // break in order to return to hbmenu
-			if (PPUI::getKeyHold() & KEY_L && PPUI::getKeyHold() & KEY_A)
-			{
-				printf("COMMAND: start stream \n");
-				gfxFlushBuffers();
-				sm->StartStreaming("192.168.31.183", "1234");
-			}
+			//if (PPUI::getKeyHold() & KEY_START && PPUI::getKeyHold() & KEY_SELECT) break; // break in order to return to hbmenu
+			//if (PPUI::getKeyHold() & KEY_L && PPUI::getKeyHold() & KEY_A)
+			//{
+			//	printf("COMMAND: start stream \n");
+			//	gfxFlushBuffers();
+			//	sm->StartStreaming("192.168.31.183", "1234");
+			//}
 
 			PPGraphics::Get()->BeginRender();
 			//---------------------------------------------
 			// Draw top UI
 			//---------------------------------------------
 			PPGraphics::Get()->RenderOn(GFX_TOP);
-			PPGraphics::Get()->DrawTopScreenSprite();
+			if(sm->GetManagerState() == 2)
+			{
+				PPGraphics::Get()->DrawTopScreenSprite();
+			}else
+			{
+				PPUI::DrawIdleTopScreen(sm);
+			}
+			
 			//---------------------------------------------
 			// Draw bottom UI
 			//---------------------------------------------

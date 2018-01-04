@@ -109,6 +109,16 @@ bool PPUI::TouchUpOnArea(float x, float y, float w, float h)
 	return false;
 }
 
+///////////////////////////////////////////////////////////////////////////
+// TEXT
+///////////////////////////////////////////////////////////////////////////
+
+int PPUI::DrawIdleTopScreen(PPSessionManager* sessionManager)
+{
+	PPGraphics::Get()->DrawRectangle(0, 0, 400, 240, rgb(26, 188, 156));
+	LabelBox(0, 0, 400, 240, "PinBox", rgb(26, 188, 156), rgb(255, 255, 255));
+	return 0;
+}
 
 int PPUI::DrawNumberInputScreen(const char* label, ResultCallback cancel, ResultCallback ok)
 {
@@ -199,6 +209,8 @@ int PPUI::DrawBottomScreenUI(PPSessionManager* sessionManager)
 	// Edit Button
 	if (FlatColorButton(260, 40, 50, 30, "Edit", rgb(192, 57, 43), rgb(231, 76, 60), rgb(255, 255, 255)))
 	{
+		if (sessionManager->GetManagerState() == 2) return;
+
 		mTemplateInputString = std::string(sessionManager->getIPAddress());
 		AddPopup([=]()
 		{
@@ -221,8 +233,12 @@ int PPUI::DrawBottomScreenUI(PPSessionManager* sessionManager)
 	// Tab Button
 
 	// Tab Content
+
 	if (FlatColorButton(260, 90, 50, 30, "Start", rgb(41, 128, 185), rgb(52, 152, 219), rgb(255, 255, 255)))
 	{
+		if (sessionManager->GetManagerState() == 2) return;
+
+
 		// parse IP and port
 		char* string = strdup(sessionManager->getIPAddress());
 		char* token;

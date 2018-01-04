@@ -4,6 +4,7 @@
 //webp
 #include "webp/encode.h"
 #include "PPServer.h"
+#include "ServerConfig.h"
 
 ScreenCaptureSession::ScreenCaptureSession()
 {
@@ -26,7 +27,7 @@ void ScreenCaptureSession::initSCreenCapturer(PPServer* parent)
 		auto mons = SL::Screen_Capture::GetMonitors();
 		std::vector<SL::Screen_Capture::Monitor> selectedMonitor = std::vector<SL::Screen_Capture::Monitor>();
 		//-------------------------- >> Index 0
-		selectedMonitor.push_back(mons[2]);
+		selectedMonitor.push_back(mons[ServerConfig::Get()->MonitorIndex]);
 		return selectedMonitor;
 	}).onNewFrame([&](const SL::Screen_Capture::Image& img, const SL::Screen_Capture::Monitor& monitor)
 		{
@@ -34,6 +35,7 @@ void ScreenCaptureSession::initSCreenCapturer(PPServer* parent)
 			if (g_ss_onClientReallyClosed != nullptr) {
 				m_isStartStreaming = false;
 				g_ss_onClientReallyClosed();
+				g_ss_onClientReallyClosed = nullptr;
 				return;
 			}
 			//-------------------------------------------------
@@ -252,7 +254,8 @@ void ScreenCaptureSession::stopStream()
 
 void ScreenCaptureSession::registerForStopStream(OnClientReallyClose callback)
 {
-	g_ss_onClientReallyClosed = callback;
+	if(g_ss_onClientReallyClosed != nullptr)
+		g_ss_onClientReallyClosed = callback;
 }
 
 void ScreenCaptureSession::changeSetting(bool waitForReceived, u32 smoothFrame, u32 quality, u32 scale)
