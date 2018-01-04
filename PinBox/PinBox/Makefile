@@ -165,7 +165,7 @@ cci: $(TARGET)-strip.elf
 	@makerom -f cci -rsf $(CURDIR)/$(TARGET).rsf -target d -exefslogo -elf $(TARGET)-strip.elf -o $(TARGET).3ds
 #---------------------------------------------------------------------------------
 cia: $(TARGET)-strip.elf
-	@$(CURDIR)/buildtools/3ds/makerom32.exe -f cia -o $(TARGET).cia -elf $(TARGET)-strip.elf -rsf $(CURDIR)/$(TARGET).rsf -exefslogo -target t
+	@$(CURDIR)/tools/makerom32.exe -f cia -o $(TARGET).cia -elf $(TARGET)-strip.elf -rsf $(CURDIR)/$(TARGET).rsf -exefslogo -target t
 #---------------------------------------------------------------------------------
 netlink: $(BUILD)
 	$(DEVKITARM)/bin/3dslink.exe --address 192.168.31.173 $(TARGET).3dsx

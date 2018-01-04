@@ -122,9 +122,9 @@ private:
 	//----------------------------------------------------
 	bool								SS_v_isStartStreaming = false;
 	bool								SS_setting_waitToReceivedFrame = true;
-	u32									SS_setting_smoothStepFrames = 4;		// this setting allow frame switch smoother if there is delay when received frame
-	u32									SS_setting_sourceQuality = 55;			// webp quality control
-	u32									SS_setting_sourceScale = 90;			// frame size control eg: 75% = 0.75 of real size
+	u32									SS_setting_smoothStepFrames = 2;		// this setting allow frame switch smoother if there is delay when received frame
+	u32									SS_setting_sourceQuality = 75;			// webp quality control
+	u32									SS_setting_sourceScale = 100;			// frame size control eg: 75% = 0.75 of real size
 	//----------------------------------------------------
 
 
