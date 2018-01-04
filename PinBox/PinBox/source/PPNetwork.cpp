@@ -12,7 +12,7 @@ void PPNetwork::ppNetwork_threadRun(void * arg)
 	u64 sleepDuration = 1000000ULL * 30;
 	while(!network->g_threadExit){
 		
-		//printf("#dwa Thread run\n");
+		//printf("Thread run\n");
 		//gfxFlushBuffers();
 
 		if(network->g_connect_state == ppConectState::IDLE)
@@ -407,7 +407,7 @@ void PPNetwork::ppNetwork_closeConnection()
 //===============================================================================================
 // Controller functions
 //===============================================================================================
-#define STACKSIZE (3 * 1024 * 1024)
+#define STACKSIZE (30 * 1024)
 void PPNetwork::Start(const char* ip, const char* port, s32 prio)
 {
 	if (g_connect_state == IDLE) {

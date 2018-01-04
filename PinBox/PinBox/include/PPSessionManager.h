@@ -41,12 +41,12 @@ private:
 	std::map<int, FrameSet*>						m_frameTracker;
 	Mutex*											m_frameTrackerMutex;
 	u32												m_currentDisplayFrame = 0;
-
+	u8*												m_preAllocBuffer = nullptr;
 	//------------------------------------------
 	// UI ref variables
 	//------------------------------------------
 	int												mManagerState = -1;
-	char											mIPAddress[100];
+	char											mIPAddress[100] = "192.168.31.183:1234";
 public:
 	PPSessionManager();
 	~PPSessionManager();

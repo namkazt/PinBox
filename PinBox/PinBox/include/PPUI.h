@@ -10,8 +10,22 @@
 typedef std::function<int()> PopupCallback;
 typedef std::function<void(void* arg1, void* arg2)> ResultCallback;
 
+class PPLog
+{
+private:
+	const u32						mLogMaxSize = 100;
+	std::vector<std::string>		mLogContainer;
+	Mutex*							mLogMutex;
+	
+public:
+	void							InitLog();
+	void							Write(const char* log);
+};
+
+
 class PPUI
 {
+
 public:
 	static u32 getKeyDown();
 	static u32 getKeyHold();
@@ -25,7 +39,7 @@ public:
 
 	static int DrawNumberInputScreen( const char* label, ResultCallback cancel, ResultCallback ok);
 	static int DrawBottomScreenUI(PPSessionManager *sessionManager);
-
+	
 	// BUTTON
 	static bool FlatButton(float x, float y, float w, float h, const char* label);
 	static bool FlatDarkButton(float x, float y, float w, float h, const char* label);
@@ -40,6 +54,9 @@ public:
 	static PopupCallback GetPopup();
 	static void ClosePopup();
 	static void AddPopup(PopupCallback callback);
+
+	// LOG
+	static int LogWindow(float x, float y, float w, float h);
 };
 
 #endif

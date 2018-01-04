@@ -1,6 +1,26 @@
 #include "PPUI.h"
 #include <cstdio>
 
+
+// LOG
+void PPLog::InitLog()
+{
+	mLogMutex = new Mutex();
+}
+
+void PPLog::Write(const char* log)
+{
+	mLogMutex->Lock();
+	if(mLogContainer.size() >= mLogMaxSize)
+	{
+		mLogContainer.erase(mLogContainer.begin());
+	}
+	mLogContainer.push_back(log);
+	mLogMutex->Unlock();
+}
+
+static PPLog* mLog;
+
 static u32 kDown;
 static u32 kHeld;
 static u32 kUp;
@@ -206,18 +226,18 @@ int PPUI::DrawBottomScreenUI(PPSessionManager* sessionManager)
 		// parse IP and port
 		char* string = strdup(sessionManager->getIPAddress());
 		char* token;
-		std::string ip, port;
+		char* ip, *port;
 		int i = 0;
 		while((token = strsep(&string, ":")) != nullptr)
 		{
 			i++;
-			if (i == 1) ip = token;
+			if (i == 1) ip = strdup(token);
 			if (i == 2) {
-				port = token;
+				port = strdup(token);
 				break;
 			}
 		}
-		sessionManager->StartStreaming(ip.c_str(), port.c_str());
+		sessionManager->StartStreaming(ip, port);
 	}
 
 
@@ -330,4 +350,13 @@ void PPUI::ClosePopup()
 void PPUI::AddPopup(PopupCallback callback)
 {
 	mPopupList.push_back(callback);
+}
+
+///////////////////////////////////////////////////////////////////////////
+// LOG
+///////////////////////////////////////////////////////////////////////////
+
+int PPUI::LogWindow(float x, float y, float w, float h)
+{
+
 }

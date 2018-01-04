@@ -21,3 +21,6 @@ PinBoxServer/PinBoxServer/test.wav
 PinBox/PinBox.VC.VC.opendb
 PinBox/PinBox/backup/
 PinBox/PinBox/data/dog.webp
+Release/r0.1.0/PinBox_hb_r0.1.0.rar
+*.rar
+PinBoxServer/Release/webp.dll

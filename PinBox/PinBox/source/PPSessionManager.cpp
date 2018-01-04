@@ -11,6 +11,7 @@ PPSessionManager::PPSessionManager()
 PPSessionManager::~PPSessionManager()
 {
 	delete m_frameTrackerMutex;
+	if (m_preAllocBuffer != nullptr) free(m_preAllocBuffer);
 }
 
 
@@ -81,7 +82,8 @@ void PPSessionManager::UpdateFrameTracker()
 	// this function should be run on a loop on main thread so that
 	// we display image on main thread only
 	//---------------------------------------------------
-	u8* frameData = nullptr;
+	if (m_preAllocBuffer == nullptr) m_preAllocBuffer = (u8*)malloc(3 * 512 * 256);
+	bool frameAvailable = false;
 	u32 totalSize = 0;
 	// get first frame in tracker ( first frame alway is the newest )
 	m_frameTrackerMutex->Lock();
@@ -96,13 +98,13 @@ void PPSessionManager::UpdateFrameTracker()
 			// incase only 1 session then it is all data we have
 			FramePiece* firstPiece = set->pieces[0];
 			if (firstPiece != nullptr) {
-				frameData = (u8*)malloc(firstPiece->pieceSize);
-				memcpy(frameData, firstPiece->piece, firstPiece->pieceSize);
+				memcpy(m_preAllocBuffer, firstPiece->piece, firstPiece->pieceSize);
 				totalSize = firstPiece->pieceSize;
 				// free piece data
 				firstPiece->release();
 				delete firstPiece;
 				set->pieces.clear();
+				frameAvailable = true;
 			}
 		}
 		else {
@@ -120,25 +122,22 @@ void PPSessionManager::UpdateFrameTracker()
 				normalPieceSize = firstPiece->pieceSize;
 				// we alloc more than 1 pieces size to ensure it enough memory
 				totalSize = normalPieceSize * m_connectedSession + normalPieceSize;
-				frameData = (u8*)malloc(totalSize);
 			}
 			else if (firstPiece->pieceSize < secondPiece->pieceSize)
 			{
 				normalPieceSize = firstPiece->pieceSize;
 				lastPieceSize = secondPiece->pieceSize;
 				totalSize = normalPieceSize * (m_connectedSession - 1) + lastPieceSize;
-				frameData = (u8*)malloc(totalSize);
 			}
 			else
 			{
 				normalPieceSize = secondPiece->pieceSize;
 				lastPieceSize = firstPiece->pieceSize;
 				totalSize = normalPieceSize * (m_connectedSession - 1) + lastPieceSize;
-				frameData = (u8*)malloc(totalSize);
 			}
 			//--------------------------------------------------
-			memcpy(frameData + (firstPiece->pieceIndex *normalPieceSize), firstPiece->piece, firstPiece->pieceSize);
-			memcpy(frameData + (secondPiece->pieceIndex *normalPieceSize), secondPiece->piece, secondPiece->pieceSize);
+			memcpy(m_preAllocBuffer + (firstPiece->pieceIndex *normalPieceSize), firstPiece->piece, firstPiece->pieceSize);
+			memcpy(m_preAllocBuffer + (secondPiece->pieceIndex *normalPieceSize), secondPiece->piece, secondPiece->pieceSize);
 			// free piece data
 			firstPiece->release();
 			delete firstPiece;
@@ -149,7 +148,7 @@ void PPSessionManager::UpdateFrameTracker()
 			for (int i = 2; i < m_connectedSession; i++)
 			{
 				FramePiece* piece = set->pieces[i];
-				memcpy(frameData + (piece->pieceIndex *normalPieceSize), piece->piece, piece->pieceSize);
+				memcpy(m_preAllocBuffer + (piece->pieceIndex *normalPieceSize), piece->piece, piece->pieceSize);
 				if (piece->pieceSize != normalPieceSize)
 				{
 					lastPieceSize = piece->pieceSize;
@@ -162,9 +161,10 @@ void PPSessionManager::UpdateFrameTracker()
 			//--------------------------------------------------
 			if (lastPieceSize == 0) lastPieceSize = normalPieceSize;
 			totalSize = normalPieceSize * (m_connectedSession - 1) + lastPieceSize;
+
+			frameAvailable = true;
 		}
 
-		
 		//--------------------------------------------------
 		// clear frame tracker map from current iter
 		++iter;
@@ -181,7 +181,7 @@ void PPSessionManager::UpdateFrameTracker()
 	m_frameTrackerMutex->Unlock();
 	//----------------------------------------------------
 
-	if(frameData != nullptr)
+	if(frameAvailable)
 	{
 		//-------------------------------------------
 		// init webp decode config
@@ -193,17 +193,24 @@ void PPSessionManager::UpdateFrameTracker()
 		config.options.use_scaling = 1;
 		config.options.scaled_width = nW;
 		config.options.scaled_height = nH;
-		if (!WebPGetFeatures(frameData, totalSize, &config.input) == VP8_STATUS_OK)
+
+		if (!WebPGetFeatures(m_preAllocBuffer, totalSize, &config.input) == VP8_STATUS_OK)
+		{
+			WebPFreeDecBuffer(&config.output);
 			return;
+		}
+			
 		config.output.colorspace = MODE_BGR;
-		if (!WebPDecode(frameData, totalSize, &config) == VP8_STATUS_OK)
+		if (!WebPDecode(m_preAllocBuffer, totalSize, &config) == VP8_STATUS_OK)
+		{
+			WebPFreeDecBuffer(&config.output);
 			return;
+		}
 		//-------------------------------------------
 		// draw
 		PPGraphics::Get()->UpdateTopScreenSprite(config.output.private_memory, nW * nH * 3, nW, nH);
 		//-------------------------------------------
 		// free data
-		free(frameData);
 		WebPFreeDecBuffer(&config.output);
 	}
 	
@@ -297,9 +304,7 @@ void PPSessionManager::StartStreaming(const char* ip, const char* port)
 			m_inputStreamSession->StartSession(ip, port, mMainThreadPrio, [=](PPNetwork *self, u8* data, u32 code)
 			{
 				mManagerState = 2;
-
 				m_inputStreamSession->IN_Start();
-
 				//--------------------------------------------------
 				// when all session is authenticated
 				// start streaming here

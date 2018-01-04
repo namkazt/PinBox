@@ -54,7 +54,7 @@ int main()
 	u32 ret = socInit(SOC_buffer, SOC_BUFFERSIZE);
 	if (ret != 0)
 	{
-		return;
+		return 0;
 	}
 	
 	//---------------------------------------------
@@ -102,12 +102,12 @@ int main()
 		sm->InitInputStream();
 		sm->InitScreenCapture(3);
 
-		bool isStart = false;
 		//---------------------------------------------
 		// Main loop
 		//---------------------------------------------
 		while (aptMainLoop())
 		{
+			gspWaitForVBlank();
 			hidScanInput();
 			irrstScanInput();
 			//---------------------------------------------
@@ -117,17 +117,28 @@ int main()
 			sm->UpdateInputStream(PPUI::getKeyDown(), PPUI::getKeyHold(), PPUI::getKeyUp(), 
 				PPUI::getLeftCircle().dx, PPUI::getLeftCircle().dy, 
 				PPUI::getRightCircle().dx, PPUI::getRightCircle().dy);
+			//---------------------------------------------
+			// Update Frame
+			//---------------------------------------------
+			sm->UpdateFrameTracker();
 
 			//---------------------------------------------
-			PPGraphics::Get()->BeginRender();
+			// Debug
+			//---------------------------------------------
+			if (PPUI::getKeyHold() & KEY_START && PPUI::getKeyHold() & KEY_SELECT) break; // break in order to return to hbmenu
+			if (PPUI::getKeyHold() & KEY_L && PPUI::getKeyHold() & KEY_A)
+			{
+				printf("COMMAND: start stream \n");
+				gfxFlushBuffers();
+				sm->StartStreaming("192.168.31.183", "1234");
+			}
 
+			PPGraphics::Get()->BeginRender();
 			//---------------------------------------------
 			// Draw top UI
 			//---------------------------------------------
 			PPGraphics::Get()->RenderOn(GFX_TOP);
-			sm->UpdateFrameTracker();
 			PPGraphics::Get()->DrawTopScreenSprite();
-
 			//---------------------------------------------
 			// Draw bottom UI
 			//---------------------------------------------
@@ -142,12 +153,10 @@ int main()
 				// if there is no popup then render main UI
 				ret = PPUI::DrawBottomScreenUI(sm);
 			}
-
-			PPGraphics::Get()->EndRender();
 			//---------------------------------------------
+			PPGraphics::Get()->EndRender();
 			if (ret == -1) break;
 
-			gspWaitForVBlank();
 		}
 		//---------------------------------------------
 		// End
