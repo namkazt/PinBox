@@ -1,7 +1,7 @@
 
 [![N|Solid](https://cdn.discordapp.com/attachments/340110838947905538/398531319048699905/test.png)](https://github.com/namkazt/PinBox)
 
-Welcome to Pinbox! Pinbox is a homebrew application for the Nintendo 3DS that streams content from your Windows PC to the 3DS. Keep in mind, Pinbox is currenty in alpha, so bugs will occur! Contact Namkazt on the Pinbox Discord for help. 
+Welcome to Pinbox! Pinbox is a homebrew application (Soon .cia) for the Nintendo 3DS that streams content from your Windows PC to the 3DS. Keep in mind, Pinbox is currenty in alpha, so bugs will occur! Contact Namkazt on the Pinbox Discord for help. 
 
 https://discord.gg/9Qae7fT
 
@@ -10,22 +10,18 @@ https://discord.gg/9Qae7fT
 - Optimized with webp format
 - Emulation Xbox 360 Controller for awesome game support ( by ViGEm )
  - Support for Keyboard mapping with profile select from 3DS side
- - Streaming configable to optimize experients
+ - Streaming configurable to optimize experiments
  
 # Requirements to get Pinbox to run:
-* Visual C++ Redistrbutable for Visual Studio 2015
+* Visual C++ Redistributable for Visual Studio 2015
 https://goo.gl/ijdZ1x
 - Xbox 360 Accessories Software 1.2 (contains the missing device drivers)
 https://goo.gl/xPK8qE
 
 - Make sure Windows is up to date with the latest security patches and updates
-- Install the Virtural Gamepad Emulation Framework
+- Install the Virtual Game pad Emulation Framework
 https://goo.gl/qcuVbp
-Keep in mind: The requirements to Pinbox may change, please check the How-to-get-it-work section of The Pinbox Discord Server first.
-
-#### Notes
-- Enable firewall to allow port 1234 in and out (or disable the firewall when using the software and enable the firewall when done)
-- Make sure both devices are connected to Wifi
+- Keep in mind: The requirements to Pinbox may change, please check the #how-to-setup section of The Pinbox Discord Server first.
 
 #### Notes
 - Enable firewall to allow port 1234 in and out (or disable the firewall when using the software and enable the firewall when done)
@@ -35,7 +31,10 @@ Keep in mind: The requirements to Pinbox may change, please check the How-to-get
 
 Tutorial Video (Thanks to @GameInCanada): https://www.youtube.com/watch?v=Q-R2cy-vBgY
 
-Please follow the instructions in the Pinbox Discord since the instructions are changing all the time and will be updated constantly.
-## If you are having issues don't hesitate to ask for help in our offical discord channel! 
+# Troubleshooting
+
+Please follow the instructions in the Pinbox Discord since the troubleshooting requirements are changing all the time and will be updated constantly.
+
+## If you are having issues don't hesitate to ask for help in our official discord channel! 
 ## https://discord.gg/9Qae7fT
 
