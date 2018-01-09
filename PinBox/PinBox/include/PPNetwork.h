@@ -39,10 +39,9 @@ private:
 	// in-out variables
 	u32							g_tag = 0;
 	u32							g_waitForSize = 0;
+
 	u32							g_receivedCounter = 0;
 	u8*							g_receivedBuffer = nullptr;
-	u8*							g_tmpReceivedBuffer = nullptr;
-	u32							g_tmpReceivedSize = 0;
 	// thread
 	Thread						g_thread = nullptr;
 	volatile bool				g_threadExit = false;
@@ -56,10 +55,9 @@ private:
 private:
 	static void ppNetwork_threadRun(void * arg);
 	void ppNetwork_listenToServer();
+	void ppNetwork_processPoolData();
 	void ppNetwork_connectToServer();
 	void ppNetwork_closeConnection();
-	void ppNetwork_onReceivedRequest();
-	bool ppNetwork_processTmpBufferData();
 	void ppNetwork_sendMessage();
 
 public:

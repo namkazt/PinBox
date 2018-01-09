@@ -170,10 +170,9 @@ void InputStreamSession::LoadInputConfig()
 	}
 }
 
-void InputStreamSession::UpdateInput(u32 down, u32 held, u32 up, short cx, short cy, short ctx, short cty)
+void InputStreamSession::UpdateInput(u32 down, u32 up, short cx, short cy, short ctx, short cty)
 {
 	m_OldDown = down;
-	m_OldHold = held;
 	m_OldUp = up;
 	m_OldCX = cx;
 	m_OldCY = cy;
@@ -199,14 +198,6 @@ void InputStreamSession::ProcessInput()
 		for (uint8_t i = 0; i < 32; ++i)
 		{
 			if (m_OldDown & BIT(i))
-			{
-				if (profile->mappings.find(i) != profile->mappings.end())
-				{
-					FakeInput::Keyboard::pressKey(profile->mappings[i]);
-				}
-			}
-
-			if (m_OldHold & BIT(i))
 			{
 				if (profile->mappings.find(i) != profile->mappings.end())
 				{
@@ -246,14 +237,6 @@ void InputStreamSession::ProcessInput()
 				}
 			}
 
-			if (m_OldHold & BIT(i))
-			{
-				if (profile->mappings.find(i) != profile->mappings.end())
-				{
-					m_x360Report.wButtons |= profile->controller[i];
-				}
-			}
-
 			if (m_OldUp & BIT(i))
 			{
 				if (profile->mappings.find(i) != profile->mappings.end())
@@ -264,21 +247,19 @@ void InputStreamSession::ProcessInput()
 		}
 
 		// L
-		if (m_OldDown & BIT(14) || m_OldHold & BIT(14))
+		if (m_OldDown & BIT(14))
 		{
 			m_x360Report.bLeftTrigger = 255;
-		}
-		if (m_OldUp & BIT(14))
+		}else if (m_OldUp & BIT(14))
 		{
 			m_x360Report.bLeftTrigger = 0;
 		}
 
 		// R
-		if (m_OldDown & BIT(15) || m_OldHold & BIT(15))
+		if (m_OldDown & BIT(15))
 		{
 			m_x360Report.bRightTrigger = 255;
-		}
-		if (m_OldUp & BIT(15))
+		}else if (m_OldUp & BIT(15))
 		{
 			m_x360Report.bRightTrigger = 0;
 		}
@@ -314,15 +295,19 @@ void InputStreamSession::ProcessInput()
 			std::cout << "[Error] Error when submit report update to X360." << std::endl << std::flush;
 		}
 
-		std::cout << "[DEBUG] LStick: " << m_x360Report.sThumbLX << " : " << m_x360Report.sThumbLY << " RStick: " << m_x360Report.sThumbRX << " : " << m_x360Report.sThumbRX  << std::endl << std::flush;
+		//std::cout << "[DEBUG] LStick: " << m_x360Report.sThumbLX << " : " << m_x360Report.sThumbLY << " RStick: " << m_x360Report.sThumbRX << " : " << m_x360Report.sThumbRX  << std::endl << std::flush;
 
 		// reset
-		m_OldDown = 0;
+		//m_OldDown = 0;
 		m_OldUp = 0;
 	}
 	
 }
 
+void InputStreamSession::ChangeInputProfile(std::string profileName)
+{
+
+}
 
 void InputStreamSession::initMapKey()
 {
@@ -420,6 +405,7 @@ void InputStreamSession::initMapKey()
 
 void InputStreamSession::initVIGEM()
 {
+	m_Xbox360Enable = false;
 	//
 	// Allocate driver connection object
 	// 
@@ -454,14 +440,5 @@ void InputStreamSession::initVIGEM()
 	std::cout << "[X360] Added virtual x360 device successfully." << std::endl << std::flush;
 
 	XUSB_REPORT_INIT(&m_x360Report);
-}
-
-void InputStreamSession::x360Callback(PVIGEM_CLIENT client, PVIGEM_TARGET target, UCHAR largeMotor, UCHAR smallMotor, UCHAR ledNumber)
-{
-	printf("X360 Response - Serial: %d, LM: %d, SM: %d, LED: %d\n",
-		vigem_target_get_index(target),
-		largeMotor,
-		smallMotor,
-		ledNumber);
-	vigem_target_x360_unregister_notification(target);
+	m_Xbox360Enable = true;
 }

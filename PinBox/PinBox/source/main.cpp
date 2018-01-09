@@ -25,7 +25,7 @@
 void initDbgConsole()
 {
 #ifdef __CONSOLE_DEBUGING__
-	consoleInit(GFX_BOTTOM, NULL);
+	consoleInit(GFX_TOP, NULL);
 	printf("Console log initialized\n");
 #endif
 }
@@ -97,41 +97,40 @@ int main()
 	// wifiStatus = 2 : New 3DS internet
 	//---------------------------------------------
 	if (wifiStatus) {
-		osSetSpeedupEnable(1);
 		
 		sm->InitInputStream();
-		sm->InitScreenCapture(3);
 
+		if(wifiStatus == 1)
+		{
+			// New 3DS
+			osSetSpeedupEnable(1);
+			sm->InitScreenCapture(1);
+		}else
+		{
+			// Old 3ds
+			sm->InitScreenCapture(1);
+		}
+
+		sm->StartFPSCounter();
 		//---------------------------------------------
 		// Main loop
 		//---------------------------------------------
 		while (aptMainLoop())
 		{
-			//gspWaitForVBlank();
 			hidScanInput();
 			irrstScanInput();
 			//---------------------------------------------
 			// Update Input
 			//---------------------------------------------
 			PPUI::UpdateInput();
-			sm->UpdateInputStream(PPUI::getKeyDown(), PPUI::getKeyHold(), PPUI::getKeyUp(), 
+			sm->UpdateInputStream(PPUI::getKeyDown(), PPUI::getKeyUp(), 
 				PPUI::getLeftCircle().dx, PPUI::getLeftCircle().dy, 
 				PPUI::getRightCircle().dx, PPUI::getRightCircle().dy);
+
 			//---------------------------------------------
 			// Update Frame
 			//---------------------------------------------
-			sm->UpdateFrameTracker();
-
-			//---------------------------------------------
-			// Debug
-			//---------------------------------------------
-			//if (PPUI::getKeyHold() & KEY_START && PPUI::getKeyHold() & KEY_SELECT) break; // break in order to return to hbmenu
-			//if (PPUI::getKeyHold() & KEY_L && PPUI::getKeyHold() & KEY_A)
-			//{
-			//	printf("COMMAND: start stream \n");
-			//	gfxFlushBuffers();
-			//	sm->StartStreaming("192.168.31.183", "1234");
-			//}
+			sm->UpdateVideoFrame();
 
 			PPGraphics::Get()->BeginRender();
 			//---------------------------------------------
@@ -145,7 +144,6 @@ int main()
 			{
 				PPUI::DrawIdleTopScreen(sm);
 			}
-			
 			//---------------------------------------------
 			// Draw bottom UI
 			//---------------------------------------------
@@ -171,8 +169,11 @@ int main()
 			
 			//---------------------------------------------
 			PPGraphics::Get()->EndRender();
-			if (ret == -1) break;
 
+			sm->CollectFPSData();
+
+
+			if (ret == -1) break;
 		}
 		//---------------------------------------------
 		// End

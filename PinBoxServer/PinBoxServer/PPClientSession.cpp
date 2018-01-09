@@ -30,31 +30,27 @@ void PPClientSession::DisconnectFromServer()
 
 void PPClientSession::GetPieceDataAndSend()
 {
-	if (g_ss_isReceived)
-	{
-		FramePiece* piece = m_server->ScreenCapturer->getNewFramePieces();
-		if (piece == nullptr) return;
-		if (g_ss_currentWorkingFrame == piece->frameIndex) return;
-		g_ss_isReceived = false;
-		//-------------------------------------------------------
-		// rebuild message content with
-		// u32 : frame index
-		// u8 : piece index
-		// u8* : piece data
-		u8* rebuildData = (u8*)malloc(piece->size + 5);
-		u8* pointer = rebuildData;
-		WRITE_U32(pointer, piece->frameIndex);
-		WRITE_U8(pointer, piece->index);
-		memcpy(pointer, piece->piece, piece->size);
-		g_ss_currentWorkingFrame = piece->frameIndex;
-		//-------------------------------------------------------
-		//std::cout << "SEND MESSAGE FRAME #" << piece->frameIndex << " PIECE #" << (u32)piece->index << " to " << g_connection->remote_addr() << " | msg size: " << (piece->size + 5) << std::endl;
-		sendMessageWithCodeAndData(MSG_CODE_REQUEST_NEW_SCREEN_FRAME, rebuildData, piece->size + 5);
-		//-------------------------------------------------------
-		// no need to free framePiece here. screen capture will take care of it.
-		free(rebuildData);
-		
-	}
+	FramePiece* piece = m_server->ScreenCapturer->getNewFramePieces();
+	if (piece == nullptr) return;
+	if (g_ss_currentWorkingFrame == piece->frameIndex) return;
+	g_ss_isReceived = false;
+	//-------------------------------------------------------
+	// rebuild message content with
+	// u32 : frame index
+	// u8 : piece index
+	// u8* : piece data
+	u8* rebuildData = (u8*)malloc(piece->size + 5);
+	u8* pointer = rebuildData;
+	WRITE_U32(pointer, piece->frameIndex);
+	WRITE_U8(pointer, piece->index);
+	memcpy(pointer, piece->piece, piece->size);
+	g_ss_currentWorkingFrame = piece->frameIndex;
+	//-------------------------------------------------------
+	//std::cout << "SEND MESSAGE FRAME #" << piece->frameIndex << " PIECE #" << (u32)piece->index << " to " << g_connection->remote_addr() << " | msg size: " << (piece->size + 5) << std::endl;
+	sendMessageWithCodeAndData(MSG_CODE_REQUEST_NEW_SCREEN_FRAME, rebuildData, piece->size + 5);
+	//-------------------------------------------------------
+	// no need to free framePiece here. screen capture will take care of it.
+	free(rebuildData);
 }
 
 void PPClientSession::ProcessMessage(evpp::Buffer* msg)
@@ -283,6 +279,9 @@ void PPClientSession::preprocessMessageCode(u8 code)
 		case MSG_CODE_REQUEST_STOP_INPUT_CAPTURE:
 			//TODO: stop input 
 			break;
+		case MSG_CODE_SEND_INPUT_CAPTURE_IDLE:
+			//TODO: stop input 
+			break;
 		}
 	}
 }
@@ -302,7 +301,7 @@ void PPClientSession::processMessageBody(u8* buffer, u8 code)
 			int8_t waitForReceived = READ_U8(buffer, 0);
 			bool _waitForClientReceived = !(waitForReceived == 0);
 			// smoother frame
-			u8 _waitForFrame = READ_U32(buffer, 1);
+			u32 _waitForFrame = READ_U32(buffer, 1);
 			// smoother frame
 			u32 _outputQuality = READ_U32(buffer, 5);
 			// smoother frame
@@ -328,14 +327,13 @@ void PPClientSession::processMessageBody(u8* buffer, u8 code)
 			//--------------------------------------
 			//read input data
 			u32 down = READ_U32(buffer, 0);
-			u32 held = READ_U32(buffer, 4);
-			u32 up = READ_U32(buffer, 8);
-			short cx = READ_U16(buffer, 12);
-			short cy = READ_U16(buffer, 14);
-			short ctx = READ_U16(buffer, 16);
-			short cty = READ_U16(buffer, 18);
+			u32 up = READ_U32(buffer, 4);
+			short cx = READ_U16(buffer, 8);
+			short cy = READ_U16(buffer, 10);
+			short ctx = READ_U16(buffer, 12);
+			short cty = READ_U16(buffer, 14);
 			//--------------------------------------
-			m_server->InputStreamer->UpdateInput(down, held, up, cx, cy, ctx, cty);
+			m_server->InputStreamer->UpdateInput(down, up, cx, cy, ctx, cty);
 			break;
 		}
 		default: 

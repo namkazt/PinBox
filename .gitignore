@@ -26,3 +26,8 @@ Release/r0.1.0/PinBox_hb_r0.1.0.rar
 PinBoxServer/Release/webp.dll
 PinBox/PinBox/PinBox-strip.elf
 *.cia
+*.exe
+PinBoxServer/Debug/PinBoxServer.exe
+PinBoxServer/Debug/PinBoxServer.ilk
+PinBoxServer/Debug/PinBoxServer.pdb
+PinBoxServer/Debug/PinBoxServer.ilk

@@ -44,6 +44,8 @@ public:
 	static int DrawNumberInputScreen( const char* label, ResultCallback cancel, ResultCallback ok);
 	static int DrawBottomScreenUI(PPSessionManager *sessionManager);
 	static int DrawIdleBottomScreen(PPSessionManager *sessionManager);
+
+	static void DrawFPS(PPSessionManager *sessionManager);
 	
 	// BUTTON
 	static bool FlatButton(float x, float y, float w, float h, const char* label);
@@ -53,6 +55,7 @@ public:
 	// TEXT
 	static void InputField(float x, float y, float w, float h, const char* defaultValue, const char* placeHolder);
 	static void LabelBox(float x, float y, float w, float h, const char* label, ppColor bgColor, ppColor txtColor);
+	static void LabelBoxLeft(float x, float y, float w, float h, const char* label, ppColor bgColor, ppColor txtColor);
 
 	// POPUP
 	static bool HasPopup();

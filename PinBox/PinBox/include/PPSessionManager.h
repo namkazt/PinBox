@@ -17,11 +17,10 @@ typedef std::function<void(int code)> PPNotifyCallback;
 
 class PPSessionManager
 {
-private:
+public:
 
 	PPSession*										m_inputStreamSession = nullptr;
 	u32												m_OldDown;
-	u32												m_OldHold;
 	u32												m_OldUp;
 	short											m_OldCX;
 	short											m_OldCY;
@@ -30,6 +29,19 @@ private:
 	bool											m_initInputFirstFrame = false;
 
 	s32												mMainThreadPrio = 0;
+
+	u64												mLastTime = 0;
+	float											mCurrentFPS = 0.0f;
+	u32												mFrames = 0;
+
+	u64												mLastTimeGetFrame = 0;
+	float											mVideoFPS = 0.0f;
+	u32												mVideoFrame = 0;
+	bool											mReceivedFirstFrame = false;
+
+	Thread											g_thread = nullptr;
+	volatile bool									g_threadExit = false;
+	Mutex*											g_frameMutex;
 
 	std::vector<PPSession*>							m_screenCaptureSessions;
 	int												m_commandSessionIndex = 0;
@@ -41,7 +53,6 @@ private:
 	std::map<int, FrameSet*>						m_frameTracker;
 	Mutex*											m_frameTrackerMutex;
 	u32												m_currentDisplayFrame = 0;
-	u8*												m_preAllocBuffer = nullptr;
 	//------------------------------------------
 	// UI ref variables
 	//------------------------------------------
@@ -56,14 +67,20 @@ public:
 	void StopStreaming();
 	void Close();
 
+	void StartFPSCounter();
+	void CollectFPSData();
+
 	void InitInputStream();
-	void UpdateInputStream(u32 down, u32 hold, u32 up, short cx, short cy, short ctx, short cty);
+	void UpdateInputStream(u32 down, u32 up, short cx, short cy, short ctx, short cty);
 
 	void SafeTrack(FramePiece* piece);
-	void UpdateFrameTracker();
+	void StartDecodeThread();
+	void UpdateVideoFrame();
 
-	int GetManagerState() { return mManagerState; };
-
+	int GetManagerState() const { return mManagerState; };
+	float GetFPS() const { return mCurrentFPS; }
+	float GetVideoFPS() const { return mVideoFPS; }
+	int GetFrameLeft() const { return m_frameTracker.size(); }
 	//------------------------------------------
 	// UI ref functions
 	//------------------------------------------

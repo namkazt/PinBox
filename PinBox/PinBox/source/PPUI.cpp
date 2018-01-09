@@ -124,7 +124,6 @@ int PPUI::DrawIdleTopScreen(PPSessionManager* sessionManager)
 {
 	PPGraphics::Get()->DrawRectangle(0, 0, 400, 240, rgb(26, 188, 156));
 	LabelBox(0, 0, 400, 240, "PinBox", rgb(26, 188, 156), rgb(255, 255, 255));
-	return 0;
 }
 
 int PPUI::DrawNumberInputScreen(const char* label, ResultCallback cancel, ResultCallback ok)
@@ -276,6 +275,10 @@ int PPUI::DrawBottomScreenUI(PPSessionManager* sessionManager)
 	{
 		return -1;
 	}
+
+
+	DrawFPS(sessionManager);
+
 	return 0;
 }
 
@@ -289,9 +292,26 @@ int PPUI::DrawIdleBottomScreen(PPSessionManager* sessionManager)
 	}
 	// label
 	LabelBox(0, 0, 320, 240, "Touch screen to wake up", rgb(26, 188, 156), rgb(255, 255, 255));
+
+	DrawFPS(sessionManager);
+
 	return 0;
 }
 
+void PPUI::DrawFPS(PPSessionManager* sessionManager)
+{
+	// render app FPS
+	const float fps = sessionManager->GetFPS();
+	char fpsBuffer[16];
+	snprintf(fpsBuffer, sizeof fpsBuffer, "FPS: %.1f", fps);
+	LabelBoxLeft(5, 200, 80, 20, fpsBuffer, rgb(26, 188, 156), rgb(255, 255, 255));
+
+	// render video FPS
+	const float videoFps = sessionManager->GetVideoFPS();
+	char videoFpsBuffer[50];
+	snprintf(videoFpsBuffer, sizeof videoFpsBuffer, "VFPS: %.1f / %d", videoFps, sessionManager->GetFrameLeft());
+	LabelBoxLeft(5, 220, 80, 20, videoFpsBuffer, rgb(26, 188, 156), rgb(255, 255, 255));
+}
 
 ///////////////////////////////////////////////////////////////////////////
 // BUTTON
@@ -353,6 +373,20 @@ void PPUI::LabelBox(float x, float y, float w, float h, const char* label, ppCol
 	char buffer[100];
 	snprintf(buffer, sizeof buffer, "%f  %f", tSize.x, tSize.y);
 	PPGraphics::Get()->DrawText(buffer, x , y - 10, 0.3f, 0.3f, txtColor, false);
+#endif
+}
+
+void PPUI::LabelBoxLeft(float x, float y, float w, float h, const char* label, ppColor bgColor, ppColor txtColor)
+{
+	PPGraphics::Get()->DrawRectangle(x, y, w, h, bgColor);
+	ppVector2 tSize = PPGraphics::Get()->GetTextSize(label, 0.5f, 0.5f);
+	float startY = (h - tSize.y) / 2.0f;
+	PPGraphics::Get()->DrawText(label, x, y + startY, 0.5f, 0.5f, txtColor, false);
+
+#ifdef UI_DEBUG
+	char buffer[100];
+	snprintf(buffer, sizeof buffer, "%f  %f", tSize.x, tSize.y);
+	PPGraphics::Get()->DrawText(buffer, x, y - 10, 0.3f, 0.3f, txtColor, false);
 #endif
 }
 

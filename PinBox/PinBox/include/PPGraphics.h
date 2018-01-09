@@ -103,7 +103,6 @@ private:
 
 	// top screen sprite
 	ppSprite*						mTopScreenSprite;
-	u8*								mPreAllocBuffer;
 
 	// Temporary memory pool
 	void							*memoryPoolAddr = NULL;

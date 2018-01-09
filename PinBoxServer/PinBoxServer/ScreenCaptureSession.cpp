@@ -5,6 +5,7 @@
 #include "webp/encode.h"
 #include "PPServer.h"
 #include "ServerConfig.h"
+#include <locale>
 
 ScreenCaptureSession::ScreenCaptureSession()
 {
@@ -13,8 +14,7 @@ ScreenCaptureSession::ScreenCaptureSession()
 
 ScreenCaptureSession::~ScreenCaptureSession()
 {
-	m_frameGrabber.pause();
-	m_frameGrabber.destroy();
+	m_frameGrabber->pause();
 }
 
 
@@ -22,14 +22,32 @@ void ScreenCaptureSession::initSCreenCapturer(PPServer* parent)
 {
 	m_server = parent;
 	//---------------------------------------------------------------------
-	m_frameGrabber = SL::Screen_Capture::CreateScreeCapture([]()
+	m_frameGrabber = SL::Screen_Capture::CreateCaptureConfiguration([]()
 	{
+		//std::vector<SL::Screen_Capture::Window> windows = SL::Screen_Capture::GetWindows();
+		//std::string srchterm = "vlc media player";
+		//// convert to lower case for easier comparisons
+		//std::transform(srchterm.begin(), srchterm.end(), srchterm.begin(), [](char c) { return std::tolower(c, std::locale()); });
+		//std::vector<SL::Screen_Capture::Window> filtereditems;
+		//for (auto &a : windows) {
+		//	std::string name = a.Name;
+		//	std::transform(name.begin(), name.end(), name.begin(), [](char c) { return std::tolower(c, std::locale()); });
+		//	if (name.find(srchterm) != std::string::npos) {
+		//		filtereditems.push_back(a);
+		//		std::cout << "ADDING WINDOW  Height " << a.Size.y << "  Width  " << a.Size.x << "   " << a.Name << std::endl;
+		//	}
+		//}
+		//return filtereditems;
+
+
 		auto mons = SL::Screen_Capture::GetMonitors();
 		std::vector<SL::Screen_Capture::Monitor> selectedMonitor = std::vector<SL::Screen_Capture::Monitor>();
-		//-------------------------- >> Index 0
-		selectedMonitor.push_back(mons[ServerConfig::Get()->MonitorIndex]);
+		//-------------------------- 
+		SL::Screen_Capture::Monitor monitor = mons[ServerConfig::Get()->MonitorIndex];
+		
+		selectedMonitor.push_back(monitor);
 		return selectedMonitor;
-	}).onNewFrame([&](const SL::Screen_Capture::Image& img, const SL::Screen_Capture::Monitor& monitor)
+	})->onNewFrame([&](const SL::Screen_Capture::Image& img, const SL::Screen_Capture::Monitor& monitor)
 		{
 			if (!m_isStartStreaming) return;
 			if (g_ss_onClientReallyClosed != nullptr) {
@@ -62,51 +80,47 @@ void ScreenCaptureSession::initSCreenCapturer(PPServer* parent)
 					++iter;
 				}
 			}
-			//-------------------------------------------------
-			for (std::map<std::string, PPClientSession*> ::iterator iter = m_server->clientSessions.begin(); iter != m_server->clientSessions.end(); ++iter)
-			{
-				if(iter->second->g_ss_isReceived)
-				{
-					iter->second->GetPieceDataAndSend();
-				}
-			}
+
 			//-------------------------------------------------
 			// check if we need continue split
-			if(m_frameCacheMap.size() > 0)
+			if (g_ss_waitForClientReceived)
 			{
-				if (g_ss_waitForClientReceived)
-				{
-					g_ss_currentWaitFrame++;
-					if (g_ss_currentWaitFrame > g_ss_waitForFrame)
-					{
-						splitFrameToMultiPieces(img);
-						g_ss_currentWaitFrame = 0;
-					}
-				}else
+				g_ss_currentWaitFrame++;
+				if (g_ss_currentWaitFrame >= g_ss_waitForFrame)
 				{
 					splitFrameToMultiPieces(img);
 					g_ss_currentWaitFrame = 0;
 				}
-			}else
-			{
-				g_ss_currentWaitFrame = 0;
-				splitFrameToMultiPieces(img);
 			}
+			else
+			{
+				splitFrameToMultiPieces(img);
+				g_ss_currentWaitFrame = 0;
+			}
+
+			//-------------------------------------------------
+			for (std::map<std::string, PPClientSession*> ::iterator iter = m_server->clientSessions.begin(); iter != m_server->clientSessions.end(); ++iter)
+			{
+				iter->second->GetPieceDataAndSend();
+			}		
 		}
-	).start_capturing();
-	m_frameGrabber.setFrameChangeInterval(std::chrono::nanoseconds(10));//100 ms
-	m_frameGrabber.pause();
+	)->start_capturing();
+	//m_frameGrabber->setMouseChangeInterval(std::chrono::nanoseconds(16));
+	m_frameGrabber->setFrameChangeInterval(std::chrono::milliseconds(33));//100 ms
+	m_frameGrabber->pause();
 }
 
 void ScreenCaptureSession::splitFrameToMultiPieces(const SL::Screen_Capture::Image& img)
 {
-	u32 newW = 400.0f * ((float)g_ss_outputScale / 100.0f);
-	u32 newH = 240.0f * ((float)g_ss_outputScale / 100.0f);
+	float iw = 400;
+	float ih = 240;
+	u32 newW = iw * ((float)g_ss_outputScale / 100.0f);
+	u32 newH = ih * ((float)g_ss_outputScale / 100.0f);
 	//===============================================================
 	// get buffer data from image frame
 	auto size = Width(img) * Height(img) * 3;
 	u8* imgBuffer = (u8*)malloc(size);
-	SL::Screen_Capture::ExtractAndConvertToRGB(img, (char*)imgBuffer);
+	SL::Screen_Capture::ExtractAndConvertToRGB(img, (unsigned char*)imgBuffer, size);
 	//===============================================================
 	// webp encode
 	try {
@@ -154,6 +168,7 @@ void ScreenCaptureSession::splitFrameToMultiPieces(const SL::Screen_Capture::Ima
 		// we got image here. now split it
 		u32 normalPieceSize = writer.size / m_numberClients;
 		u32 lastPieceSize = writer.size - (normalPieceSize * m_numberClients) + normalPieceSize;
+		std::cout << "Frame size : " << writer.size << " | Piece size: " << normalPieceSize << std::endl << std::flush;
 		//===============================================================
 		std::vector<FramePiece*> framePieces;
 		for(int i = 0; i < m_numberClients; i++)
@@ -176,7 +191,6 @@ void ScreenCaptureSession::splitFrameToMultiPieces(const SL::Screen_Capture::Ima
 		m_frameIndex++;
 		m_frameCacheMap[m_frameIndex] = framePieces;
 		m_frameCacheState[m_frameIndex] = 0;
-
 		//===============================================================
 		// clean up 
 		WebPMemoryWriterClear(&writer);
@@ -186,6 +200,7 @@ void ScreenCaptureSession::splitFrameToMultiPieces(const SL::Screen_Capture::Ima
 	{
 		free(imgBuffer);
 	}
+
 }
 
 int ScreenCaptureSession::getAvaliableFramePiece(u32 frameIndex)
@@ -209,7 +224,10 @@ int ScreenCaptureSession::getAvaliableFramePiece(u32 frameIndex)
 		auto iter = m_frameCacheState.find(frameIndex);
 		if (iter != m_frameCacheState.end())
 		{
-			if (iter->second == m_numberClients) return -1;
+			if (iter->second == m_numberClients) {
+				m_sendingFrameIndex++;
+				return getAvaliableFramePiece(m_sendingFrameIndex);
+			}
 			u32 result = iter->second;
 			iter->second++;
 			return result;
@@ -220,7 +238,7 @@ int ScreenCaptureSession::getAvaliableFramePiece(u32 frameIndex)
 
 FramePiece* ScreenCaptureSession::getNewFramePieces()
 {
-	int avaiablePieceIndex = getAvaliableFramePiece(m_frameIndex);
+	int avaiablePieceIndex = getAvaliableFramePiece(m_sendingFrameIndex);
 	if (avaiablePieceIndex == -1) return nullptr;
 	return m_frameCacheMap[m_frameIndex][avaiablePieceIndex];
 }
@@ -230,13 +248,13 @@ void ScreenCaptureSession::startStream()
 	m_isStartStreaming = true;
 	m_frameIndex = 0;
 	g_ss_currentWaitFrame = 0;
-	m_frameGrabber.resume();
+	m_frameGrabber->resume();
 }
 
 void ScreenCaptureSession::stopStream()
 {
 	m_isStartStreaming = false;
-	m_frameGrabber.pause();
+	m_frameGrabber->pause();
 	for (auto iter = m_frameCacheState.begin(); iter != m_frameCacheState.end();++iter)
 	{
 		// free memory

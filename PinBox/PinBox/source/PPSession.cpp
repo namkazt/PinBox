@@ -70,7 +70,6 @@ void PPSession::initSession()
 			{
 				delete g_tmpMessage;
 				g_tmpMessage = nullptr;
-				printf("Parse message header fail. remove message.\n");
 			}
 			break;
 		}
@@ -114,9 +113,6 @@ void PPSession::initSession()
 		}
 		default: break;
 		}
-		//------------------------------------------------------
-		// free buffer after use
-		free(buffer);
 	});
 }
 
@@ -443,19 +439,18 @@ void PPSession::IN_Start()
 	IN_isStart = true;
 }
 
-bool PPSession::IN_SendInputData(u32 down, u32 hold, u32 up, short cx, short cy, short ctx, short cty)
+bool PPSession::IN_SendInputData(u32 down, u32 up, short cx, short cy, short ctx, short cty)
 {
 	if (!IN_isStart) return false;
 	PPMessage *msg = new PPMessage();
 	msg->BuildMessageHeader(MSG_CODE_SEND_INPUT_CAPTURE);
 	//-----------------------------------------------
 	// alloc msg content block
-	size_t contentSize = 20;
+	size_t contentSize = 16;
 	u8* contentBuffer = (u8*)malloc(sizeof(u8) * contentSize);
 	u8* pointer = contentBuffer;
 	//----------------------------------------------
 	WRITE_U32(pointer, down);
-	WRITE_U32(pointer, hold);
 	WRITE_U32(pointer, up);
 	WRITE_U16(pointer, cx);
 	WRITE_U16(pointer, cy);
@@ -470,6 +465,15 @@ bool PPSession::IN_SendInputData(u32 down, u32 hold, u32 up, short cx, short cy,
 	return true;
 }
 
+void PPSession::IN_SendIdleInput()
+{
+	PPMessage *msg = new PPMessage();
+	msg->BuildMessageHeader(MSG_CODE_SEND_INPUT_CAPTURE_IDLE);
+	u8* msgBuffer = msg->BuildMessageEmpty();
+	g_network->SendMessageData(msgBuffer, msg->GetMessageSize());
+	g_network->SetRequestData(MSG_COMMAND_SIZE, PPREQUEST_HEADER);
+	delete msg;
+}
 
 void PPSession::IN_Stop()
 {

@@ -5,13 +5,14 @@
 PPSessionManager::PPSessionManager()
 {
 	m_frameTrackerMutex = new Mutex();
+	g_frameMutex = new Mutex();
 }
 
 
 PPSessionManager::~PPSessionManager()
 {
 	delete m_frameTrackerMutex;
-	if (m_preAllocBuffer != nullptr) free(m_preAllocBuffer);
+	delete g_frameMutex;
 }
 
 
@@ -50,7 +51,6 @@ void PPSessionManager::SafeTrack(FramePiece* piece)
 			// if this frame is complete then move it to complete list
 			if(m_frameTrackTemp[i]->receivedPieces == m_connectedSession)
 			{
-				//printf("Add new frame into pool : \n");
 				m_frameTracker[m_frameTrackTemp[i]->frameIndex] = m_frameTrackTemp[i];
 				// remove this track when all complete
 				m_frameTrackTemp.erase(m_frameTrackTemp.begin() + i);
@@ -74,146 +74,226 @@ void PPSessionManager::SafeTrack(FramePiece* piece)
 		}
 	}
 	m_frameTrackerMutex->Unlock();
+	
 }
 
-void PPSessionManager::UpdateFrameTracker()
+
+static u8* mStaticPreAllocBuffer = nullptr;
+static u8* mStaticFrameBuffer = nullptr;
+static volatile bool mHaveNewFrame = false;
+
+void UpdateFrameTracker(void *arg)
 {
+	//printf("[Decoder] Start thread.\n");
+	//gfxFlushBuffers();
+
+	PPSessionManager* self = (PPSessionManager*)arg;
+	if (self == nullptr) {
+		//printf("[Decoder] invalid session manager.\n");
+		//gfxFlushBuffers();
+		return;
+	}
 	//---------------------------------------------------
 	// this function should be run on a loop on main thread so that
 	// we display image on main thread only
 	//---------------------------------------------------
-	if (m_preAllocBuffer == nullptr) m_preAllocBuffer = (u8*)malloc(3 * 512 * 256);
-	bool frameAvailable = false;
-	u32 totalSize = 0;
-	// get first frame in tracker ( first frame alway is the newest )
-	m_frameTrackerMutex->Lock();
+	//-------------------------------------------
+	// init webp decode config=
+	u32 nW = 400, nH = 240;
+	WebPDecoderConfig webpDecodeConfig;
+	WebPInitDecoderConfig(&webpDecodeConfig);
+	webpDecodeConfig.options.no_fancy_upsampling = 1;
+	webpDecodeConfig.output.colorspace = MODE_BGR;
+	webpDecodeConfig.output.is_external_memory = 1;
+	webpDecodeConfig.output.u.RGBA.size = 3 * 512 * 256;
+	webpDecodeConfig.output.u.RGBA.rgba = mStaticPreAllocBuffer;
+	webpDecodeConfig.output.u.RGBA.stride = 3 * nW;
 
-	auto iter = m_frameTracker.begin();
-	if (iter != m_frameTracker.end())
-	{
-		FrameSet* set = iter->second;
-		if (m_connectedSession == 1)
+
+	u64 sleepDuration = 1000000ULL * 1;
+	while (!self->g_threadExit) {
+
+
+
+		bool frameAvailable = false;
+		u32 totalSize = 0;
+		// get first frame in tracker ( first frame alway is the newest )
+		self->m_frameTrackerMutex->Lock();
+		std::map<int, FrameSet*>::reverse_iterator iter = self->m_frameTracker.rbegin();
+		if (iter != self->m_frameTracker.rend())
 		{
-			//--------------------------------------------------
-			// incase only 1 session then it is all data we have
-			FramePiece* firstPiece = set->pieces[0];
-			if (firstPiece != nullptr) {
-				memcpy(m_preAllocBuffer, firstPiece->piece, firstPiece->pieceSize);
-				totalSize = firstPiece->pieceSize;
+			FrameSet* set = iter->second;
+			self->m_frameTrackerMutex->Unlock();
+
+			if (self->m_connectedSession == 1)
+			{
+				//--------------------------------------------------
+				// incase only 1 session then it is all data we have
+				FramePiece* firstPiece = set->pieces[0];
+				if (firstPiece != nullptr) {
+					//memcpy(mStaticPreAllocBuffer, firstPiece->piece, firstPiece->pieceSize);
+					totalSize = firstPiece->pieceSize;
+					if (!WebPGetFeatures(firstPiece->piece, totalSize, &webpDecodeConfig.input) == VP8_STATUS_OK)
+					{
+						WebPFreeDecBuffer(&webpDecodeConfig.output);
+						return;
+					}
+					if (!WebPDecode(firstPiece->piece, totalSize, &webpDecodeConfig) == VP8_STATUS_OK)
+					{
+						WebPFreeDecBuffer(&webpDecodeConfig.output);
+						return;
+					}
+					// free piece data
+					firstPiece->release();
+					delete firstPiece;
+					set->pieces.clear();
+					frameAvailable = true;
+				}
+			}
+			else {
+
+				WebPIDecoder* idec = WebPINewDecoder(&webpDecodeConfig.output);
+
+				//--------------------------------------------------
+				// generate frame
+				u32 normalPieceSize = 0;
+				u32 lastPieceSize = 0;
+				// we get first 2 piece to use as data to guess message size
+				FramePiece* firstPiece = set->pieces[0];
+				FramePiece* secondPiece = set->pieces[1];
+				//--------------------------------------------------
+				if (firstPiece->pieceSize == secondPiece->pieceSize)
+				{
+					// this case we only know normal piece size
+					normalPieceSize = firstPiece->pieceSize;
+					// we alloc more than 1 pieces size to ensure it enough memory
+					totalSize = normalPieceSize * self->m_connectedSession + normalPieceSize;
+				}
+				else if (firstPiece->pieceSize < secondPiece->pieceSize)
+				{
+					normalPieceSize = firstPiece->pieceSize;
+					lastPieceSize = secondPiece->pieceSize;
+					totalSize = normalPieceSize * (self->m_connectedSession - 1) + lastPieceSize;
+				}
+				else
+				{
+					normalPieceSize = secondPiece->pieceSize;
+					lastPieceSize = firstPiece->pieceSize;
+					totalSize = normalPieceSize * (self->m_connectedSession - 1) + lastPieceSize;
+				}
+				//--------------------------------------------------
+				WebPIAppend(idec, firstPiece->piece, firstPiece->pieceSize);
+				WebPIAppend(idec, secondPiece->piece, secondPiece->pieceSize);
+				//--------------------------------------------------
+				for (int i = 2; i < self->m_connectedSession; i++)
+				{
+					FramePiece* piece = set->pieces[i];
+					//memcpy(mStaticPreAllocBuffer + (piece->pieceIndex *normalPieceSize), piece->piece, piece->pieceSize);
+					WebPIAppend(idec, piece->piece, piece->pieceSize);
+
+					if (piece->pieceSize != normalPieceSize)
+					{
+						lastPieceSize = piece->pieceSize;
+					}
+					// free piece data
+					piece->release();
+					delete piece;
+				}
+				set->pieces.clear();
+				//--------------------------------------------------
+				if (lastPieceSize == 0) lastPieceSize = normalPieceSize;
+				totalSize = normalPieceSize * (self->m_connectedSession - 1) + lastPieceSize;
+
+
+				//memcpy(mStaticPreAllocBuffer + (firstPiece->pieceIndex *normalPieceSize), firstPiece->piece, firstPiece->pieceSize);
+				//memcpy(mStaticPreAllocBuffer + (secondPiece->pieceIndex *normalPieceSize), secondPiece->piece, secondPiece->pieceSize);
 				// free piece data
 				firstPiece->release();
 				delete firstPiece;
-				set->pieces.clear();
+				// free piece data
+				secondPiece->release();
+				delete secondPiece;
+				
+				WebPIDelete(idec);
 				frameAvailable = true;
 			}
+			self->m_frameTrackerMutex->Lock();
+			self->m_frameTracker.erase(std::next(iter).base());
+			self->m_frameTrackerMutex->Unlock();
+		}else
+		{
+			self->m_frameTrackerMutex->Unlock();
 		}
-		else {
-			//--------------------------------------------------
-			// generate frame
-			u32 normalPieceSize = 0;
-			u32 lastPieceSize = 0;
-			// we get first 2 piece to use as data to guess message size
-			FramePiece* firstPiece = set->pieces[0];
-			FramePiece* secondPiece = set->pieces[1];
-			//--------------------------------------------------
-			if (firstPiece->pieceSize == secondPiece->pieceSize)
-			{
-				// this case we only know normal piece size
-				normalPieceSize = firstPiece->pieceSize;
-				// we alloc more than 1 pieces size to ensure it enough memory
-				totalSize = normalPieceSize * m_connectedSession + normalPieceSize;
+		
+		//----------------------------------------------------
+
+		if (frameAvailable)
+		{
+			
+			//-------------------------------------------
+			// draw
+			//
+			self->g_frameMutex->Lock();
+			int i, j;
+			int nw3 = nW * 3;
+			for (i = 0; i < nH; i++) {
+				memmove(mStaticFrameBuffer + (i * 1536), mStaticPreAllocBuffer + (i*nw3), nw3);
 			}
-			else if (firstPiece->pieceSize < secondPiece->pieceSize)
+			self->g_frameMutex->Unlock();
+			mHaveNewFrame = true;
+			
+			// update frame video FPS
+			if (!self->mReceivedFirstFrame)
 			{
-				normalPieceSize = firstPiece->pieceSize;
-				lastPieceSize = secondPiece->pieceSize;
-				totalSize = normalPieceSize * (m_connectedSession - 1) + lastPieceSize;
+				self->mReceivedFirstFrame = true;
+				self->mLastTimeGetFrame = osGetTime();
+				self->mVideoFPS = 0.0f;
+				self->mVideoFrame = 0;
 			}
 			else
 			{
-				normalPieceSize = secondPiece->pieceSize;
-				lastPieceSize = firstPiece->pieceSize;
-				totalSize = normalPieceSize * (m_connectedSession - 1) + lastPieceSize;
-			}
-			//--------------------------------------------------
-			memcpy(m_preAllocBuffer + (firstPiece->pieceIndex *normalPieceSize), firstPiece->piece, firstPiece->pieceSize);
-			memcpy(m_preAllocBuffer + (secondPiece->pieceIndex *normalPieceSize), secondPiece->piece, secondPiece->pieceSize);
-			// free piece data
-			firstPiece->release();
-			delete firstPiece;
-			// free piece data
-			secondPiece->release();
-			delete secondPiece;
-			//--------------------------------------------------
-			for (int i = 2; i < m_connectedSession; i++)
-			{
-				FramePiece* piece = set->pieces[i];
-				memcpy(m_preAllocBuffer + (piece->pieceIndex *normalPieceSize), piece->piece, piece->pieceSize);
-				if (piece->pieceSize != normalPieceSize)
+				self->mVideoFrame++;
+				u64 deltaTime = osGetTime() - self->mLastTimeGetFrame;
+				if (deltaTime > 1000)
 				{
-					lastPieceSize = piece->pieceSize;
+					self->mVideoFPS = self->mVideoFrame / (deltaTime / 1000.0f);
+					self->mVideoFrame = 0;
+					self->mLastTimeGetFrame = osGetTime();
 				}
-				// free piece data
-				piece->release();
-				delete piece;
+
 			}
-			set->pieces.clear();
-			//--------------------------------------------------
-			if (lastPieceSize == 0) lastPieceSize = normalPieceSize;
-			totalSize = normalPieceSize * (m_connectedSession - 1) + lastPieceSize;
-
-			frameAvailable = true;
 		}
 
-		//--------------------------------------------------
-		// clear frame tracker map from current iter
-		++iter;
-		for (;iter != m_frameTracker.end(); ++iter)
-		{
-			for(int i = 0; i < iter->second->receivedPieces; i++)
-			{
-				iter->second->pieces[i]->release();
-			}
-			iter->second->pieces.clear();
-		}
-		m_frameTracker.clear();
+		svcSleepThread(sleepDuration);
 	}
-	m_frameTrackerMutex->Unlock();
-	//----------------------------------------------------
 
-	if(frameAvailable)
-	{
-		//-------------------------------------------
-		// init webp decode config
-		//TODO: set fixed size to scale is : 512x256 ( that is bad but we need save time for this later )
-		u32 nW = 512, nH = 256;
-		WebPDecoderConfig config;
-		WebPInitDecoderConfig(&config);
-		config.options.no_fancy_upsampling = 1;
-		config.options.use_scaling = 1;
-		config.options.scaled_width = nW;
-		config.options.scaled_height = nH;
+	//printf("[Decoder] thread exit.\n");
+	//gfxFlushBuffers();
+}
 
-		if (!WebPGetFeatures(m_preAllocBuffer, totalSize, &config.input) == VP8_STATUS_OK)
-		{
-			WebPFreeDecBuffer(&config.output);
-			return;
-		}
-			
-		config.output.colorspace = MODE_BGR;
-		if (!WebPDecode(m_preAllocBuffer, totalSize, &config) == VP8_STATUS_OK)
-		{
-			WebPFreeDecBuffer(&config.output);
-			return;
-		}
-		//-------------------------------------------
-		// draw
-		PPGraphics::Get()->UpdateTopScreenSprite(config.output.private_memory, nW * nH * 3, nW, nH);
-		//-------------------------------------------
-		// free data
-		WebPFreeDecBuffer(&config.output);
-	}
-	
+
+
+void PPSessionManager::StartDecodeThread()
+{
+	int mSize = 3 * 512 * 256;
+	mStaticPreAllocBuffer = (u8*)malloc(mSize);
+	mStaticFrameBuffer = (u8*)linearAlloc(mSize);
+	memset(mStaticFrameBuffer, 0, mSize);
+	//printf("Start decoder thread.\n");
+	//gfxFlushBuffers();
+
+	g_thread = threadCreate(UpdateFrameTracker, this, 3 * 1024, mMainThreadPrio - 1, -2, true);
+}
+
+void PPSessionManager::UpdateVideoFrame()
+{
+	if (!mHaveNewFrame) return;
+
+	g_frameMutex->Lock();
+	u32 nW = 400, nH = 240;
+	PPGraphics::Get()->UpdateTopScreenSprite(mStaticFrameBuffer, nW * nH * 3, nW, nH);
+	mHaveNewFrame = false;
+	g_frameMutex->Unlock();
 }
 
 void PPSessionManager::_startStreaming()
@@ -224,6 +304,7 @@ void PPSessionManager::_startStreaming()
 	{
 		m_screenCaptureSessions[i]->RequestForheader();
 	}
+	
 }
 
 
@@ -242,16 +323,15 @@ void PPSessionManager::InitInputStream()
 	m_initInputFirstFrame = false;
 }
 
-void PPSessionManager::UpdateInputStream(u32 down, u32 hold, u32 up, short cx, short cy, short ctx, short cty)
+void PPSessionManager::UpdateInputStream(u32 down, u32 up, short cx, short cy, short ctx, short cty)
 {
 	if (m_inputStreamSession == nullptr) return;
-	if(down != m_OldDown || hold != m_OldHold || up != m_OldUp || cx != m_OldCX || cy != m_OldCY || ctx != m_OldCTX || cty != m_OldCTY || !m_initInputFirstFrame)
+	if(down != m_OldDown || up != m_OldUp || cx != m_OldCX || cy != m_OldCY || ctx != m_OldCTX || cty != m_OldCTY || !m_initInputFirstFrame)
 	{
-		if(m_inputStreamSession->IN_SendInputData(down, hold, up, cx, cy, ctx, cty))
+		if(m_inputStreamSession->IN_SendInputData(down, up, cx, cy, ctx, cty))
 		{
 			m_initInputFirstFrame = true;
 			m_OldDown = down;
-			m_OldHold = hold;
 			m_OldUp = up;
 			m_OldCX = cx;
 			m_OldCY = cy;
@@ -269,7 +349,7 @@ void PPSessionManager::UpdateInputStream(u32 down, u32 hold, u32 up, short cx, s
 
 void PPSessionManager::_oneByOneConnectScreenCapture(int index, const char* ip, const char* port, PPNotifyCallback callback)
 {
-	m_screenCaptureSessions[index]->StartSession(ip, port, mMainThreadPrio, [=](PPNetwork *self, u8* data, u32 code)
+	m_screenCaptureSessions[index]->StartSession(ip, port, mMainThreadPrio - 4, [=](PPNetwork *self, u8* data, u32 code)
 	{
 		m_connectedSession++;
 		if (m_connectedSession == m_screenCaptureSessions.size())
@@ -293,15 +373,22 @@ void PPSessionManager::StartStreaming(const char* ip, const char* port)
 	m_connectedSession = 0;
 
 	mManagerState = 1;
+
 	//--------------------------------------------------
 	// get current thread priority
 	svcGetThreadPriority(&mMainThreadPrio, CUR_THREAD_HANDLE);
+
+	//------------------------------------------------
+	// start video decode thread
+	StartDecodeThread();
+
+	//------------------------------------------------
 	_oneByOneConnectScreenCapture(m_connectedSession, ip, port, [=](int ret)
 	{
 		//--------------------------------------------------
 		//start input connect when all other connect is done
 		if (m_inputStreamSession != nullptr) {
-			m_inputStreamSession->StartSession(ip, port, mMainThreadPrio, [=](PPNetwork *self, u8* data, u32 code)
+			m_inputStreamSession->StartSession(ip, port, mMainThreadPrio - 3, [=](PPNetwork *self, u8* data, u32 code)
 			{
 				mManagerState = 2;
 				m_inputStreamSession->IN_Start();
@@ -342,5 +429,24 @@ void PPSessionManager::Close()
 	if (m_inputStreamSession != nullptr)
 	{
 		m_inputStreamSession->CloseSession();
+	}
+}
+
+void PPSessionManager::StartFPSCounter()
+{
+	mLastTime = osGetTime();
+	mCurrentFPS = 0.0f;
+	mFrames = 0;
+}
+
+void PPSessionManager::CollectFPSData()
+{
+	mFrames++;
+	u64 deltaTime = osGetTime() - mLastTime;
+	if(deltaTime > 1000)
+	{
+		mCurrentFPS = mFrames / (deltaTime / 1000.0f);
+		mFrames = 0;
+		mLastTime = osGetTime();
 	}
 }

@@ -19,13 +19,16 @@ typedef std::function<void()> OnClientReallyClose;
 class ScreenCaptureSession
 {
 private:
-	PPServer*									m_server;
-	SL::Screen_Capture::ScreenCaptureManager	m_frameGrabber;
-	u32											m_frameIndex = 0;
-	u32											m_numberClients = 0;
-	bool										m_isStartStreaming = false;
-	std::map<u32, std::vector<FramePiece*>>		m_frameCacheMap;
-	std::map<u32, u32>							m_frameCacheState;
+	PPServer*													m_server;
+	std::shared_ptr<SL::Screen_Capture::IScreenCaptureManager>	m_frameGrabber;
+	u32															m_frameIndex = 0;
+	u32															m_sendingFrameIndex = 1;
+	u32															m_numberClients = 0;
+	bool														m_isStartStreaming = false;
+	std::map<u32, std::vector<FramePiece*>>						m_frameCacheMap;
+	std::map<u32, u32>											m_frameCacheState;
+
+	u8*															m_staticFrameBuffer = nullptr;
 	//---------------------------------------------------------------------------------------------------------------------------
 	//--------------------OPTIONS------------------------------------------------------------------------------------------------
 	//---------------------------------------------------------------------------------------------------------------------------
@@ -48,6 +51,7 @@ public:
 	void										removeForStopStream() { g_ss_onClientReallyClosed = nullptr; }
 	void										changeSetting(bool waitForReceived, u32 smoothFrame, u32 quality, u32 scale);
 	void										initSCreenCapturer(PPServer* parent);
+	void										processNewFrame();
 	void										splitFrameToMultiPieces(const SL::Screen_Capture::Image& img);
 	int											getAvaliableFramePiece(u32 frameIndex);
 	FramePiece*									getNewFramePieces();

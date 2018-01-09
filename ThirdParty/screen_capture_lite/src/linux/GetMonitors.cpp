@@ -16,11 +16,12 @@ namespace Screen_Capture
         int nmonitors = 0;
         XineramaScreenInfo* screen = XineramaQueryScreens(display, &nmonitors);
         ret.reserve(nmonitors);
+       
         for(auto i = 0; i < nmonitors; i++) {
 
             auto name = std::string("Display ") + std::to_string(i);
             ret.push_back(CreateMonitor(
-                i, screen[i].screen_number, screen[i].height, screen[i].width, screen[i].x_org, screen[i].y_org, name));
+                i, screen[i].screen_number, screen[i].height, screen[i].width, screen[i].x_org, screen[i].y_org, name, 1.0f));
         }
         XFree(screen);
 

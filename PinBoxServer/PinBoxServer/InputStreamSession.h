@@ -59,7 +59,6 @@ private:
 	const int									c_cpadMax = 156;
 
 	u32											m_OldDown;
-	u32											m_OldHold;
 	u32											m_OldUp;
 	short										m_OldCX;
 	short										m_OldCY;
@@ -73,12 +72,13 @@ private:
 	std::map<std::string, FakeInput::Key>		m_keyMapping;
 	void initMapKey();
 
+
 	void initVIGEM();
+	bool m_Xbox360Enable = false;
 	PVIGEM_CLIENT m_vDriver;
 	// xbox 360 controller
 	PVIGEM_TARGET m_x360Controller;
 	XUSB_REPORT m_x360Report;
-	static void x360Callback(PVIGEM_CLIENT client, PVIGEM_TARGET target, UCHAR largeMotor, UCHAR smallMotor, UCHAR ledNumber);
 
 public:
 	InputStreamSession();
@@ -86,8 +86,9 @@ public:
 
 	void LoadInputConfig();
 
-	void UpdateInput(u32 down, u32 held, u32 up, short cx, short cy, short ctx, short cty);
+	void UpdateInput(u32 down, u32 up, short cx, short cy, short ctx, short cty);
 	void ProcessInput();
+	void ChangeInputProfile(std::string	profileName);
 };
 
 #endif

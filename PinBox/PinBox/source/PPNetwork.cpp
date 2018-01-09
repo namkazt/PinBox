@@ -1,13 +1,21 @@
 #include "PPNetwork.h"
 #include "PPSession.h"
 
+#define STACKSIZE (3 * 1024)
+#define POOLSIZE (40 * 1024)
+#define BUFFERSIZE (10024)
+
 /*
  * @brief: thread handler function
  */
+
 void PPNetwork::ppNetwork_threadRun(void * arg)
 {
 	PPNetwork* network = (PPNetwork*)arg;
 	if (network == nullptr) return;
+
+	network->g_receivedBuffer = (u8*)malloc(POOLSIZE);
+	network->g_receivedCounter = 0;
 	//--------------------------------------------------
 	u64 sleepDuration = 1000000ULL * 30;
 	while(!network->g_threadExit){
@@ -31,6 +39,9 @@ void PPNetwork::ppNetwork_threadRun(void * arg)
 			//--------------------------------------------------
 			// listen to server when it connected successfully
 			network->ppNetwork_listenToServer();
+
+
+			network->ppNetwork_processPoolData();
 		}
 
 		if (network->g_connect_state == ppConectState::FAIL)
@@ -88,23 +99,6 @@ void PPNetwork::ppNetwork_connectToServer()
 {
 	g_connect_state = CONNECTING;
 
-	////--------------------------------------------------
-	//// Trying to get address information
-	//struct addrinfo hints, *servinfo, *p;
-	//memset(&hints, 0, sizeof hints);
-	//hints.ai_family = AF_INET;
-	//hints.ai_socktype = SOCK_STREAM;
-	//hints.ai_protocol = IPPROTO_TCP;
-	//int rv = getaddrinfo(g_ip, g_port, &hints, &servinfo);
-	//if(rv != 0)
-	//{
-	//	printf("Can't get address information: %s\n", gai_strerror(rv));
-	//	// Error: fail to get address
-	//	g_connect_state = FAIL;
-	//	//continue;
-	//	return;
-	//}
-
 	//--------------------------------------------------
 	// define socket
 	g_sock = socket(AF_INET, SOCK_STREAM, 0);
@@ -117,29 +111,6 @@ void PPNetwork::ppNetwork_connectToServer()
 		//continue;
 		return;
 	}
-
-	////--------------------------------------------------
-	//// loop thought all result and connect
-	//for (p = servinfo; p != NULL; p = p->ai_next)
-	//{
-	//	//--------------------------------------------------
-	//	// try to connect to server
-	//	auto ret = connect(g_sock, p->ai_addr, p->ai_addrlen);
-	//	if (ret == -1)
-	//	{
-	//		// Error: can't connect to this ai -> try next
-	//		g_connect_state = FAIL;
-	//		continue;
-	//	}
-
-	//	//--------------------------------------------------
-	//	// if it run here so it already connecteds
-	//	g_connect_state = CONNECTED;
-
-	//	break;
-	//}
-	//freeaddrinfo(servinfo);
-
 
 	struct sockaddr_in addr = { 0 };
 	addr.sin_family = AF_INET;
@@ -180,177 +151,67 @@ void PPNetwork::ppNetwork_connectToServer()
 	}
 }
 
-void PPNetwork::ppNetwork_onReceivedRequest()
-{
-	//--------------------------------------------------
-	// NOTE: callback step
-	//--------------------------------------------------
-	// we pass a copy version received buffer to where it need to process
-	u8 *resultBuffer =(u8*) malloc(g_waitForSize);
-	memcpy(resultBuffer, g_receivedBuffer, g_waitForSize);
-	int32_t tmpSize = g_waitForSize;
-	int32_t tmpTag = g_tag;
-	//--------------------------------------------------
-	// free this data and point to nullptr
-	free(g_receivedBuffer);
-	g_receivedBuffer = nullptr;
-	g_waitForSize = 0;
-	g_receivedCounter = 0;
-	g_tag = 0;
-	//--------------------------------------------------
-	// this buffer need to be free whenever it finish it's job
-	if (g_onReceivedRequest != nullptr)
-		g_onReceivedRequest(this, resultBuffer, tmpSize, tmpTag);
-}
-
-/*
- * @brief: process current tmp buffer data if it have
- */
-bool PPNetwork::ppNetwork_processTmpBufferData()
-{
-	if (g_tmpReceivedBuffer != nullptr)
-	{
-		//--------------------------------------------------
-		// if this data is more than current request data
-		u32 pieceSize = g_tmpReceivedSize;
-		u32 dataLeft = 0;
-		bool isFullyReceived = false;
-		if (g_tmpReceivedSize >= g_waitForSize)
-		{
-			isFullyReceived = true;
-			pieceSize = g_waitForSize;
-			dataLeft = g_tmpReceivedSize - g_waitForSize;
-		}
-		//--------------------------------------------------
-		// copy data into current received buffer
-		if (!g_receivedBuffer)
-			g_receivedBuffer = (u8*)malloc(g_waitForSize);
-		if (!g_receivedBuffer) return false;
-		memcpy(g_receivedBuffer + g_receivedCounter, g_tmpReceivedBuffer, pieceSize);
-		g_receivedCounter += pieceSize;
-
-		if (isFullyReceived)
-		{
-			//--------------------------------------------------
-			// we finished current request
-			ppNetwork_onReceivedRequest();
-			//--------------------------------------------------
-			// if there is still have data left
-			if (dataLeft > 0)
-			{
-				//--------------------------------------------------
-				// cut off received part and create new data
-				u8* tmpBuffer = (u8*)malloc(dataLeft);
-				memcpy(tmpBuffer, g_tmpReceivedBuffer + pieceSize, dataLeft);
-				g_tmpReceivedSize = dataLeft;
-				free(g_tmpReceivedBuffer);
-				g_tmpReceivedBuffer = tmpBuffer;
-
-				// return false to stop current listen process
-				return false;
-			}
-		}
-		free(g_tmpReceivedBuffer);
-		g_tmpReceivedBuffer = nullptr;
-		g_tmpReceivedSize = 0;
-	}
-	return true;
-}
-
-
 void PPNetwork::ppNetwork_listenToServer()
 {
-	//--------------------------------------------------
-	// If there is no order to receive any data so we just 
-	// continue our threads
-	if (g_waitForSize <= 0)
-	{
-		//printf("#%d : no request wait for size request.\n", g_session->sessionID);
-		return;
-	}
+	if (g_receivedCounter + BUFFERSIZE > POOLSIZE) return;
 
-	//--------------------------------------------------
-	// if tmp data is not null so that mean we need add this datao
-	// into current request data
-	// example case: 2 messages data send together from server
-	//---------------------------------------------------
-	// stop process if there is have tmp buffer data and it fit
-	// request message
-	if (!ppNetwork_processTmpBufferData()) return;
-
-	//printf("#%d : start recv data.\n", g_session->sessionID);
-	//gfxFlushBuffers();
 	//--------------------------------------------------
 	// Recevie data from server 
-	const u32 bufferSize = 1024 * 10; 
-	u8* recvBuffer = (u8*)malloc(bufferSize);
-	int recvAmount = recv(g_sock, recvBuffer, bufferSize, 0);
+	const u32 bufferSize = BUFFERSIZE;
+	//u8* recvBuffer = (u8*)malloc(bufferSize);
+	int recvAmount = recv(g_sock, g_receivedBuffer + g_receivedCounter, bufferSize, 0);
 	//--------------------------------------------------
 	// exit thread when have connecting problem
-	if (recvAmount < 0) {
+	if (recvAmount <= 0) {
 		if (errno != EWOULDBLOCK) 
 			g_threadExit = true;
 		//--------------------------------------------------
 		// free data
-		free(recvBuffer);
+		//free(recvBuffer);
 		return;
 	}
 	else if (recvAmount > bufferSize)
 	{
-		//printf("#%d : recv too much: %d.\n", g_session->sessionID, recvAmount);
-		//gfxFlushBuffers();
+		/*printf("#%d : recv too much: %d.\n", g_session->sessionID, recvAmount);
+		gfxFlushBuffers();*/
 		//--------------------------------------------------
 		// free data
-		free(recvBuffer);
+		//free(recvBuffer);
 		return;
 	}else
 	{
-		//printf("#%d : process recv data.\n", g_session->sessionID);
-		//gfxFlushBuffers();
-		//--------------------------------------------------
-		if(g_receivedBuffer == nullptr)
-			g_receivedBuffer = (u8*)malloc(g_waitForSize);
-		//--------------------------------------------------
-		u32 pieceSize = recvAmount;
-		u32 dataLeft = 0;
-		bool isFullyReceived = false;
-		//--------------------------------------------------
-		// check if data is fully recevied
-		if (g_receivedCounter + recvAmount >= g_waitForSize) {
-			pieceSize = g_waitForSize - g_receivedCounter;
-			dataLeft = recvAmount - pieceSize;
-			isFullyReceived = true;
-		}
-		//--------------------------------------------------
-		// copy data to final buffer
-		memcpy(g_receivedBuffer + g_receivedCounter, recvBuffer, pieceSize);
-		g_receivedCounter += pieceSize;
-		//--------------------------------------------------
-		if (isFullyReceived) {
-			//--------------------------------------------------
-			// set received request and free g_receivedBuffer
-			ppNetwork_onReceivedRequest();
-			//--------------------------------------------------
-			// store data left into temp buffer
-			if (dataLeft > 0)
-			{
-				//---------------------------------------------------
-				// free tmp buffer if it not null 
-				//NOTE: is it possible if going to this part without being nullptr ?
-				if (g_tmpReceivedBuffer != nullptr) {
-					free(g_tmpReceivedBuffer);
-					g_tmpReceivedBuffer = nullptr;
-				}
-				g_tmpReceivedBuffer = (u8*)malloc(dataLeft);
-				memcpy(g_tmpReceivedBuffer, recvBuffer + pieceSize, dataLeft);
-				g_tmpReceivedSize = dataLeft;
-			}
-		}
+		g_receivedCounter += recvAmount;
+
+		/*printf("#%d : recv data: %d - pool: %d.\n", g_session->sessionID, recvAmount, g_receivedCounter);
+		gfxFlushBuffers();*/
 	}
 
 	//--------------------------------------------------
 	// free data
-	free(recvBuffer);
+	//free(recvBuffer);
+}
+
+void PPNetwork::ppNetwork_processPoolData()
+{
+	if (g_receivedCounter < g_waitForSize || g_waitForSize == 0) return;
+	//--------------------------------------------------
+	// free this data and point to nullptr
+	u32 dataLeft = g_receivedCounter - g_waitForSize;
+	//printf("#%d : process pool: %d / %d - data left: %d.\n", g_session->sessionID, g_waitForSize, g_receivedCounter, dataLeft);
+
+	u32 tmpWfz = g_waitForSize;
+	u32 tmpTag = g_tag;
+	g_waitForSize = 0;
+	g_tag = 0;
+	//--------------------------------------------------
+	// this buffer need to be free whenever it finish it's job
+	if (g_onReceivedRequest != nullptr)
+		g_onReceivedRequest(this, g_receivedBuffer, tmpWfz, tmpTag);
+
+	// clean
+	if (dataLeft > 0)
+		memmove(g_receivedBuffer, g_receivedBuffer + tmpWfz, dataLeft);
+	g_receivedCounter = dataLeft;
 }
 
 void PPNetwork::ppNetwork_closeConnection()
@@ -374,12 +235,6 @@ void PPNetwork::ppNetwork_closeConnection()
 		g_waitForSize = 0;
 		g_receivedCounter = 0;
 		g_tag = 0;
-	}
-	if(g_tmpReceivedBuffer)
-	{
-		free(g_tmpReceivedBuffer);
-		g_tmpReceivedBuffer = nullptr;
-		g_tmpReceivedSize = 0;
 	}
 	//--------------------------------------------------
 	// clear all message sending buffer
@@ -407,7 +262,7 @@ void PPNetwork::ppNetwork_closeConnection()
 //===============================================================================================
 // Controller functions
 //===============================================================================================
-#define STACKSIZE (30 * 1024)
+
 void PPNetwork::Start(const char* ip, const char* port, s32 prio)
 {
 	if (g_connect_state == IDLE) {
@@ -423,7 +278,7 @@ void PPNetwork::Start(const char* ip, const char* port, s32 prio)
 		//---------------------------------------------------
 		// start thread
 		
-		g_thread = threadCreate(ppNetwork_threadRun, this, STACKSIZE, prio - 1, -2, true);
+		g_thread = threadCreate(ppNetwork_threadRun, this, STACKSIZE, prio, -2, true);
 	}else
 	{
 		// log -> already start network connection
@@ -438,11 +293,13 @@ void PPNetwork::Stop()
 void PPNetwork::SetRequestData(u32 size, u32 tag)
 {
 	if(g_waitForSize > 0)
-	{
-		//printf("#%d : Old request data not solved yet! (%d bytes).\n", g_session->sessionID, g_waitForSize);
+	{/*
+		printf("#%d : Old request data not solved yet! (%d bytes).\n", g_session->sessionID, g_waitForSize);
+		gfxFlushBuffers();*/
 	}else
 	{
-		//printf("#%d : new request data tag: %d - (%d bytes).\n", g_session->sessionID, tag, size);
+		/*printf("#%d : request data: %d - (%d bytes).\n", g_session->sessionID, tag, size);
+		gfxFlushBuffers();*/
 		g_waitForSize = size;
 		g_tag = tag;
 	}
@@ -476,5 +333,4 @@ PPNetwork::~PPNetwork()
 	free(&g_ip);
 	free(&g_port);
 	if (g_receivedBuffer != nullptr) free(g_receivedBuffer);
-	if (g_tmpReceivedBuffer != nullptr) free(g_tmpReceivedBuffer);
 }
