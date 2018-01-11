@@ -6,12 +6,6 @@
 #include <map>
 #include <stack>
 
-typedef struct
-{
-	u32 frameIndex = 0;
-	u32 receivedPieces = 0;
-	std::vector<FramePiece*> pieces;
-} FrameSet;
 
 typedef std::function<void(int code)> PPNotifyCallback;
 
@@ -49,8 +43,8 @@ public:
 	void											_startStreaming();
 	void											_oneByOneConnectScreenCapture(int index, const char* ip, const char* port, PPNotifyCallback callback);
 
-	std::vector<FrameSet*>							m_frameTrackTemp;
-	std::map<int, FrameSet*>						m_frameTracker;
+	std::map<int, FramePiece*>						m_frameTracker;
+	FramePiece*										m_activeFramePiece = nullptr;
 	Mutex*											m_frameTrackerMutex;
 	u32												m_currentDisplayFrame = 0;
 	//------------------------------------------
@@ -75,12 +69,14 @@ public:
 
 	void SafeTrack(FramePiece* piece);
 	void StartDecodeThread();
+	void ReleaseDecodeThead();
 	void UpdateVideoFrame();
 
 	int GetManagerState() const { return mManagerState; };
 	float GetFPS() const { return mCurrentFPS; }
 	float GetVideoFPS() const { return mVideoFPS; }
 	int GetFrameLeft() const { return m_frameTracker.size(); }
+	u32 getFrameIndex() const;
 	//------------------------------------------
 	// UI ref functions
 	//------------------------------------------

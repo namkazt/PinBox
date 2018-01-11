@@ -241,18 +241,14 @@ void PPSession::processScreenCaptureSession(u8* buffer, size_t size)
 			//------------------------------------------------------
 			// process piece
 			//------------------------------------------------------
+			//TODO: process direct from here
 			FramePiece* framePiece = new FramePiece();
 			framePiece->frameIndex = READ_U32(buffer, 0);
 			framePiece->pieceIndex = READ_U8(buffer, 4);
 			framePiece->pieceSize = size - 5;
-			framePiece->piece = (u8*)malloc(framePiece->pieceSize); //TODO: crash here on malloc ?
-			memcpy(framePiece->piece, buffer + 5, framePiece->pieceSize);
-			
-			//------------------------------------------------------
-			// go tell session manager that we received 1 piece from 1 frame and need
-			// to store it for process later
-			//------------------------------------------------------
+			framePiece->pieceAddr = buffer + 5;
 			g_manager->SafeTrack(framePiece);
+			
 		}
 		catch (...)
 		{

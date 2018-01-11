@@ -303,13 +303,13 @@ void PPUI::DrawFPS(PPSessionManager* sessionManager)
 	// render app FPS
 	const float fps = sessionManager->GetFPS();
 	char fpsBuffer[16];
-	snprintf(fpsBuffer, sizeof fpsBuffer, "FPS: %.1f", fps);
+	snprintf(fpsBuffer, sizeof fpsBuffer, "FPS: %.1f/%d", fps, sessionManager->getFrameIndex());
 	LabelBoxLeft(5, 200, 80, 20, fpsBuffer, rgb(26, 188, 156), rgb(255, 255, 255));
 
 	// render video FPS
 	const float videoFps = sessionManager->GetVideoFPS();
 	char videoFpsBuffer[50];
-	snprintf(videoFpsBuffer, sizeof videoFpsBuffer, "VFPS: %.1f / %d", videoFps, sessionManager->GetFrameLeft());
+	snprintf(videoFpsBuffer, sizeof videoFpsBuffer, "VFPS: %.1f/%d", videoFps, sessionManager->GetFrameLeft());
 	LabelBoxLeft(5, 220, 80, 20, videoFpsBuffer, rgb(26, 188, 156), rgb(255, 255, 255));
 }
 

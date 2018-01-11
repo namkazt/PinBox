@@ -123,7 +123,7 @@ int main()
 			// Update Input
 			//---------------------------------------------
 			PPUI::UpdateInput();
-			sm->UpdateInputStream(PPUI::getKeyDown(), PPUI::getKeyUp(), 
+			sm->UpdateInputStream(PPUI::getKeyHold(), PPUI::getKeyUp(), 
 				PPUI::getLeftCircle().dx, PPUI::getLeftCircle().dy, 
 				PPUI::getRightCircle().dx, PPUI::getRightCircle().dy);
 

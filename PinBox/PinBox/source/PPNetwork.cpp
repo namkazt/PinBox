@@ -1,9 +1,9 @@
 #include "PPNetwork.h"
 #include "PPSession.h"
 
-#define STACKSIZE (3 * 1024)
-#define POOLSIZE (40 * 1024)
-#define BUFFERSIZE (10024)
+#define STACKSIZE (40 * 1024)
+#define POOLSIZE (120 * 1024)
+#define BUFFERSIZE 0x5000
 
 /*
  * @brief: thread handler function
@@ -17,11 +17,8 @@ void PPNetwork::ppNetwork_threadRun(void * arg)
 	network->g_receivedBuffer = (u8*)malloc(POOLSIZE);
 	network->g_receivedCounter = 0;
 	//--------------------------------------------------
-	u64 sleepDuration = 1000000ULL * 30;
+	u64 sleepDuration = 1000000ULL * 16;
 	while(!network->g_threadExit){
-		
-		//printf("Thread run\n");
-		//gfxFlushBuffers();
 
 		if(network->g_connect_state == ppConectState::IDLE)
 		{
@@ -57,6 +54,9 @@ void PPNetwork::ppNetwork_threadRun(void * arg)
 	//--------------------------------------------------
 	// close connection if thread is exit
 	network->ppNetwork_closeConnection();
+
+	// release buffer pool
+	free(network->g_receivedBuffer);
 }
 
 void PPNetwork::ppNetwork_sendMessage()
@@ -165,30 +165,15 @@ void PPNetwork::ppNetwork_listenToServer()
 	if (recvAmount <= 0) {
 		if (errno != EWOULDBLOCK) 
 			g_threadExit = true;
-		//--------------------------------------------------
-		// free data
-		//free(recvBuffer);
 		return;
 	}
 	else if (recvAmount > bufferSize)
 	{
-		/*printf("#%d : recv too much: %d.\n", g_session->sessionID, recvAmount);
-		gfxFlushBuffers();*/
-		//--------------------------------------------------
-		// free data
-		//free(recvBuffer);
 		return;
 	}else
 	{
 		g_receivedCounter += recvAmount;
-
-		/*printf("#%d : recv data: %d - pool: %d.\n", g_session->sessionID, recvAmount, g_receivedCounter);
-		gfxFlushBuffers();*/
 	}
-
-	//--------------------------------------------------
-	// free data
-	//free(recvBuffer);
 }
 
 void PPNetwork::ppNetwork_processPoolData()
@@ -205,12 +190,12 @@ void PPNetwork::ppNetwork_processPoolData()
 	g_tag = 0;
 	//--------------------------------------------------
 	// this buffer need to be free whenever it finish it's job
-	if (g_onReceivedRequest != nullptr)
+	if (g_onReceivedRequest != nullptr) {
 		g_onReceivedRequest(this, g_receivedBuffer, tmpWfz, tmpTag);
-
-	// clean
+	}
 	if (dataLeft > 0)
 		memmove(g_receivedBuffer, g_receivedBuffer + tmpWfz, dataLeft);
+	
 	g_receivedCounter = dataLeft;
 }
 

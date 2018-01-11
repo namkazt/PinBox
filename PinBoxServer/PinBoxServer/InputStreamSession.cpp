@@ -24,7 +24,7 @@ void InputStreamSession::LoadInputConfig()
 	//-----------------------------------------------
 	m_defaultProfile = new KeyMappingProfile();
 	m_defaultProfile->name = "Default";
-	//m_defaultProfile.type = "keyboard";
+	//m_defaultProfile->type = "keyboard";
 	m_defaultProfile->type = "x360";
 	m_defaultProfile->mappings[0] = FakeInput::Key_Z;
 	m_defaultProfile->mappings[1] = FakeInput::Key_X;
@@ -180,7 +180,6 @@ void InputStreamSession::UpdateInput(u32 down, u32 up, short cx, short cy, short
 	m_OldCTY = cty;
 	m_receivedInput = true;
 
-	//std::cout << "[DEBUG] down: " << down << " held: " << held << " up: " << up << " cx: " << cx << " cy: " << cy << std::endl << std::flush;
 }
 void InputStreamSession::ProcessInput()
 {
@@ -203,9 +202,7 @@ void InputStreamSession::ProcessInput()
 				{
 					FakeInput::Keyboard::pressKey(profile->mappings[i]);
 				}
-			}
-
-			if (m_OldUp & BIT(i))
+			}else
 			{
 				if (profile->mappings.find(i) != profile->mappings.end())
 				{
@@ -236,21 +233,13 @@ void InputStreamSession::ProcessInput()
 					m_x360Report.wButtons |= profile->controller[i];
 				}
 			}
-
-			if (m_OldUp & BIT(i))
-			{
-				if (profile->mappings.find(i) != profile->mappings.end())
-				{
-					m_x360Report.wButtons ^= profile->controller[i];
-				}
-			}
 		}
 
 		// L
 		if (m_OldDown & BIT(14))
 		{
 			m_x360Report.bLeftTrigger = 255;
-		}else if (m_OldUp & BIT(14))
+		}else
 		{
 			m_x360Report.bLeftTrigger = 0;
 		}
@@ -259,11 +248,12 @@ void InputStreamSession::ProcessInput()
 		if (m_OldDown & BIT(15))
 		{
 			m_x360Report.bRightTrigger = 255;
-		}else if (m_OldUp & BIT(15))
+		}else
 		{
 			m_x360Report.bRightTrigger = 0;
 		}
 
+		const short MAX_STICK_RANGE = 30000;
 
 		// Left stick
 		if (m_OldCX > 0 && m_OldCX < c_cpadDeadZone) m_OldCX = 0;
@@ -274,8 +264,12 @@ void InputStreamSession::ProcessInput()
 		float pCx = (float)m_OldCX / (float)c_cpadMax;
 		float pCy = (float)m_OldCY / (float)c_cpadMax;
 		
-		m_x360Report.sThumbLX = (short)(pCx * 30000);
-		m_x360Report.sThumbLY = (short)(pCy * 30000);
+		m_x360Report.sThumbLX = (short)(pCx * MAX_STICK_RANGE);
+		if (m_x360Report.sThumbLX > MAX_STICK_RANGE) m_x360Report.sThumbLX = MAX_STICK_RANGE;
+		if (m_x360Report.sThumbLX < -MAX_STICK_RANGE) m_x360Report.sThumbLX = -MAX_STICK_RANGE;
+		m_x360Report.sThumbLY = (short)(pCy * MAX_STICK_RANGE);
+		if (m_x360Report.sThumbLY > MAX_STICK_RANGE) m_x360Report.sThumbLY = MAX_STICK_RANGE;
+		if (m_x360Report.sThumbLY < -MAX_STICK_RANGE) m_x360Report.sThumbLY = -MAX_STICK_RANGE;
 
 		// Right stick
 		if (m_OldCTX > 0 && m_OldCTX < c_cpadDeadZone) m_OldCTX = 0;
@@ -283,11 +277,18 @@ void InputStreamSession::ProcessInput()
 		if (m_OldCTX < 0 && m_OldCTX > -c_cpadDeadZone) m_OldCTX = 0;
 		if (m_OldCTY < 0 && m_OldCTY > -c_cpadDeadZone) m_OldCTY = 0;
 
-		float pCtx = (float)m_OldCTX / (float)c_cpadMax;
-		float pCty = (float)m_OldCTY / (float)c_cpadMax;
+		float pCtx = ((float)m_OldCTX / (float)c_cpadMax) + 0.3f;
+		float pCty = ((float)m_OldCTY / (float)c_cpadMax) + 0.3f;
+		
+		int newCTX = (int)(pCtx * MAX_STICK_RANGE);
+		int newCTY = (int)(pCty * MAX_STICK_RANGE);
+		if (newCTX > MAX_STICK_RANGE) newCTX = MAX_STICK_RANGE;
+		if (newCTX < -MAX_STICK_RANGE) newCTX = -MAX_STICK_RANGE;
+		if (newCTY > MAX_STICK_RANGE) newCTY = MAX_STICK_RANGE;
+		if (newCTY < -MAX_STICK_RANGE) newCTY = -MAX_STICK_RANGE;
 
-		m_x360Report.sThumbRX = (short)(pCtx * 30000);
-		m_x360Report.sThumbRY = (short)(pCty * 30000);
+		m_x360Report.sThumbRX = newCTX;
+		m_x360Report.sThumbRY = newCTY;
 
 		// update
 		if(!VIGEM_SUCCESS(vigem_target_x360_update(m_vDriver, m_x360Controller, m_x360Report)))

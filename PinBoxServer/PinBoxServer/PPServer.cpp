@@ -2,7 +2,6 @@
 #include "PPServer.h"
 #include "ServerConfig.h"
 
-
 void PPServer::PrintIPAddressList()
 {
 	// Get local host name

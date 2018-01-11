@@ -42,9 +42,16 @@ void ServerConfig::LoadConfig()
 		std::cout << "[Error] Server config file corrupted." << std::endl << std::flush;
 	}
 	const libconfig::Setting& root = configFile.getRoot();
-
+	std::cout << "=========== SERVER CONFIG ===================" << std::endl << std::flush;
 	int monitor = root.lookup("monitor_index");
 	MonitorIndex = monitor;
+	std::cout << " Monitor Index: " << MonitorIndex << std::endl << std::flush;
+	int captureFPS = root.lookup("capture_fps");
+	CaptureFPS = captureFPS;
+	if (CaptureFPS < 0) CaptureFPS = 40;
+	std::cout << " FPS: " << CaptureFPS << std::endl << std::flush;
+
+	std::cout << "=============================================" << std::endl << std::flush;
 }
 
 

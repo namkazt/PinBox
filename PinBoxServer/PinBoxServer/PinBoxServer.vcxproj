@@ -72,16 +72,16 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <LinkIncremental>true</LinkIncremental>
-    <IncludePath>$(ProjectDir)\..\..\ThirdParty\screen_capture_lite\include;$(ProjectDir)\..\..\ThirdParty\opus-1.2.1\include;$(ProjectDir)\..\..\ThirdParty\libopusenc\include;$(ProjectDir)\..\..\ThirdParty\FakeInput\src;$(ProjectDir)\..\..\ThirdParty\ViGEm\Include;$(IncludePath)</IncludePath>
-    <LibraryPath>$(ProjectDir)\..\..\ThirdParty\screen_capture_lite\vs\$(Configuration)\;$(ProjectDir)\..\..\ThirdParty\opus-1.2.1\win32\VS2015\Win32\$(Configuration)\;$(ProjectDir)\..\..\ThirdParty\libopusenc\win32\opusenc\$(Configuration)\;$(ProjectDir)\..\..\ThirdParty\FakeInput\bin\lib\$(Configuration)\;$(ProjectDir)\..\..\ThirdParty\ViGEm\Debug (dynamic);$(LibraryPath)</LibraryPath>
+    <IncludePath>$(ProjectDir)\..\..\ThirdParty\screen_capture_lite\include;$(ProjectDir)\..\..\ThirdParty\opus-1.2.1\include;$(ProjectDir)\..\..\ThirdParty\libopusenc\include;$(ProjectDir)\..\..\ThirdParty\FakeInput\src;$(ProjectDir)\..\..\ThirdParty\ViGEm\Include;E:\Qt\Qt5.10.0\5.10.0\msvc2015\include\;$(IncludePath)</IncludePath>
+    <LibraryPath>$(ProjectDir)\..\..\ThirdParty\screen_capture_lite\vs\$(Configuration)\;$(ProjectDir)\..\..\ThirdParty\opus-1.2.1\win32\VS2015\Win32\$(Configuration)\;$(ProjectDir)\..\..\ThirdParty\libopusenc\win32\opusenc\$(Configuration)\;$(ProjectDir)\..\..\ThirdParty\FakeInput\bin\lib\$(Configuration)\;$(ProjectDir)\..\..\ThirdParty\ViGEm\Debug (dynamic);$(LibraryPath);E:\Qt\Qt5.10.0\5.10.0\msvc2015\lib</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LinkIncremental>true</LinkIncremental>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>false</LinkIncremental>
-    <IncludePath>$(ProjectDir)\..\..\ThirdParty\screen_capture_lite\include;$(ProjectDir)\..\..\ThirdParty\opus-1.2.1\include;$(ProjectDir)\..\..\ThirdParty\libopusenc\include;$(ProjectDir)\..\..\ThirdParty\FakeInput\src;$(ProjectDir)\..\..\ThirdParty\ViGEm\Include;$(IncludePath)</IncludePath>
-    <LibraryPath>$(ProjectDir)\..\..\ThirdParty\screen_capture_lite\vs\$(Configuration)\;$(ProjectDir)\..\..\ThirdParty\opus-1.2.1\win32\VS2015\Win32\$(Configuration)\;$(ProjectDir)\..\..\ThirdParty\libopusenc\win32\opusenc\$(Configuration)\;$(ProjectDir)\..\..\ThirdParty\FakeInput\bin\lib\$(Configuration)\;$(ProjectDir)\..\..\ThirdParty\ViGEm\Release (dynamic);$(LibraryPath)</LibraryPath>
+    <IncludePath>$(ProjectDir)\..\..\ThirdParty\screen_capture_lite\include;$(ProjectDir)\..\..\ThirdParty\opus-1.2.1\include;$(ProjectDir)\..\..\ThirdParty\libopusenc\include;$(ProjectDir)\..\..\ThirdParty\FakeInput\src;$(ProjectDir)\..\..\ThirdParty\ViGEm\Include;E:\Qt\Qt5.10.0\5.10.0\msvc2015\include\;$(IncludePath)</IncludePath>
+    <LibraryPath>$(ProjectDir)\..\..\ThirdParty\screen_capture_lite\vs\$(Configuration)\;$(ProjectDir)\..\..\ThirdParty\opus-1.2.1\win32\VS2015\Win32\$(Configuration)\;$(ProjectDir)\..\..\ThirdParty\libopusenc\win32\opusenc\$(Configuration)\;$(ProjectDir)\..\..\ThirdParty\FakeInput\bin\lib\$(Configuration)\;$(ProjectDir)\..\..\ThirdParty\ViGEm\Release (dynamic);$(LibraryPath);E:\Qt\Qt5.10.0\5.10.0\msvc2015\lib</LibraryPath>
     <EnableManagedIncrementalBuild>true</EnableManagedIncrementalBuild>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -92,14 +92,19 @@
       <PrecompiledHeader>Use</PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>WIN32;_DEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <SDLCheck>true</SDLCheck>
     </ClCompile>
     <Link>
-      <SubSystem>Console</SubSystem>
+      <SubSystem>NotSet</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>screen_capture_lite.lib;fakeInput.lib;opus.lib;opusenc.lib;winmm.lib;ViGEmClient.lib;Dwmapi.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>screen_capture_lite.lib;fakeInput.lib;opus.lib;opusenc.lib;winmm.lib;ViGEmClient.lib;Dwmapi.lib;Qt5Cored.lib;Qt5Guid.lib;Qt5Widgetsd.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
+    <PostBuildEvent>
+      <Command>xcopy /Y "E:\Qt\Qt5.10.0\5.10.0\msvc2015\bin\Qt5Cored.dll" "$(SolutionDir)$(Configuration)\"
+xcopy /Y "E:\Qt\Qt5.10.0\5.10.0\msvc2015\bin\Qt5Guid.dll" "$(SolutionDir)$(Configuration)\"
+xcopy /Y "E:\Qt\Qt5.10.0\5.10.0\msvc2015\bin\Qt5Widgetsd.dll" "$(SolutionDir)$(Configuration)\"</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
@@ -129,8 +134,13 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>screen_capture_lite.lib;fakeInput.lib;opus.lib;opusenc.lib;winmm.lib;ViGEmClient.lib;Dwmapi.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>screen_capture_lite.lib;fakeInput.lib;opus.lib;opusenc.lib;winmm.lib;ViGEmClient.lib;Dwmapi.lib;Qt5Core.lib;Qt5Gui.lib;Qt5Widgets.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
+    <PostBuildEvent>
+      <Command>xcopy /Y "E:\Qt\Qt5.10.0\5.10.0\msvc2015\bin\Qt5Core.dll" "$(SolutionDir)$(Configuration)\"
+xcopy /Y "E:\Qt\Qt5.10.0\5.10.0\msvc2015\bin\Qt5Gui.dll" "$(SolutionDir)$(Configuration)\"
+xcopy /Y "E:\Qt\Qt5.10.0\5.10.0\msvc2015\bin\Qt5Widgets.dll" "$(SolutionDir)$(Configuration)\"</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>

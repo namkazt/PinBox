@@ -67,9 +67,10 @@ typedef struct
 {
 	u32 frameIndex;
 	u32 pieceIndex;
-	u8* piece;
+
+	u8* pieceAddr;
+	u32 pieceStart;
 	u32 pieceSize;
-	void release() { if (piece != nullptr) free(piece); }
 
 } FramePiece;
 class PPSessionManager;
@@ -122,7 +123,7 @@ private:
 	//----------------------------------------------------
 	bool								SS_v_isStartStreaming = false;
 	bool								SS_setting_waitToReceivedFrame = true;
-	u32									SS_setting_smoothStepFrames = 3;		// this setting allow frame switch smoother if there is delay when received frame
+	u32									SS_setting_smoothStepFrames = 1;		// this setting allow frame switch smoother if there is delay when received frame
 	u32									SS_setting_sourceQuality = 75;			// webp quality control
 	u32									SS_setting_sourceScale = 100;			// frame size control eg: 75% = 0.75 of real size
 	//----------------------------------------------------

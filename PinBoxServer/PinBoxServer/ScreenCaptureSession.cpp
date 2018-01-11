@@ -17,11 +17,16 @@ ScreenCaptureSession::~ScreenCaptureSession()
 	m_frameGrabber->pause();
 }
 
-
+u32 onNewFramecounter = 0;
+u32 currentFPS = 0;
+auto onNewFramestart = std::chrono::high_resolution_clock::now();
+auto onFrameChanged = std::chrono::high_resolution_clock::now();
+u32 frameChanged = 0;
 void ScreenCaptureSession::initSCreenCapturer(PPServer* parent)
 {
 	m_server = parent;
 	//---------------------------------------------------------------------
+	m_frameGrabber = nullptr;
 	m_frameGrabber = SL::Screen_Capture::CreateCaptureConfiguration([]()
 	{
 		//std::vector<SL::Screen_Capture::Window> windows = SL::Screen_Capture::GetWindows();
@@ -49,6 +54,11 @@ void ScreenCaptureSession::initSCreenCapturer(PPServer* parent)
 		return selectedMonitor;
 	})->onNewFrame([&](const SL::Screen_Capture::Image& img, const SL::Screen_Capture::Monitor& monitor)
 		{
+			//-------------------------------------------------
+			// progress input on each frame
+			m_server->InputStreamer->ProcessInput();
+
+
 			if (!m_isStartStreaming) return;
 			if (g_ss_onClientReallyClosed != nullptr) {
 				m_isStartStreaming = false;
@@ -56,9 +66,6 @@ void ScreenCaptureSession::initSCreenCapturer(PPServer* parent)
 				g_ss_onClientReallyClosed = nullptr;
 				return;
 			}
-			//-------------------------------------------------
-			// progress input on each frame
-			m_server->InputStreamer->ProcessInput();
 
 			//-------------------------------------------------
 			// clean up our frame cached
@@ -103,13 +110,20 @@ void ScreenCaptureSession::initSCreenCapturer(PPServer* parent)
 			{
 				iter->second->GetPieceDataAndSend();
 			}		
+
+			frameChanged++;
+			if (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - onFrameChanged).count() >= 1000) {
+				std::cout << "FPS: " << frameChanged << std::endl << std::flush;
+				frameChanged = 0;
+				onFrameChanged = std::chrono::high_resolution_clock::now();
+			}
 		}
 	)->start_capturing();
-	//m_frameGrabber->setMouseChangeInterval(std::chrono::nanoseconds(16));
-	m_frameGrabber->setFrameChangeInterval(std::chrono::milliseconds(33));//100 ms
+	m_frameGrabber->setFrameChangeInterval(std::chrono::milliseconds(ServerConfig::Get()->CaptureFPS));
 	m_frameGrabber->pause();
 }
 
+u8* staticImageBuffer = nullptr;
 void ScreenCaptureSession::splitFrameToMultiPieces(const SL::Screen_Capture::Image& img)
 {
 	float iw = 400;
@@ -119,13 +133,13 @@ void ScreenCaptureSession::splitFrameToMultiPieces(const SL::Screen_Capture::Ima
 	//===============================================================
 	// get buffer data from image frame
 	auto size = Width(img) * Height(img) * 3;
-	u8* imgBuffer = (u8*)malloc(size);
-	SL::Screen_Capture::ExtractAndConvertToRGB(img, (unsigned char*)imgBuffer, size);
+	if (staticImageBuffer == nullptr) staticImageBuffer = (u8*)malloc(size);
+	SL::Screen_Capture::ExtractAndConvertToRGB(img, (unsigned char*)staticImageBuffer, size);
 	//===============================================================
 	// webp encode
 	try {
 		WebPConfig config;
-		if (!WebPConfigPreset(&config, WEBP_PRESET_DEFAULT, g_ss_outputQuality)) {
+		if (!WebPConfigPreset(&config, WEBP_PRESET_TEXT, g_ss_outputQuality)) {
 			return;  // version error
 		}
 		//===============================================================
@@ -148,7 +162,7 @@ void ScreenCaptureSession::splitFrameToMultiPieces(const SL::Screen_Capture::Ima
 		if (!WebPPictureAlloc(&pic)) {
 			return;
 		}
-		WebPPictureImportRGB(&pic, imgBuffer, Width(img) * 3);
+		WebPPictureImportRGB(&pic, staticImageBuffer, Width(img) * 3);
 		WebPPictureRescale(&pic, newW, newH);
 		WebPMemoryWriter writer;
 		WebPMemoryWriterInit(&writer);
@@ -161,14 +175,13 @@ void ScreenCaptureSession::splitFrameToMultiPieces(const SL::Screen_Capture::Ima
 		// result send to client
 		if (!ok) {
 			WebPMemoryWriterClear(&writer);
-			free(imgBuffer);
 			return;
 		}
 		//===============================================================
 		// we got image here. now split it
 		u32 normalPieceSize = writer.size / m_numberClients;
 		u32 lastPieceSize = writer.size - (normalPieceSize * m_numberClients) + normalPieceSize;
-		std::cout << "Frame size : " << writer.size << " | Piece size: " << normalPieceSize << std::endl << std::flush;
+		
 		//===============================================================
 		std::vector<FramePiece*> framePieces;
 		for(int i = 0; i < m_numberClients; i++)
@@ -191,15 +204,27 @@ void ScreenCaptureSession::splitFrameToMultiPieces(const SL::Screen_Capture::Ima
 		m_frameIndex++;
 		m_frameCacheMap[m_frameIndex] = framePieces;
 		m_frameCacheState[m_frameIndex] = 0;
+
+		//===============================================================
+		onNewFramecounter++;
+		if (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - onNewFramestart).count() >= 1000) {
+			currentFPS = onNewFramecounter;
+			onNewFramecounter = 0;
+			onNewFramestart = std::chrono::high_resolution_clock::now();
+		}
+
+		std::cout << "Frame size : " << writer.size << " | Piece size: " << normalPieceSize << " | FPS: " << currentFPS << " | Index : " << m_frameIndex << std::endl << std::flush;
+
+
 		//===============================================================
 		// clean up 
 		WebPMemoryWriterClear(&writer);
-		free(imgBuffer);
+
 	}
 	catch (...)
 	{
-		free(imgBuffer);
 	}
+
 
 }
 

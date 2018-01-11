@@ -3,12 +3,19 @@
 
 #include "stdafx.h"
 #include "PPServer.h"
+#include <QtWidgets/QApplication>
+#include <QtWidgets/QPushButton>
 
-int main()
+int main(int argc, char *argv[])
 {
+	QApplication PinboxServer(argc, argv);
+	//QPushButton pushButton("taweawaw");
+	//pushButton.show();
+
 	PPServer *server = new PPServer();
 	server->InitServer();
-	return 0;
+
+	return PinboxServer.exec();
 }
 
 #include "winmain-inl.h"
