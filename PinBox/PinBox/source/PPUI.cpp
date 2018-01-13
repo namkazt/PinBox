@@ -1,5 +1,6 @@
 #include "PPUI.h"
 #include <cstdio>
+#include "ConfigManager.h"
 
 
 // LOG
@@ -231,6 +232,8 @@ int PPUI::DrawBottomScreenUI(PPSessionManager* sessionManager)
 					// ok
 					sessionManager->setIPAddress(mTemplateInputString.c_str());
 					mTemplateInputString = "";
+					ConfigManager::Get()->_cfg_ip = strdup(mTemplateInputString.c_str());
+					ConfigManager::Get()->Save();
 				}
 			);
 		});
@@ -243,23 +246,7 @@ int PPUI::DrawBottomScreenUI(PPSessionManager* sessionManager)
 	if (FlatColorButton(260, 90, 50, 30, "Start", rgb(41, 128, 185), rgb(52, 152, 219), rgb(255, 255, 255)))
 	{
 		if (sessionManager->GetManagerState() == 2) return;
-
-
-		// parse IP and port
-		char* string = strdup(sessionManager->getIPAddress());
-		char* token;
-		char* ip, *port;
-		int i = 0;
-		while((token = strsep(&string, ":")) != nullptr)
-		{
-			i++;
-			if (i == 1) ip = strdup(token);
-			if (i == 2) {
-				port = strdup(token);
-				break;
-			}
-		}
-		sessionManager->StartStreaming(ip, port);
+		sessionManager->StartStreaming(sessionManager->getIPAddress());
 	}
 
 	// Sleep mode
@@ -268,6 +255,25 @@ int PPUI::DrawBottomScreenUI(PPSessionManager* sessionManager)
 		if (sleepModeState == 1) sleepModeState = 0;
 	}
 
+
+	// Config mode
+	if (FlatColorButton(10, 90, 100, 30, "Stream Config", rgb(39, 174, 96), rgb(46, 204, 113), rgb(255, 255, 255)))
+	{
+		AddPopup([=]()
+		{
+			return DrawStreamConfigUI(sessionManager,
+				[=](void* a, void* b)
+			{
+				// cancel
+			},
+				[=](void* a, void* b)
+			{
+				// ok
+				
+			}
+			);
+		});
+	}
 
 
 	// Exit Button
@@ -280,6 +286,36 @@ int PPUI::DrawBottomScreenUI(PPSessionManager* sessionManager)
 	DrawFPS(sessionManager);
 
 	return 0;
+}
+
+int PPUI::DrawStreamConfigUI(PPSessionManager* sessionManager, ResultCallback cancel, ResultCallback ok)
+{
+	PPGraphics::Get()->DrawRectangle(0, 0, 320, 240, rgb(236, 240, 241));
+	LabelBox(0, 0, 320, 30, "Stream Config", rgb(26, 188, 156), rgb(255, 255, 255));
+
+
+	LabelBoxLeft(5, 40, 50, 30, "Quality:", transparent, PPGraphics::Get()->PrimaryTextColor);
+	LabelBoxLeft(80, 40, 50, 30, "75", transparent, PPGraphics::Get()->PrimaryTextColor);
+
+	LabelBoxLeft(5, 70, 50, 30, "Scale:", transparent, PPGraphics::Get()->PrimaryTextColor);
+	LabelBoxLeft(80, 70, 50, 30, "100", transparent, PPGraphics::Get()->PrimaryTextColor);
+
+	LabelBoxLeft(5, 100, 50, 30, "Skip Frame:", transparent, PPGraphics::Get()->PrimaryTextColor);
+	LabelBoxLeft(80, 100, 50, 30, "1", transparent, PPGraphics::Get()->PrimaryTextColor);
+
+	// Cancel button
+	if (FlatColorButton(200, 200, 50, 30, "Cancel", rgb(192, 57, 43), rgb(231, 76, 60), rgb(255, 255, 255)))
+	{
+		ClosePopup();
+		if (cancel != nullptr) cancel(nullptr, nullptr);
+	}
+
+	// OK button
+	if (FlatColorButton(260, 200, 50, 30, "OK", rgb(41, 128, 185), rgb(52, 152, 219), rgb(255, 255, 255)))
+	{
+		ClosePopup();
+		if (ok != nullptr) ok(nullptr, nullptr);
+	}
 }
 
 int PPUI::DrawIdleBottomScreen(PPSessionManager* sessionManager)
@@ -300,17 +336,12 @@ int PPUI::DrawIdleBottomScreen(PPSessionManager* sessionManager)
 
 void PPUI::DrawFPS(PPSessionManager* sessionManager)
 {
-	// render app FPS
-	const float fps = sessionManager->GetFPS();
-	char fpsBuffer[16];
-	snprintf(fpsBuffer, sizeof fpsBuffer, "FPS: %.1f/%d", fps, sessionManager->getFrameIndex());
-	LabelBoxLeft(5, 200, 80, 20, fpsBuffer, rgb(26, 188, 156), rgb(255, 255, 255));
-
 	// render video FPS
+	const float fps = sessionManager->GetFPS();
 	const float videoFps = sessionManager->GetVideoFPS();
-	char videoFpsBuffer[50];
-	snprintf(videoFpsBuffer, sizeof videoFpsBuffer, "VFPS: %.1f/%d", videoFps, sessionManager->GetFrameLeft());
-	LabelBoxLeft(5, 220, 80, 20, videoFpsBuffer, rgb(26, 188, 156), rgb(255, 255, 255));
+	char videoFpsBuffer[100];
+	snprintf(videoFpsBuffer, sizeof videoFpsBuffer, "FPS: %.1f/%.1f", fps, videoFps);
+	LabelBoxLeft(5, 220, 100, 20, videoFpsBuffer, ppColor{ 0, 0, 0, 0 }, rgb(150, 150, 150));
 }
 
 ///////////////////////////////////////////////////////////////////////////

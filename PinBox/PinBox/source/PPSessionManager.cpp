@@ -1,5 +1,6 @@
 #include "PPSessionManager.h"
 #include "PPGraphics.h"
+#include "ConfigManager.h"
 
 #define STATIC_FRAMES_POOL_SIZE 0x500000
 #define STATIC_FRAME_SIZE 0x60000
@@ -40,6 +41,10 @@ void PPSessionManager::InitScreenCapture(u32 numberOfSessions)
 		PPSession* session = new PPSession();
 		session->sessionID = i;
 		session->InitScreenCaptureSession(this);
+		session->SS_setting_smoothStepFrames = ConfigManager::Get()->_cfg_skip_frame;
+		session->SS_setting_sourceQuality = ConfigManager::Get()->_cfg_video_quality;
+		session->SS_setting_sourceScale = ConfigManager::Get()->_cfg_video_scale;
+		session->SS_setting_waitToReceivedFrame = ConfigManager::Get()->_cfg_wait_for_received;
 		m_screenCaptureSessions.push_back(session);
 	}
 	mManagerState = 0;
@@ -160,6 +165,8 @@ void UpdateFrameTracker(void *arg)
 
 		svcSleepThread(sleepDuration);
 	}
+
+	self->ReleaseDecodeThead();
 }
 
 
@@ -263,9 +270,9 @@ void PPSessionManager::_oneByOneConnectScreenCapture(int index, const char* ip, 
 }
 
 
-void PPSessionManager::StartStreaming(const char* ip, const char* port)
+void PPSessionManager::StartStreaming(const char* ip)
 {
-	if (!strcmp(ip, "") || !strcmp(port, "")) return;
+	if (!strcmp(ip, "")) return;
 
 	m_currentDisplayFrame = 0;
 	m_frameTracker.clear();
@@ -282,12 +289,12 @@ void PPSessionManager::StartStreaming(const char* ip, const char* port)
 	StartDecodeThread();
 
 	//------------------------------------------------
-	_oneByOneConnectScreenCapture(m_connectedSession, ip, port, [=](int ret)
+	_oneByOneConnectScreenCapture(m_connectedSession, ip, "1234", [=](int ret)
 	{
 		//--------------------------------------------------
 		//start input connect when all other connect is done
 		if (m_inputStreamSession != nullptr) {
-			m_inputStreamSession->StartSession(ip, port, mMainThreadPrio - 3, [=](PPNetwork *self, u8* data, u32 code)
+			m_inputStreamSession->StartSession(ip, "1234", mMainThreadPrio - 3, [=](PPNetwork *self, u8* data, u32 code)
 			{
 				mManagerState = 2;
 				m_inputStreamSession->IN_Start();

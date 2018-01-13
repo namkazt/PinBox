@@ -51,13 +51,13 @@ public:
 	// UI ref variables
 	//------------------------------------------
 	int												mManagerState = -1;
-	char											mIPAddress[100] = "192.168.31.183:1234";
+	char											mIPAddress[100] = "";
 public:
 	PPSessionManager();
 	~PPSessionManager();
 
 	void InitScreenCapture(u32 numberOfSessions);
-	void StartStreaming(const char* ip, const char* port);
+	void StartStreaming(const char* ip);
 	void StopStreaming();
 	void Close();
 

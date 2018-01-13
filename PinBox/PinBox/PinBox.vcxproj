@@ -31,6 +31,7 @@
     <None Include="source\vshader.v.pica" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="source\ConfigManager.cpp" />
     <ClCompile Include="source\main.cpp" />
     <ClCompile Include="source\Mutex.cpp" />
     <ClCompile Include="source\PPGraphics.cpp" />
@@ -41,6 +42,7 @@
     <ClCompile Include="source\PPUI.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="include\ConfigManager.h" />
     <ClInclude Include="include\Mutex.h" />
     <ClInclude Include="include\PPGraphics.h" />
     <ClInclude Include="include\PPMessage.h" />

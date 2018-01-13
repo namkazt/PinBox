@@ -31,3 +31,7 @@ PinBoxServer/Debug/PinBoxServer.ilk
 PinBoxServer/Debug/PinBoxServer.pdb
 PinBoxServer/Debug/PinBoxServer.ilk
 PinBox/PinBox/PinBox.smdh
+PinBoxServer/Debug/PinBoxServer.exe
+*.ilk
+PinBoxServer/Debug/PinBoxServer.exe
+PinBoxServer/Release/PinBoxServer.exe

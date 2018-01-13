@@ -43,6 +43,7 @@ public:
 	static int DrawIdleTopScreen(PPSessionManager *sessionManager);
 	static int DrawNumberInputScreen( const char* label, ResultCallback cancel, ResultCallback ok);
 	static int DrawBottomScreenUI(PPSessionManager *sessionManager);
+	static int DrawStreamConfigUI(PPSessionManager *sessionManager, ResultCallback cancel, ResultCallback ok);
 	static int DrawIdleBottomScreen(PPSessionManager *sessionManager);
 
 	static void DrawFPS(PPSessionManager *sessionManager);

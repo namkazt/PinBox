@@ -11,6 +11,7 @@
 #include <malloc.h>
 #include <arpa/inet.h>
 
+#include "ConfigManager.h"
 #include "PPGraphics.h"
 #include "PPSessionManager.h"
 
@@ -20,7 +21,7 @@
 #define SOC_ALIGN       0x1000
 #define SOC_BUFFERSIZE  0x100000
 
-//#define USE_CITRA 1
+#define USE_CITRA 1
 
 void initDbgConsole()
 {
@@ -56,12 +57,16 @@ int main()
 	{
 		return 0;
 	}
+	//---------------------------------------------
+	// Init config
+	//---------------------------------------------
+	ConfigManager::Get()->InitConfig();
 	
 	//---------------------------------------------
 	// Init session manager
 	//---------------------------------------------
 	PPSessionManager* sm = new PPSessionManager();
-	
+	snprintf(sm->mIPAddress, sizeof sm->mIPAddress, "%s", ConfigManager::Get()->_cfg_ip);
 	//---------------------------------------------
 	// Wifi Check
 	//---------------------------------------------
@@ -184,6 +189,7 @@ int main()
 		
 	
 	PPGraphics::Get()->GraphicExit();
+	ConfigManager::Get()->Destroy();
 	irrstExit();
 	socExit();
 	free(SOC_buffer);

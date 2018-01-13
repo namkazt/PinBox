@@ -55,7 +55,7 @@ typedef struct
 	u32 toU32() const { return (((a) & 0xFF) << 24) | (((b) & 0xFF) << 16) | (((g) & 0xFF) << 8) | (((r) & 0xFF) << 0); }
 }ppColor;
 #define rgb(r,g,b)(ppColor {r, g, b, 255})
-
+#define transparent ppColor {0, 0, 0, 0}
 typedef struct
 {
 	ppVector3 position;
