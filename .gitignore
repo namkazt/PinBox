@@ -1,4 +1,3 @@
-PinBoxServer/PinBoxServer/Debug/PinBoxServer.tlog/link.read.1.tlog
 PinBoxServer/PinBoxServer/Debug/
 PinBoxServer/PinBoxServer/Release/
 PinBoxServer/PinBoxServer.VC.db
@@ -26,12 +25,7 @@ PinBoxServer/Release/webp.dll
 PinBox/PinBox/PinBox-strip.elf
 *.cia
 *.exe
-PinBoxServer/Debug/PinBoxServer.exe
-PinBoxServer/Debug/PinBoxServer.ilk
-PinBoxServer/Debug/PinBoxServer.pdb
-PinBoxServer/Debug/PinBoxServer.ilk
+PinBoxServer/Debug/
+PinBoxServer/Release/
 PinBox/PinBox/PinBox.smdh
-PinBoxServer/Debug/PinBoxServer.exe
 *.ilk
-PinBoxServer/Debug/PinBoxServer.exe
-PinBoxServer/Release/PinBoxServer.exe
