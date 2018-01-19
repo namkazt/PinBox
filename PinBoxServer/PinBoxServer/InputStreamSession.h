@@ -5,7 +5,6 @@
 #define BIT(n) (1U<<(n))
 #include <key.hpp>
 #include <map>
-#include "AudioStreamSession.h"
 #include "ViGEmClient.h"
 
 /// Key values.
@@ -58,8 +57,8 @@ private:
 	const int									c_cpadMin = 0;
 	const int									c_cpadMax = 156;
 
-	u32											m_OldDown;
-	u32											m_OldUp;
+	uint32_t											m_OldDown;
+	uint32_t											m_OldUp;
 	short										m_OldCX;
 	short										m_OldCY;
 	short										m_OldCTX;
@@ -86,7 +85,7 @@ public:
 
 	void LoadInputConfig();
 
-	void UpdateInput(u32 down, u32 up, short cx, short cy, short ctx, short cty);
+	void UpdateInput(uint32_t down, uint32_t up, short cx, short cy, short ctx, short cty);
 	void ProcessInput();
 	void ChangeInputProfile(std::string	profileName);
 };

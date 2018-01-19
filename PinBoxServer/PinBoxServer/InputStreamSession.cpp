@@ -24,8 +24,8 @@ void InputStreamSession::LoadInputConfig()
 	//-----------------------------------------------
 	m_defaultProfile = new KeyMappingProfile();
 	m_defaultProfile->name = "Default";
-	//m_defaultProfile->type = "keyboard";
-	m_defaultProfile->type = "x360";
+	m_defaultProfile->type = "keyboard";
+	//m_defaultProfile->type = "x360";
 	m_defaultProfile->mappings[0] = FakeInput::Key_Z;
 	m_defaultProfile->mappings[1] = FakeInput::Key_X;
 	m_defaultProfile->mappings[10] = FakeInput::Key_A;
@@ -170,7 +170,7 @@ void InputStreamSession::LoadInputConfig()
 	}
 }
 
-void InputStreamSession::UpdateInput(u32 down, u32 up, short cx, short cy, short ctx, short cty)
+void InputStreamSession::UpdateInput(uint32_t down, uint32_t up, short cx, short cy, short ctx, short cty)
 {
 	m_OldDown = down;
 	m_OldUp = up;

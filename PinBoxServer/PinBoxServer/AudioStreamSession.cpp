@@ -1,13 +1,12 @@
 #include "stdafx.h"
 #include "AudioStreamSession.h"
+#include <iostream>
 
 
 AudioStreamSession::~AudioStreamSession()
 {
 	if (m_pMMDevice != NULL) m_pMMDevice->Release();
 }
-
-
 
 void AudioStreamSession::useDefaultDevice()
 {
@@ -33,7 +32,7 @@ void AudioStreamSession::useDefaultDevice()
 	pMMDeviceEnumerator->Release();
 }
 
-void AudioStreamSession::StartOpusAudioStream()
+void AudioStreamSession::StartAudioStream()
 {
 	CoInitialize(NULL);
 	this->useDefaultDevice();
@@ -44,25 +43,11 @@ void AudioStreamSession::StartOpusAudioStream()
 		printf("CreateEvent failed: last error is %u", GetLastError());
 		return;
 	}
-	//-----------------------------------------------------------------------
-	// init opus
-	g_opus_comments = ope_comments_create();
-	ope_comments_add(g_opus_comments, "SRC", "PINBOX");
-	ope_comments_add(g_opus_comments, "V", "1.0.0");
-	//-----------------------------------------------------------------------
-	int error;
-	OpusEncCallbacks streamWriter;
-	g_opus_encoder = ope_encoder_create_callbacks(&streamWriter, this, g_opus_comments, 48000, 2, 0, &error); // need pass dynamic data here for audio source
-	if (!g_opus_encoder) {
-		printf("Error when create OPUS encoder.\n");
-		return;
-	}
 	//-----------------------------------------------------
-	// override record data callback
-	SetOnRecordData([=](u8* output, u32 size, u32 frames)
-	{
-		ope_encoder_write(g_opus_encoder, (opus_int16*)output, frames);
-	});
+	// init tmp buffer
+	mTmpAudioBuffer = (u8*)malloc(5 * 1024 * 1024);
+	mTmpAudioBufferSize = 0;
+	mutex = new std::mutex();
 	//-----------------------------------------------------
 	// start loopback record thread
 	g_thread = std::thread(loopbackCaptureThreadFunction, this);
@@ -74,12 +59,28 @@ void AudioStreamSession::StopStreaming()
 	
 	if (m_pMMDevice != NULL) m_pMMDevice->Release();
 	m_pMMDevice = NULL;
-	if (g_opus_encoder != nullptr) {
-		SetEvent(g_StopEvent);
-		ope_encoder_drain(g_opus_encoder);
-		ope_encoder_destroy(g_opus_encoder);
-		ope_comments_destroy(g_opus_comments);
-	}
+	if (mTmpAudioBuffer) free(mTmpAudioBuffer);
+}
+
+
+void AudioStreamSession::BeginReadAudioBuffer()
+{
+	mutex->lock();
+}
+
+int AudioStreamSession::FinishReadAudioBuffer(u32 sizeRead, int framesRead)
+{
+	// move data left
+	//std::cout << "Memory read: " << sizeRead << " frames read: " << framesRead << " --- memory left: " << mTmpAudioBufferSize - sizeRead << std::endl << std::flush;
+	memmove(mTmpAudioBuffer, mTmpAudioBuffer + sizeRead, mTmpAudioBufferSize - sizeRead);
+	// clean data
+	mTmpAudioBufferSize -= sizeRead;
+	mTmpAudioFrames -= framesRead;
+	if (mTmpAudioBufferSize < 0) mTmpAudioBufferSize = 0;
+	if (mTmpAudioFrames < 0) mTmpAudioFrames = 0;
+
+	mutex->unlock();
+	return mTmpAudioFrames;
 }
 
 void AudioStreamSession::loopbackCaptureThreadFunction(void* context)
@@ -150,8 +151,8 @@ void AudioStreamSession::loopbackCaptureThreadFunction(void* context)
 
 	//NOTE: can be create as event to get on another thread
 	//callback for device information
-	if(self->g_opus_onGetDeviceInfo!= nullptr)
-		self->g_opus_onGetDeviceInfo(pwfx->nChannels, pwfx->nSamplesPerSec);
+	//if(self->g_opus_onGetDeviceInfo!= nullptr)
+	//	self->g_opus_onGetDeviceInfo(pwfx->nChannels, pwfx->nSamplesPerSec);
 
 	//NOTE: test result wave file
 	//MMCKINFO ckRIFF = { 0 };
@@ -227,13 +228,13 @@ void AudioStreamSession::loopbackCaptureThreadFunction(void* context)
 
 			LONG lBytesToWrite = nNumFramesToRead * nBlockAlign;
 
-			//send new data to call back
-			if (self->g_onRecordDataCallback)
-				self->g_onRecordDataCallback(pData, lBytesToWrite, nNumFramesToRead);
-
-			//NOTE: test write wave file
-			//mmioWrite(self->g_tmpWavFile, reinterpret_cast<PCHAR>(pData), lBytesToWrite);
-
+			// write audio wave data into tmp buffer to wait for encode
+			self->mutex->lock();
+			memmove(self->mTmpAudioBuffer + self->mTmpAudioBufferSize, pData, lBytesToWrite);
+			self->mTmpAudioBufferSize += lBytesToWrite;
+			self->mTmpAudioFrames += nNumFramesToRead;
+			//std::cout << "Add: " << lBytesToWrite << " frames: " << nNumFramesToRead << " --- memory new: " << self->mTmpAudioBufferSize << std::endl << std::flush;
+			self->mutex->unlock();
 			//-------------------------------------------------------------------------
 			self->g_totalFrameRecorded += nNumFramesToRead;
 			hr = pAudioCaptureClient->ReleaseBuffer(nNumFramesToRead);
@@ -279,6 +280,7 @@ void AudioStreamSession::loopbackCaptureThreadFunction(void* context)
 //---------------------------------------
 // Those functions only for testing
 //---------------------------------------
+
 
 void AudioStreamSession::Helper_WriteWaveHeader(LPCWSTR fileName, LPCWAVEFORMATEX pwfx, MMCKINFO *pckRIFF, MMCKINFO *pckData) {
 	MMRESULT result;
@@ -389,27 +391,3 @@ void AudioStreamSession::Helper_FixWaveFile(LPCWSTR fileName, u32 nFrames)
 	result = mmioAscend(hFile, &ckFact, 0);
 	result = mmioClose(hFile, 0);
 }
-
-
-//---------------------------------------
-// OPUS AUDIO STREAMING
-//---------------------------------------
-
-int AudioStreamSession::opus_onWrite(void* user_data, const unsigned char* ptr, opus_int32 len)
-{
-	AudioStreamSession* self = static_cast<AudioStreamSession*>(user_data);
-	if (!self) return 0;
-	if (self->g_opus_onDataCallback != nullptr)
-		self->g_opus_onDataCallback((u8*)ptr, len);
-	return 0;
-}
-
-int AudioStreamSession::opus_onClose(void* user_data)
-{
-	AudioStreamSession* self = static_cast<AudioStreamSession*>(user_data);
-	if (!self) return 0;
-	if (self->g_opus_onFinishCallback != nullptr)
-		self->g_opus_onFinishCallback();
-	return 0;
-}
-

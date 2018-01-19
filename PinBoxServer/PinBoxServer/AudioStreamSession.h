@@ -1,21 +1,13 @@
 #pragma once
+#ifndef _AUDIO_STREAM_SESSION_H__
+#define _AUDIO_STREAM_SESSION_H__
 
-#include <stdio.h>
 #include <windows.h>
-#include <mmsystem.h>
 #include <mmdeviceapi.h>
 #include <audioclient.h>
-#include <avrt.h>
-#include <functional>
 #include <thread>
-#include "opusenc.h"
 #include "PPMessage.h"
-
-
-typedef std::function<void(u8* buffer, u32 size, u32 frames)> OnRecordDataCallback;
-typedef std::function<void(u8* buffer, u32 size)> OnDataCallback;
-typedef std::function<void(u32 nChannels, u32 nSampleRate)> OnGetDeviceInfo;
-typedef std::function<void()> OnFinishCallback;
+#include <mutex>
 
 class AudioStreamSession
 {
@@ -24,13 +16,12 @@ private:
 	HANDLE						g_StopEvent;
 	std::thread					g_thread;
 	u32							g_totalFrameRecorded = 0;
-	OnRecordDataCallback		g_onRecordDataCallback = nullptr;
 
-	OggOpusEnc					*g_opus_encoder;
-	OggOpusComments				*g_opus_comments;
-	OnDataCallback				g_opus_onDataCallback = nullptr;
-	OnFinishCallback			g_opus_onFinishCallback = nullptr;
-	OnGetDeviceInfo				g_opus_onGetDeviceInfo = nullptr;
+
+	u8*							mTmpAudioBuffer = nullptr;
+	u32							mTmpAudioBufferSize = 0;
+	int							mTmpAudioFrames = 0;
+	std::mutex					*mutex;
 public:
 	u32							GetLastFramesRecorded() { return g_totalFrameRecorded; }
 	
@@ -40,17 +31,17 @@ private:
 
 	static void					loopbackCaptureThreadFunction(void* context);
 
-
-	static int					opus_onWrite(void *user_data, const unsigned char *ptr, opus_int32 len);
-	static int					opus_onClose(void *user_data);
 public:
 	~AudioStreamSession();
 
-	void						StartOpusAudioStream();
+	void						StartAudioStream();
 	void						StopStreaming();
-	void						SetOnRecordData(OnRecordDataCallback callback) { g_onRecordDataCallback = callback; }
-	void						SetOnNewRecordedData(OnDataCallback callback) { g_opus_onDataCallback = callback; }
-	void						SetOnEncoderClosed(OnFinishCallback callback) { g_opus_onFinishCallback = callback; }
+
+	void						BeginReadAudioBuffer();
+	u8*							GetAudioBuffer() { return mTmpAudioBuffer; }
+	u32							GetAudioBufferSize() { return mTmpAudioBufferSize; }
+	int							GetAudioFrames() { return mTmpAudioFrames; }
+	int						FinishReadAudioBuffer(u32 sizeRead, int framesRead);
 
 public: // test functions
 	HMMIO						g_tmpWavFile;
@@ -59,3 +50,4 @@ public: // test functions
 	void						Helper_FixWaveFile(LPCWSTR fileName, u32 nFrames);
 };
 
+#endif

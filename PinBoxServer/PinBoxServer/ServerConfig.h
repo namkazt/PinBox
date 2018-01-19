@@ -1,5 +1,6 @@
 #pragma once
-
+#ifndef _PP_SERVER_CONFIG_H__
+#define _PP_SERVER_CONFIG_H__
 #include <libconfig.h++>
 #include <iostream>
 
@@ -16,3 +17,4 @@ public:
 	void LoadConfig();
 };
 
+#endif

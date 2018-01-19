@@ -46,7 +46,7 @@ void PPServer::InitServer()
 	// Screen capture session
 	//===========================================================================
 	ScreenCapturer = new ScreenCaptureSession();
-	ScreenCapturer->initSCreenCapturer(this);
+	ScreenCapturer->initScreenCaptuure(this);
 	//===========================================================================
 	// Screen capture session
 	//===========================================================================
@@ -61,57 +61,39 @@ void PPServer::InitServer()
 	//===========================================================================
 	server.SetMessageCallback([&](const evpp::TCPConnPtr& conn, evpp::Buffer* msg)
 	{
-		mutexCloseServer.lock();
-		auto iter = clientSessions.find(conn->remote_addr());
-		if(iter != clientSessions.end())
+		evpp::Any sessionAny = conn->context();
+		PPClientSession* session = evpp::any_cast<PPClientSession*>(sessionAny);
+		if (session != nullptr)
 		{
-			PPClientSession* session = iter->second;
-			mutexCloseServer.unlock();
+			//TODO: this sesison is disconnected then do what ?
 			session->ProcessMessage(msg);
 		}else
 		{
-			mutexCloseServer.unlock();
-			std::cout << "[Error]Received Message but do not know from where ??" << std::endl << std::flush;
+			std::cout << "Connection do not have paired session!" << std::endl << std::flush;
 		}
-		
-		//--------------------------------------
-		// need reset to empty msg after using.
 		msg->Reset();
 	});
 	//===========================================================================
 	server.SetConnectionCallback([&](const evpp::TCPConnPtr& conn)
 	{
 		std::string addrID = conn->remote_addr();
-		std::map<std::string, PPClientSession*>::iterator iter = clientSessions.find(addrID);
-		if (iter != clientSessions.end())
+		if(conn->IsConnected())
 		{
-			// remove session
-			if (!conn->IsConnected())
-			{
-				ScreenCapturer->registerForStopStream([=]()
-				{
-					ScreenCapturer->stopStream();
-					for(auto it = clientSessions.begin(); it != clientSessions.end();++it)
-					{
-						it->second->DisconnectFromServer();
-						std::cout << "Client: " << addrID << " disconnected!" << std::endl << std::flush;
-					}
-					clientSessions.clear();
-					ScreenCapturer->removeForStopStream();
-				});
-			}
-		}
-		else
+			// new client is connected
+			std::cout << "Client: " << addrID << " connected to server!" << std::endl << std::flush;
+			PPClientSession* session = new PPClientSession();
+			session->InitSession(conn, this);
+			evpp::Any context(session);
+			conn->set_context(context);
+
+		}else if(conn->IsDisconnected())
 		{
-			// add new session
-			if (conn->IsConnected())
+			// client is disconnected
+			evpp::Any sessionAny = conn->context();
+			PPClientSession* session = evpp::any_cast<PPClientSession*>(sessionAny);
+			if(session != nullptr)
 			{
-				std::cout << "Client: " << addrID << " connected to server!" << std::endl << std::flush;
-				PPClientSession* session = new PPClientSession();
-				session->InitSession(conn, this);
-				mutexCloseServer.lock();
-				clientSessions.insert(std::pair<std::string, PPClientSession*>(addrID, session));
-				mutexCloseServer.unlock();
+				session->DisconnectFromServer();
 			}
 		}
 	});

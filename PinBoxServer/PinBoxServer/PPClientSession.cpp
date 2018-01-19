@@ -20,7 +20,7 @@ void PPClientSession::DisconnectFromServer()
 	}
 	else if (g_sessionType == PPSESSION_SCREEN_CAPTURE)
 	{
-		m_server->ScreenCapturer->updateClientNumber(-1);
+		//TODO: screen capture disconnect
 	}
 	else if (g_sessionType == PPSESSION_INPUT_CAPTURE)
 	{
@@ -28,29 +28,12 @@ void PPClientSession::DisconnectFromServer()
 	}
 }
 
-void PPClientSession::GetPieceDataAndSend()
+void PPClientSession::PreparePacketAndSend(u8* buffer, int bufferSize)
 {
-	FramePiece* piece = m_server->ScreenCapturer->getNewFramePieces();
-	if (piece == nullptr) return;
-	if (g_ss_currentWorkingFrame == piece->frameIndex) return;
 	g_ss_isReceived = false;
 	//-------------------------------------------------------
-	// rebuild message content with
-	// u32 : frame index
-	// u8 : piece index
-	// u8* : piece data
-	u8* rebuildData = (u8*)malloc(piece->size + 5);
-	u8* pointer = rebuildData;
-	WRITE_U32(pointer, piece->frameIndex);
-	WRITE_U8(pointer, piece->index);
-	memcpy(pointer, piece->piece, piece->size);
-	g_ss_currentWorkingFrame = piece->frameIndex;
-	//-------------------------------------------------------
 	//std::cout << "SEND MESSAGE FRAME #" << piece->frameIndex << " PIECE #" << (u32)piece->index << " to " << g_connection->remote_addr() << " | msg size: " << (piece->size + 5) << std::endl;
-	sendMessageWithCodeAndData(MSG_CODE_REQUEST_NEW_SCREEN_FRAME, rebuildData, piece->size + 5);
-	//-------------------------------------------------------
-	// no need to free framePiece here. screen capture will take care of it.
-	free(rebuildData);
+	sendMessageWithCodeAndData(MSG_CODE_REQUEST_NEW_SCREEN_FRAME, buffer, bufferSize);
 }
 
 void PPClientSession::ProcessMessage(evpp::Buffer* msg)
@@ -188,7 +171,7 @@ void PPClientSession::ProcessAuthentication()
 	}else if(autheMsg->GetMessageCode() == MSG_CODE_REQUEST_AUTHENTICATION_SCREEN_CAPTURE)
 	{
 		g_sessionType = PPSESSION_SCREEN_CAPTURE;
-		m_server->ScreenCapturer->updateClientNumber(1);
+		m_server->ScreenCapturer->registerClientSession(this);
 	}
 	else if (autheMsg->GetMessageCode() == MSG_CODE_REQUEST_AUTHENTICATION_INPUT)
 	{
@@ -312,7 +295,7 @@ void PPClientSession::processMessageBody(u8* buffer, u8 code)
 			std::cout << "Quality: " << _outputQuality << std::endl;
 			std::cout << "Scale: " << _outputScale << std::endl;
 			///-----------------------------------
-			m_server->ScreenCapturer->changeSetting(_waitForClientReceived, _waitForFrame, _outputQuality, _outputScale);
+			//m_server->ScreenCapturer->changeSetting(_waitForClientReceived, _waitForFrame, _outputQuality, _outputScale);
 			break;
 		}
 		default: break;

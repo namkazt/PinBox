@@ -1,5 +1,8 @@
 #pragma once
 
+#ifndef _PP_SERVER_H__
+#define _PP_SERVER_H__
+
 // socket
 #include <winsock2.h>
 #include <winsock.h>
@@ -21,9 +24,6 @@ class PPServer
 
 	
 public:
-	std::map<std::string, PPClientSession*>			clientSessions;
-	u32												numberClients = 0;
-	std::mutex										mutexCloseServer;
 	static void PrintIPAddressList();
 public:
 	ScreenCaptureSession*							ScreenCapturer;
@@ -32,3 +32,5 @@ public:
 	void InitServer();
 };
 
+
+#endif
