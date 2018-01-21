@@ -32,7 +32,7 @@ https://goo.gl/qcuVbp
 - Enable firewall to allow port 1234 in and out (or disable the firewall when using the software and enable the firewall when done)
 - Make sure both devices are connected to Wifi
 - You do not have to type in port 1234, this will crash the app
-
+- If you are getting a black screen in Pinbox, open server.cfg in the Pinbox server directory and change monitor index to zero
 # Installation
 
 Tutorial Video (Thanks to @GameInCanada): https://www.youtube.com/watch?v=Q-R2cy-vBgY
@@ -42,4 +42,3 @@ Please follow the instructions in the Pinbox Discord since the troubleshooting r
 
 ## If you are having issues don't hesitate to ask for help on our official Discord channel! 
 ## https://discord.gg/9Qae7fT
-
