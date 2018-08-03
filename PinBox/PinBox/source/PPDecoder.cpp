@@ -76,7 +76,8 @@ void PPDecoder::initY2RImageConverter()
 	pDecodeState->y2rParams.input_format = INPUT_YUV420_INDIV_8;
 	pDecodeState->y2rParams.output_format = OUTPUT_RGB_24;
 	pDecodeState->y2rParams.rotation = ROTATION_NONE;
-	pDecodeState->y2rParams.block_alignment = BLOCK_8_BY_8;
+	pDecodeState->y2rParams.block_alignment = BLOCK_LINE;
+	//pDecodeState->y2rParams.block_alignment = BLOCK_8_BY_8;
 	pDecodeState->y2rParams.input_line_width = 400;
 	pDecodeState->y2rParams.input_lines = 240;
 	if (pDecodeState->y2rParams.input_lines % 8) {
@@ -133,23 +134,29 @@ void PPDecoder::convertColor()
 	const s16 src_Y_padding = pVideoFrame->linesize[0] - img_w;
 	const s16 src_UV_padding = pVideoFrame->linesize[1] - (img_w / 2);
 
-	res = Y2RU_SetSendingY(src_Y, pVideoFrame->linesize[0] * img_h, img_w, src_Y_padding);
-	if (res != 0) printf("Error on Y2RU_SetSendingY\n");
+	res = Y2RU_SetSendingY(src_Y, src_Y_size, img_w, src_Y_padding);
+	if (res != 0) 
+		printf("Error on Y2RU_SetSendingY\n");
 	res = Y2RU_SetSendingU(src_U, src_UV_size, (img_w / 2), src_UV_padding);
-	if (res != 0) printf("Error on Y2RU_SetSendingU\n");
+	if (res != 0) 
+		printf("Error on Y2RU_SetSendingU\n");
 	res = Y2RU_SetSendingV(src_V, src_UV_size, (img_w / 2), src_UV_padding);
-	if (res != 0) printf("Error on Y2RU_SetSendingV\n");
+	if (res != 0) 
+		printf("Error on Y2RU_SetSendingV\n");
 
 	const u16 pixSize = 3;
 	size_t rgb_size = img_size * pixSize;
 	s16 gap = (iFrameWidth - img_w) * 8 * pixSize;
 
 	res = Y2RU_SetReceiving(pRGBBuffer, rgb_size, img_w * 8 * pixSize, gap);
-	if (res != 0) printf("Error on Y2RU_SetReceiving\n");
+	if (res != 0) 
+		printf("Error on Y2RU_SetReceiving\n");
 	res = Y2RU_StartConversion();
-	if (res != 0) printf("Error on Y2RU_StartConversion\n");
+	if (res != 0) 
+		printf("Error on Y2RU_StartConversion\n");
 	res = svcWaitSynchronization(pDecodeState->endEvent, 10000000000ull);
-	if (res != 0) printf("Error on svcWaitSynchronization\n");
+	if (res != 0) 
+		printf("Error on svcWaitSynchronization\n");
 }
 
 u8* PPDecoder::decodeVideoStream()
@@ -166,7 +173,7 @@ u8* PPDecoder::decodeVideoStream()
 	//----------------------------------------------
 	iFrameWidth = pVideoFrame->width;
 	iFrameHeight =pVideoFrame->height;
-	if (pRGBBuffer == nullptr) pRGBBuffer = (u8*)linearMemAlign(3 * iFrameWidth * iFrameHeight, 0x8);
+	if (pRGBBuffer == nullptr) pRGBBuffer = (u8*)linearMemAlign(3 * iFrameWidth * iFrameHeight, 0x80);
 
 	//TODO: this part have problem ...
 	convertColor();
