@@ -145,9 +145,9 @@
     </NMakeOutput>
     <NMakePreprocessorDefinitions>$(NMakePreprocessorDefinitions)</NMakePreprocessorDefinitions>
     <IncludePath>C:\devkitPro\devkitARM\arm-none-eabi\include;C:\devkitPro\libctru\include;C:\devkitPro\libwebp\include;C:\devkitPro\libimgui\include;include;build;C:\devkitPro\portlibs\armv6k\include;$(IncludePath)</IncludePath>
-    <NMakeBuildCommandLine>make &amp; start make netlink</NMakeBuildCommandLine>
-    <NMakeReBuildCommandLine>make clean all</NMakeReBuildCommandLine>
-    <NMakeCleanCommandLine>make clean</NMakeCleanCommandLine>
+    <NMakeBuildCommandLine>C:\devkitPro\msys\msys2_shell.cmd -msys2 -where $(ProjectDir) -c make netlink</NMakeBuildCommandLine>
+    <NMakeReBuildCommandLine>C:\devkitPro\msys&gt;msys2_shell.cmd -msys2 -where "$(ProjectDir)" -no-start -c make clean all</NMakeReBuildCommandLine>
+    <NMakeCleanCommandLine>C:\devkitPro\msys&gt;msys2_shell.cmd -msys2 -where "$(ProjectDir)" -no-start -c make clean</NMakeCleanCommandLine>
     <NMakeIncludeSearchPath>C:\devkitPro\libctru\include;C:\devkitPro\devkitARM\arm-none-eabi\include;C:\devkitPro\libwebp\include;include;build;$(NMakeIncludeSearchPath)</NMakeIncludeSearchPath>
     <OutDir>..\tmp\out\$(Configuration)\</OutDir>
     <IntDir>..\tmp\intermediate\$(Configuration)\</IntDir>
