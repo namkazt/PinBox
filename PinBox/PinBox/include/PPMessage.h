@@ -48,6 +48,7 @@ public:
 	void								BuildMessageHeader(u8 code);
 
 	bool								ParseHeader(u8* buffer);
+	void								ClearHeader();
 };
 
 #endif

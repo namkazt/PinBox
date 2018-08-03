@@ -16,7 +16,7 @@ private:
 	HANDLE						g_StopEvent;
 	std::thread					g_thread;
 	u32							g_totalFrameRecorded = 0;
-
+	bool						g_isPaused = false;
 
 	u8*							mTmpAudioBuffer = nullptr;
 	u32							mTmpAudioBufferSize = 0;
@@ -35,6 +35,8 @@ public:
 	~AudioStreamSession();
 
 	void						StartAudioStream();
+	void						Pause() { g_isPaused = true; }
+	void						Resume() { g_isPaused = false; }
 	void						StopStreaming();
 
 	void						BeginReadAudioBuffer();

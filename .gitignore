@@ -1,7 +1,7 @@
 PinBoxServer/PinBoxServer/Debug/
 PinBoxServer/PinBoxServer/Release/
-PinBoxServer/PinBoxServer.VC.db
-PinBoxServer/PinBoxServer.VC.VC.opendb
+*.db
+*.opendb
 PinBoxServer/ipch/
 PinBox/tmp/
 PinBoxTestProject/Debug/
@@ -19,7 +19,7 @@ PinBoxServer/PinBoxServer/test.wav
 PinBox/PinBox.VC.VC.opendb
 PinBox/PinBox/backup/
 PinBox/PinBox/data/dog.webp
-Release/r0.1.0/PinBox_hb_r0.1.0.rar
+Release/
 *.rar
 PinBoxServer/Release/webp.dll
 PinBox/PinBox/PinBox-strip.elf
@@ -29,3 +29,4 @@ PinBoxServer/Debug/
 PinBoxServer/Release/
 PinBox/PinBox/PinBox.smdh
 *.ilk
+*.suo

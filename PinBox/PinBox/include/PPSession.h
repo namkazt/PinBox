@@ -65,14 +65,11 @@ typedef struct
 
 typedef struct
 {
-	u32 frameIndex;
-	u32 pieceIndex;
-
 	u8* pieceAddr;
 	u32 pieceStart;
 	u32 pieceSize;
-
-} FramePiece;
+	bool decoded = false;
+} FrameData;
 class PPSessionManager;
 
 class PPSession
@@ -151,6 +148,7 @@ public:
 	void								SS_StartStream();
 	void								SS_StopStream();
 	void								SS_ChangeSetting();
+	void								SS_SendReceivedFrame();
 
 	void								SS_Reset();
 	//-----------------------------------------------------

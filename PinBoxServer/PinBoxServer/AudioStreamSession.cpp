@@ -70,15 +70,14 @@ void AudioStreamSession::BeginReadAudioBuffer()
 
 int AudioStreamSession::FinishReadAudioBuffer(u32 sizeRead, int framesRead)
 {
+	if (mTmpAudioBufferSize < sizeRead) sizeRead = mTmpAudioBufferSize;
+	if (mTmpAudioFrames < framesRead) framesRead = mTmpAudioFrames;
 	// move data left
 	//std::cout << "Memory read: " << sizeRead << " frames read: " << framesRead << " --- memory left: " << mTmpAudioBufferSize - sizeRead << std::endl << std::flush;
 	memmove(mTmpAudioBuffer, mTmpAudioBuffer + sizeRead, mTmpAudioBufferSize - sizeRead);
 	// clean data
 	mTmpAudioBufferSize -= sizeRead;
 	mTmpAudioFrames -= framesRead;
-	if (mTmpAudioBufferSize < 0) mTmpAudioBufferSize = 0;
-	if (mTmpAudioFrames < 0) mTmpAudioFrames = 0;
-
 	mutex->unlock();
 	return mTmpAudioFrames;
 }
@@ -208,6 +207,11 @@ void AudioStreamSession::loopbackCaptureThreadFunction(void* context)
 	bool bDone = false;
 	bool bFirstPacket = true;
 	for (UINT32 nPasses = 0; !bDone; nPasses++) {
+
+		if(self->g_isPaused)
+		{
+			continue;
+		}
 
 		// drain data while it is available
 		UINT32 nNextPacketSize;

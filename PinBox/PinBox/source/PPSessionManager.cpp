@@ -2,7 +2,7 @@
 #include "PPGraphics.h"
 #include "ConfigManager.h"
 
-#define STATIC_FRAMES_POOL_SIZE 0x500000
+#define STATIC_FRAMES_POOL_SIZE 0x19000
 #define STATIC_FRAME_SIZE 0x60000
 
 PPSessionManager::PPSessionManager()
@@ -41,34 +41,24 @@ void PPSessionManager::InitScreenCapture(u32 numberOfSessions)
 		PPSession* session = new PPSession();
 		session->sessionID = i;
 		session->InitScreenCaptureSession(this);
-		session->SS_setting_smoothStepFrames = ConfigManager::Get()->_cfg_skip_frame;
-		session->SS_setting_sourceQuality = ConfigManager::Get()->_cfg_video_quality;
-		session->SS_setting_sourceScale = ConfigManager::Get()->_cfg_video_scale;
-		session->SS_setting_waitToReceivedFrame = ConfigManager::Get()->_cfg_wait_for_received;
 		m_screenCaptureSessions.push_back(session);
 	}
 	mManagerState = 0;
 }
 
-void PPSessionManager::SafeTrack(FramePiece* piece)
+void PPSessionManager::SafeTrack(u8* buffer, u32 size)
 {
 	m_frameTrackerMutex->Lock();
-
-	if(mStaticFramesIndex + piece->pieceSize > STATIC_FRAMES_POOL_SIZE)
-	{
-		// move the cursor to the start of memory block and start again
-		mStaticFramesIndex = 0;
-	}
-
+	//------------------------------------------------
 	// move piece addr into new block
-	memmove(mStaticFramesPool + mStaticFramesIndex, piece->pieceAddr, piece->pieceSize);
-	piece->pieceAddr = mStaticFramesPool + mStaticFramesIndex;
-	piece->pieceStart = mStaticFramesIndex;
-	mStaticFramesIndex += piece->pieceSize;
-	//m_frameTracker[piece->frameIndex] = piece;
-
-	m_activeFramePiece = piece;
-
+	//------------------------------------------------
+	//printf("Tracked frame at : %d / %d\n", mStaticFramesIndex, STATIC_FRAMES_POOL_SIZE);
+	memcpy(mStaticFramesPool, buffer, size);
+	if (m_activeFrame == nullptr) m_activeFrame = new FrameData();
+	m_activeFrame->pieceAddr = mStaticFramesPool;
+	m_activeFrame->pieceSize = size;
+	m_activeFrame->decoded = false;
+	//------------------------------------------------
 	m_frameTrackerMutex->Unlock();
 	
 }
@@ -78,69 +68,62 @@ u32 PPSessionManager::getFrameIndex() const
 	return mFrameIndex;
 }
 
+void PPSessionManager::UpdateStreamSetting()
+{
+	m_screenCaptureSessions[0]->SS_ChangeSetting();
+}
+
 void UpdateFrameTracker(void *arg)
 {
-	//printf("[Decoder] Start thread.\n");
-	//gfxFlushBuffers();
-
 	PPSessionManager* self = (PPSessionManager*)arg;
 	if (self == nullptr) {
-		//printf("[Decoder] invalid session manager.\n");
-		//gfxFlushBuffers();
 		return;
 	}
+	printf("Starting decode thread....\n");
+	//-----------------------------------------------------------------
+	// init decoder
+	//-----------------------------------------------------------------
+	self->m_decoder = new PPDecoder();
+	self->m_decoder->initDecoder();
+
 	//---------------------------------------------------
 	// this function should be run on a loop on main thread so that
 	// we display image on main thread only
 	//---------------------------------------------------
-	//-------------------------------------------
-	// init webp decode config=
-	u32 nW = 400, nH = 240;
-	WebPDecoderConfig webpDecodeConfig;
-	WebPInitDecoderConfig(&webpDecodeConfig);
-	webpDecodeConfig.options.no_fancy_upsampling = 1;
-	webpDecodeConfig.options.bypass_filtering = 1;
-	webpDecodeConfig.output.colorspace = MODE_BGR;
-	webpDecodeConfig.output.is_external_memory = 1;
-	webpDecodeConfig.output.u.RGBA.size = STATIC_FRAME_SIZE;
-	webpDecodeConfig.output.u.RGBA.rgba = mStaticPreAllocBuffer;
-	webpDecodeConfig.output.u.RGBA.stride = 3 * nW;
 
-
-	u64 sleepDuration = 1000000ULL * 16;
+	u64 sleepDuration = 1000000ULL * 0.95;
 	while (!self->g_threadExit) {
 
 		// get first frame in tracker ( first frame alway is the newest )
 		self->m_frameTrackerMutex->Lock();
-		if(self->m_activeFramePiece != nullptr && mFrameIndex != self->m_activeFramePiece->frameIndex)
+		if(self->m_activeFrame != nullptr && !self->m_activeFrame->decoded)
 		{
-			mFrameIndex = self->m_activeFramePiece->frameIndex;
+			self->m_activeFrame->decoded = true;
 			//-------------------------------------------
-			// decode frame
-			if (!WebPGetFeatures(self->m_activeFramePiece->pieceAddr, self->m_activeFramePiece->pieceSize, &webpDecodeConfig.input) == VP8_STATUS_OK)
-			{
-				WebPFreeDecBuffer(&webpDecodeConfig.output);
-				return;
-			}
-			if (!WebPDecode(self->m_activeFramePiece->pieceAddr, self->m_activeFramePiece->pieceSize, &webpDecodeConfig) == VP8_STATUS_OK)
-			{
-				WebPFreeDecBuffer(&webpDecodeConfig.output);
-				return;
-			}
+			mFrameIndex++;
 
-			//-------------------------------------------
-			// convert to correct format
-			self->g_frameMutex->Lock();
-			int i, j;
-			int nw3 = nW * 3;
-			for (i = 0; i < nH; i++) {
-				memmove(mStaticFrameBuffer + (i * 1536), mStaticPreAllocBuffer + (i*nw3), nw3);
+			//decode frame
+			u8* rgbBuffer = self->m_decoder->appendVideoBuffer(self->m_activeFrame->pieceAddr, self->m_activeFrame->pieceSize);
+			if(rgbBuffer != nullptr)
+			{
+				//printf("Decoded frame : %d\n", mFrameIndex);
+				//-------------------------------------------
+				// convert to correct format in 3DS
+				//-------------------------------------------
+				self->g_frameMutex->Lock();
+				int i, j;
+				int nw3 = self->m_decoder->iFrameWidth * 3;
+				for (i = 0; i < self->m_decoder->iFrameHeight ; i++) {
+					// i * 512 * 3
+					memmove(mStaticFrameBuffer + (i * 1536), rgbBuffer + (i*nw3), nw3);
+				}
+				self->g_frameMutex->Unlock();
+				mHaveNewFrame = true;
 			}
-			self->g_frameMutex->Unlock();
-			mHaveNewFrame = true;
 
 			//-------------------------------------------
 			// update frame video FPS
+			//-------------------------------------------
 			if (!self->mReceivedFirstFrame)
 			{
 				self->mReceivedFirstFrame = true;
@@ -165,7 +148,7 @@ void UpdateFrameTracker(void *arg)
 
 		svcSleepThread(sleepDuration);
 	}
-
+	printf("Releasing decode thread....\n");
 	self->ReleaseDecodeThead();
 }
 
@@ -174,30 +157,33 @@ void UpdateFrameTracker(void *arg)
 void PPSessionManager::StartDecodeThread()
 {
 	mStaticFramesPool = (u8*)malloc(STATIC_FRAMES_POOL_SIZE);
-	mStaticFramesIndex = 0;
 	//-----------------------------------------------------------------
 	// init static buffer for 1 frame only
+	//-----------------------------------------------------------------
 	mStaticPreAllocBuffer = (u8*)malloc(STATIC_FRAME_SIZE);
 	mStaticFrameBuffer = (u8*)linearAlloc(STATIC_FRAME_SIZE);
-	memset(mStaticFrameBuffer, 0, STATIC_FRAME_SIZE);
-
-	g_thread = threadCreate(UpdateFrameTracker, this, 3 * 1024, mMainThreadPrio - 1, -2, true);
+	
+	//-----------------------------------------------------------------
+	// start thread
+	//-----------------------------------------------------------------
+	g_thread = threadCreate(UpdateFrameTracker, this, 100 * 1024, mMainThreadPrio - 2, -2, true);
 }
 
 void PPSessionManager::ReleaseDecodeThead()
 {
-	free(mStaticFramesPool);
-	free(mStaticPreAllocBuffer);
-	free(mStaticFrameBuffer);
+	if(mStaticFramesPool!= nullptr) free(mStaticFramesPool);
+	if (mStaticPreAllocBuffer != nullptr) free(mStaticPreAllocBuffer);
+	if (mStaticFrameBuffer != nullptr) free(mStaticFrameBuffer);
+	m_decoder->releaseDecoder();
 }
 
 void PPSessionManager::UpdateVideoFrame()
 {
 	if (!mHaveNewFrame) return;
+	//printf("Uploading frame \n");
 
 	g_frameMutex->Lock();
-	u32 nW = 400, nH = 240;
-	PPGraphics::Get()->UpdateTopScreenSprite(mStaticFrameBuffer, nW * nH * 3, nW, nH);
+	PPGraphics::Get()->UpdateTopScreenSprite(mStaticFrameBuffer, 393216, 400, 240);
 	mHaveNewFrame = false;
 	g_frameMutex->Unlock();
 }
@@ -275,7 +261,6 @@ void PPSessionManager::StartStreaming(const char* ip)
 	if (!strcmp(ip, "")) return;
 
 	m_currentDisplayFrame = 0;
-	m_frameTracker.clear();
 	m_connectedSession = 0;
 
 	mManagerState = 1;

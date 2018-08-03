@@ -176,30 +176,29 @@ void PPGraphics::UpdateTopScreenSprite(u8* data, u32 size, u32 width, u32 height
 
 }
 
+static ppVertexPosTex* _vertices = NULL;
 void PPGraphics::DrawTopScreenSprite()
 {
 	if (!mTopScreenSprite->initialized) {
 		return;
 	}
 	
-	ppVertexPosTex* vertices = (ppVertexPosTex*)allocMemoryPoolAligned(sizeof(ppVertexPosTex) * 4, 8);
-	if (!vertices)
-		return; // out of memory in pool
+	_vertices = (ppVertexPosTex*)allocMemoryPoolAligned(sizeof(ppVertexPosTex) * 4, 8);
 	float x = 0, y = 0, w = mTopScreenSprite->width, h = mTopScreenSprite->height;
 	// set position
-	vertices[0].position = (ppVector3) { x, y, 0.5f };
-	vertices[1].position = (ppVector3) { x + w, y, 0.5f };
-	vertices[2].position = (ppVector3) { x, y + h, 0.5f };
-	vertices[3].position = (ppVector3) { x + w, y + h, 0.5f };
+	_vertices[0].position = (ppVector3) { x, y, 0.5f };
+	_vertices[1].position = (ppVector3) { x + w, y, 0.5f };
+	_vertices[2].position = (ppVector3) { x, y + h, 0.5f };
+	_vertices[3].position = (ppVector3) { x + w, y + h, 0.5f };
 
-	float u = (float)mTopScreenSprite->width / 512.0f;
-	float v = (float)mTopScreenSprite->height / 256.0f;
+	float u = w / 512.0f;
+	float v = h / 256.0f;
 
 	// set color
-	vertices[0].textcoord = (ppVector2) { 0.0f, 0.0f };
-	vertices[1].textcoord = (ppVector2) { u, 0.0f };
-	vertices[2].textcoord = (ppVector2) { 0.0f, v};
-	vertices[3].textcoord = (ppVector2) { u, v};
+	_vertices[0].textcoord = (ppVector2) { 0.0f, 0.0f };
+	_vertices[1].textcoord = (ppVector2) { u, 0.0f };
+	_vertices[2].textcoord = (ppVector2) { 0.0f, v };
+	_vertices[3].textcoord = (ppVector2) { u, v };
 
 	// setup env
 	C3D_TexBind(getTextUnit(GPU_TEXUNIT0), &mTopScreenSprite->spriteTexture);
@@ -215,7 +214,7 @@ void PPGraphics::DrawTopScreenSprite()
 
 	C3D_BufInfo* bufInfo = C3D_GetBufInfo();
 	BufInfo_Init(bufInfo);
-	BufInfo_Add(bufInfo, vertices, sizeof(ppVertexPosTex), 2, 0x10);
+	BufInfo_Add(bufInfo, _vertices, sizeof(ppVertexPosTex), 2, 0x10);
 
 	C3D_DrawArrays(GPU_TRIANGLE_STRIP, 0, 4);
 }

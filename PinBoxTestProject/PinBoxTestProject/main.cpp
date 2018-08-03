@@ -1,6 +1,7 @@
 
 #include <iostream>
 #include "PPSessionManager.h"
+#define __STDC_CONSTANT_MACROS
 
 void updateSessionManager(void* arg)
 {
@@ -9,7 +10,7 @@ void updateSessionManager(void* arg)
 	{
 		while(true)
 		{
-			sm->UpdateFrameTracker();
+			sm->DecodeVideo();
 		}
 	}
 }
@@ -40,7 +41,7 @@ int main()
 		if (input == 'q') break;
 		if(input == 'a')
 		{
-			sm->StartStreaming("192.168.31.222", "1234");
+			sm->StartStreaming("192.168.31.183", "1234");
 		}
 		if (input == 's')
 		{

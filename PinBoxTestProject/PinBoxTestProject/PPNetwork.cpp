@@ -10,7 +10,7 @@ void PPNetwork::ppNetwork_threadRun(void * arg)
 	PPNetwork* network = (PPNetwork*)arg;
 	if (network == nullptr) return;
 	//--------------------------------------------------
-	uint64_t sleepDuration = 1000000ULL * 16;
+	uint64_t sleepDuration = 1000000ULL * 1;
 	while(!network->g_threadExit){
 		switch (network->g_connect_state)
 		{
@@ -84,7 +84,7 @@ void PPNetwork::ppNetwork_sendMessage()
 				}
 				totalSent += sendAmount;
 			} while (totalSent < queueMsg->msgSize);
-			std::cout << "[Queue]Session: #" << g_session->sessionID << " send message done! " << std::endl;
+			//std::cout << "[Queue]Session: #" << g_session->sessionID << " send message done! " << std::endl;
 			//--------------------------------------------------------
 			// free message
 			free(queueMsg->msgBuffer);
@@ -295,7 +295,7 @@ void PPNetwork::ppNetwork_listenToServer()
 		return;
 	}else
 	{
-		std::cout << "Client: " << g_session->sessionID << " recv size: " << recvAmount << std::endl;
+		//std::cout << "Client: " << g_session->sessionID << " recv size: " << recvAmount << std::endl;
 		//--------------------------------------------------
 		if(g_receivedBuffer == nullptr)
 			g_receivedBuffer = (u8*)malloc(g_waitForSize);
@@ -427,10 +427,10 @@ void PPNetwork::SetRequestData(int32_t size, int32_t tag)
 {
 	if(g_waitForSize > 0)
 	{
-		std::cout << "Client: " << g_session->sessionID << " send wrong request data. Request for wait still have value: " << g_waitForSize << std::endl;
+		//std::cout << "Client: " << g_session->sessionID << " send wrong request data. Request for wait still have value: " << g_waitForSize << std::endl;
 	}else
 	{
-		std::cout << "Client: " << g_session->sessionID << " register wait for size: " << size << " with tag: " << tag << std::endl;
+		//std::cout << "Client: " << g_session->sessionID << " register wait for size: " << size << " with tag: " << tag << std::endl;
 		g_waitForSize = size;
 		g_tag = tag;
 	}

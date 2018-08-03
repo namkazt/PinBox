@@ -1,7 +1,7 @@
 #include "PPNetwork.h"
 #include "PPSession.h"
 
-#define STACKSIZE (40 * 1024)
+#define STACKSIZE (120 * 1024 )
 #define POOLSIZE (120 * 1024)
 #define BUFFERSIZE 0x5000
 
@@ -17,7 +17,7 @@ void PPNetwork::ppNetwork_threadRun(void * arg)
 	network->g_receivedBuffer = (u8*)malloc(POOLSIZE);
 	network->g_receivedCounter = 0;
 	//--------------------------------------------------
-	u64 sleepDuration = 1000000ULL * 16;
+	u64 sleepDuration = 1000000ULL * 1;
 	while(!network->g_threadExit){
 
 		if(network->g_connect_state == ppConectState::IDLE)
@@ -49,7 +49,7 @@ void PPNetwork::ppNetwork_threadRun(void * arg)
 			printf("#%d : Connection failed -> exit thread.\n", network->g_session->sessionID);
 			gfxFlushBuffers();
 		}
-		svcSleepThread(sleepDuration);
+		//svcSleepThread(sleepDuration);
 	}
 	//--------------------------------------------------
 	// close connection if thread is exit

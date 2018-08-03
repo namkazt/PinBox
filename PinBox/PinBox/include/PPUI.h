@@ -38,6 +38,9 @@ public:
 	static void UpdateInput();
 	static bool TouchDownOnArea(float x, float y, float w, float h);
 	static bool TouchUpOnArea(float x, float y, float w, float h);
+	static bool TouchDown();
+	static bool TouchMove();
+	static bool TouchUp();
 
 	// SCREEN
 	static int DrawIdleTopScreen(PPSessionManager *sessionManager);
@@ -47,11 +50,19 @@ public:
 	static int DrawIdleBottomScreen(PPSessionManager *sessionManager);
 
 	static void DrawFPS(PPSessionManager *sessionManager);
+
+	// SLIDE
+	static float Slide(float x, float y, float w, float h, float val, float min, float max, const char* label);
 	
+	// CHECKBOX
+	static bool CheckBox(float x, float y, bool value, const char* label);
+
 	// BUTTON
 	static bool FlatButton(float x, float y, float w, float h, const char* label);
 	static bool FlatDarkButton(float x, float y, float w, float h, const char* label);
 	static bool FlatColorButton(float x, float y, float w, float h, const char* label, ppColor colNormal, ppColor colActive, ppColor txtCol);
+
+	static bool RepeatButton(float x, float y, float w, float h, const char* label, ppColor colNormal, ppColor colActive, ppColor txtCol);
 
 	// TEXT
 	static void InputField(float x, float y, float w, float h, const char* defaultValue, const char* placeHolder);

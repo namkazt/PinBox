@@ -26,6 +26,12 @@
     <ClCompile Include="PPSessionManager.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="PPDecoder.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="yuv_rgb.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="PPMessage.h">
@@ -38,6 +44,12 @@
       <Filter>Source Files</Filter>
     </ClInclude>
     <ClInclude Include="PPSessionManager.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="PPDecoder.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="yuv_rgb.h">
       <Filter>Source Files</Filter>
     </ClInclude>
   </ItemGroup>

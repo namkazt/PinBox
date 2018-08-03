@@ -3,7 +3,7 @@
 PPMessage::~PPMessage()
 {
 	if (g_content != nullptr) 
-		linearFree(g_content);
+		free(g_content);
 }
 
 u8* PPMessage::BuildMessage(u8* contentBuffer, u32 contentSize)
@@ -54,4 +54,10 @@ bool PPMessage::ParseHeader(u8* buffer)
 	g_code = READ_U8(buffer, readIndex); readIndex += 1;
 	g_contentSize = READ_U32(buffer, readIndex); readIndex += 4;
 	return true;
+}
+
+void PPMessage::ClearHeader()
+{
+	g_code = 0;
+	g_contentSize = 0;
 }

@@ -34,22 +34,26 @@
     <ClCompile Include="source\ConfigManager.cpp" />
     <ClCompile Include="source\main.cpp" />
     <ClCompile Include="source\Mutex.cpp" />
+    <ClCompile Include="source\PPDecoder.cpp" />
     <ClCompile Include="source\PPGraphics.cpp" />
     <ClCompile Include="source\PPMessage.cpp" />
     <ClCompile Include="source\PPNetwork.cpp" />
     <ClCompile Include="source\PPSession.cpp" />
     <ClCompile Include="source\PPSessionManager.cpp" />
     <ClCompile Include="source\PPUI.cpp" />
+    <ClCompile Include="source\yuv_rgb.c" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="include\ConfigManager.h" />
     <ClInclude Include="include\Mutex.h" />
+    <ClInclude Include="include\PPDecoder.h" />
     <ClInclude Include="include\PPGraphics.h" />
     <ClInclude Include="include\PPMessage.h" />
     <ClInclude Include="include\PPNetwork.h" />
     <ClInclude Include="include\PPSession.h" />
     <ClInclude Include="include\PPSessionManager.h" />
     <ClInclude Include="include\PPUI.h" />
+    <ClInclude Include="include\yuv_rgb.h" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{7C85BF63-9A1F-43F0-9560-6E51BA537C01}</ProjectGuid>
@@ -113,7 +117,7 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Citra|Win32'">
     <NMakeOutput>
     </NMakeOutput>
-    <NMakePreprocessorDefinitions>CITRA;_DEBUG;$(NMakePreprocessorDefinitions)</NMakePreprocessorDefinitions>
+    <NMakePreprocessorDefinitions>USE_CITRA;CITRA;_DEBUG;$(NMakePreprocessorDefinitions)</NMakePreprocessorDefinitions>
     <IncludePath>C:\devkitPro\devkitARM\arm-none-eabi\include;C:\devkitPro\libctru\include;C:\devkitPro\libwebp\include;C:\devkitPro\libimgui\include;include;build;C:\devkitPro\portlibs\armv6k\include;$(IncludePath)</IncludePath>
     <NMakeBuildCommandLine>make &amp; start make citra</NMakeBuildCommandLine>
     <NMakeReBuildCommandLine>make clean all</NMakeReBuildCommandLine>

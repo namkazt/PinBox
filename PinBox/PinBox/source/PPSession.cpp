@@ -1,6 +1,7 @@
 #include "PPSession.h"
 #include "PPGraphics.h"
 #include "PPSessionManager.h"
+#include "ConfigManager.h"
 
 PPSession::~PPSession()
 {
@@ -13,6 +14,7 @@ void PPSession::initSession()
 	if (g_network != nullptr) return;
 	g_network = new PPNetwork();
 	g_network->g_session = this;
+	g_tmpMessage = new PPMessage();
 	//------------------------------------------------------
 	// callback when request data is received
 	g_network->SetOnReceivedRequest([=](PPNetwork *self, u8* buffer, u32 size, u32 tag) {
@@ -59,25 +61,17 @@ void PPSession::initSession()
 		{
 		case PPREQUEST_HEADER:
 		{
-			if (!g_tmpMessage) g_tmpMessage = new PPMessage();
 			if (g_tmpMessage->ParseHeader(buffer))
-			{
-				//----------------------------------------------------
-				// request body part of this message
 				self->SetRequestData(g_tmpMessage->GetContentSize(), PPREQUEST_BODY);
-			}
 			else
-			{
-				delete g_tmpMessage;
-				g_tmpMessage = nullptr;
-			}
+				g_tmpMessage->ClearHeader();
 			break;
 		}
 		case PPREQUEST_BODY:
 		{
 			//------------------------------------------------------
 			// if tmp message is null that mean this is useless data then we avoid it
-			if (!g_tmpMessage) return;
+			if (g_tmpMessage->GetContentSize() == 0) return;
 			// verify buffer size with message estimate size
 			if (size == g_tmpMessage->GetContentSize())
 			{
@@ -107,8 +101,7 @@ void PPSession::initSession()
 			}
 			//------------------------------------------------------
 			// remove message after use
-			delete g_tmpMessage;
-			g_tmpMessage = nullptr;
+			g_tmpMessage->ClearHeader();
 			break;
 		}
 		default: break;
@@ -224,111 +217,12 @@ void PPSession::processScreenCaptureSession(u8* buffer, size_t size)
 	{
 	case MSG_CODE_REQUEST_NEW_SCREEN_FRAME:
 	{
-		try {
-			// If using waiting for new frame then we need:
-			//--------------------------------------------------
-			// send request that client received frame
-			{
-				PPMessage *msgObj = new PPMessage();
-				msgObj->BuildMessageHeader(MSG_CODE_REQUEST_SCREEN_RECEIVED_FRAME);
-				u8* msgBuffer = msgObj->BuildMessageEmpty();
-				//--------------------------------------------------
-				// send authentication message
-				g_network->SendMessageData(msgBuffer, msgObj->GetMessageSize());
-				delete msgObj;
-			}
+		SS_SendReceivedFrame();
 
-			//------------------------------------------------------
-			// process piece
-			//------------------------------------------------------
-			//TODO: process direct from here
-			FramePiece* framePiece = new FramePiece();
-			framePiece->frameIndex = READ_U32(buffer, 0);
-			framePiece->pieceIndex = READ_U8(buffer, 4);
-			framePiece->pieceSize = size - 5;
-			framePiece->pieceAddr = buffer + 5;
-			g_manager->SafeTrack(framePiece);
-			
-		}
-		catch (...)
-		{
-			printf("Error when process frame.\n");
-			gfxFlushBuffers();
-		}
+		g_manager->SafeTrack(buffer, size);
+		
 		break;
 	}
-
-	//======================================================================
-	// AUDIO DECODE
-	//======================================================================
-	/*
-	case MSG_CODE_REQUEST_NEW_AUDIO_FRAME:
-	{
-		int error;
-		//check if opus file is init or not
-		if (SS_opusFile == nullptr) {
-			// check if it is opus stream
-			OggOpusFile* opusTest = op_test_memory(buffer, size, &error);
-			op_free(opusTest);
-			if (error != 0) {
-				printf("Stream is not OPUS format.\n");
-				return;
-			}
-			// create new opus file from first block of memory
-			SS_opusFile = op_open_memory(buffer, size, &error);
-
-			// init audio
-			//TODO: this should be call on outside
-			ndspInit();
-
-			// reset audio channel when start stream
-			ndspChnReset(AUDIO_CHANNEL);
-			ndspChnWaveBufClear(AUDIO_CHANNEL);
-			ndspSetOutputMode(NDSP_OUTPUT_STEREO);
-			ndspChnSetInterp(AUDIO_CHANNEL, NDSP_INTERP_LINEAR);
-			ndspChnSetRate(AUDIO_CHANNEL, 48000);
-			ndspChnSetFormat(AUDIO_CHANNEL, NDSP_FORMAT_STEREO_PCM16);
-
-			float mix[12];
-			memset(mix, 0, sizeof(mix));
-			mix[0] = 1.0;
-			mix[1] = 1.0;
-			ndspChnSetMix(0, mix);
-
-
-			ndspWaveBuf waveBuf[2];
-			memset(waveBuf, 0, sizeof(waveBuf));
-			waveBuf[0].data_vaddr = &audioBuffer[0];
-			waveBuf[0].nsamples = SAMPLESPERBUF;
-			waveBuf[1].data_vaddr = &audioBuffer[SAMPLESPERBUF];
-			waveBuf[1].nsamples = SAMPLESPERBUF;
-
-			ndspChnWaveBufAdd(AUDIO_CHANNEL, &waveBuf[0]);
-			ndspChnWaveBufAdd(AUDIO_CHANNEL, &waveBuf[1]);
-		}
-		else
-		{
-			int16_t* bufferOut;
-			u32 samplesToRead = 32 * 1024; // 32Kb buffer
-
-										   // read more buffer
-			u32 bufferToRead = 120 * 48 * 2;
-			int samplesRead = op_read_stereo(SS_opusFile, bufferOut, samplesToRead > bufferToRead ? bufferToRead : samplesToRead);
-
-			if (samplesRead == 0)
-			{
-				//finish read this
-			}
-			else if (samplesRead < 0)
-			{
-				// error ?
-				return;
-			}
-		}
-
-		break;
-	}
-	*/
 	default: break;
 	}
 }
@@ -388,14 +282,14 @@ void PPSession::SS_ChangeSetting()
 	u8* pointer = contentBuffer;
 	//----------------------------------------------
 	// setting: wait for received frame
-	u8 _setting_waitToReceivedFrame = SS_setting_waitToReceivedFrame ? 1 : 0;
+	u8 _setting_waitToReceivedFrame = ConfigManager::Get()->_cfg_wait_for_received ? 1 : 0;
 	WRITE_U8(pointer, _setting_waitToReceivedFrame);
 	// setting: smooth frame number ( only activate if waitForReceivedFrame = true)
-	WRITE_U32(pointer, SS_setting_smoothStepFrames);
+	WRITE_U32(pointer, ConfigManager::Get()->_cfg_skip_frame);
 	// setting: frame quality [0 ... 100]
-	WRITE_U32(pointer, SS_setting_sourceQuality);
+	WRITE_U32(pointer, ConfigManager::Get()->_cfg_video_quality);
 	// setting: frame scale [0 ... 100]
-	WRITE_U32(pointer, SS_setting_sourceScale);
+	WRITE_U32(pointer, ConfigManager::Get()->_cfg_video_scale);
 	//-----------------------------------------------
 	// build message
 	u8* msgBuffer = authenMsg->BuildMessage(contentBuffer, contentSize);
@@ -403,6 +297,15 @@ void PPSession::SS_ChangeSetting()
 	g_network->SetRequestData(MSG_COMMAND_SIZE, PPREQUEST_HEADER);
 	free(contentBuffer);
 	delete authenMsg;
+}
+
+void PPSession::SS_SendReceivedFrame()
+{
+	PPMessage *msgObj = new PPMessage();
+	msgObj->BuildMessageHeader(MSG_CODE_REQUEST_SCREEN_RECEIVED_FRAME);
+	u8* msgBuffer = msgObj->BuildMessageEmpty();
+	g_network->SendMessageData(msgBuffer, msgObj->GetMessageSize());
+	delete msgObj;
 }
 
 void PPSession::SS_Reset()

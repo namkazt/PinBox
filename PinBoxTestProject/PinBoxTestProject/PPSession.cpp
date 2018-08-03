@@ -59,7 +59,7 @@ void PPSession::initSession()
 			if (!g_tmpMessage) g_tmpMessage = new PPMessage();
 			if (g_tmpMessage->ParseHeader(buffer))
 			{
-				std::cout << "Client: #" << sessionID << " received message header: " << (u32)g_tmpMessage->GetMessageCode() << std::endl;
+				//std::cout << "Client: #" << sessionID << " received message header: " << (u32)g_tmpMessage->GetMessageCode() << std::endl;
 				//----------------------------------------------------
 				// request body part of this message
 				g_network->SetRequestData(g_tmpMessage->GetContentSize(), PPREQUEST_BODY);
@@ -208,6 +208,8 @@ void PPSession::processMovieSession(u8* buffer, size_t size)
 	}
 }
 
+
+
 void PPSession::processScreenCaptureSession(u8* buffer, size_t size)
 {
 	//NOTE: this not called on main thread !
@@ -222,7 +224,7 @@ void PPSession::processScreenCaptureSession(u8* buffer, size_t size)
 			//------------------------------------------------------
 			// If using waiting for new frame then we need:
 			{
-				std::cout << "Session #" << sessionID << " have received: " << size << std::endl;
+				//std::cout << "Session #" << sessionID << " have received: " << size << std::endl;
 				//--------------------------------------------------
 				// send request that client received frame
 				PPMessage *msgObj = new PPMessage();
@@ -233,22 +235,10 @@ void PPSession::processScreenCaptureSession(u8* buffer, size_t size)
 				g_network->SendMessageData(msgBuffer, msgObj->GetMessageSize());
 				delete msgObj;
 			}
-			//------------------------------------------------------
-			// process piece
-			//------------------------------------------------------
-			FramePiece* framePiece = new FramePiece();
-			framePiece->frameIndex = READ_U32(buffer, 0);
-			framePiece->pieceIndex = READ_U8(buffer, 4);
-			framePiece->pieceSize = size - 5;
-			framePiece->piece = (u8*)malloc(framePiece->pieceSize);
-			memcpy(framePiece->piece, buffer + 5, framePiece->pieceSize);
-			SS_frameCachedMutex.lock();
-			SS_framePiecesCached.insert(std::pair<u32, FramePiece*>(framePiece->frameIndex, framePiece));
-			SS_frameCachedMutex.unlock();
-			//------------------------------------------------------
-			// trigger event when session received 1 pieces 
-			//------------------------------------------------------
-			g_manager->SafeTrack(framePiece->frameIndex);
+			//--------------------------------------------------
+			//store packet buffer in static buffer
+			g_manager->AppendBuffer(buffer, size);
+
 		}catch(cv::Exception& e)
 		{
 			std::cout << e.msg << std::endl;
@@ -256,73 +246,6 @@ void PPSession::processScreenCaptureSession(u8* buffer, size_t size)
 		break;
 	}
 
-	//======================================================================
-	// AUDIO DECODE
-	//======================================================================
-	//case MSG_CODE_REQUEST_NEW_AUDIO_FRAME:
-	//{
-	//	int error;
-	//	//check if opus file is init or not
-	//	if (SS_opusFile == nullptr) {
-	//		// check if it is opus stream
-	//		OggOpusFile* opusTest = op_test_memory(buffer, size, &error);
-	//		op_free(opusTest);
-	//		if (error != 0) {
-	//			printf("Stream is not OPUS format.\n");
-	//			return;
-	//		}
-	//		// create new opus file from first block of memory
-	//		SS_opusFile = op_open_memory(buffer, size, &error);
-
-	//		// init audio
-	//		//TODO: this should be call on outside
-	//		//ndspInit();
-
-	//		//// reset audio channel when start stream
-	//		//ndspChnReset(AUDIO_CHANNEL);
-	//		//ndspChnWaveBufClear(AUDIO_CHANNEL);
-	//		//ndspSetOutputMode(NDSP_OUTPUT_STEREO);
-	//		//ndspChnSetInterp(AUDIO_CHANNEL, NDSP_INTERP_LINEAR);
-	//		//ndspChnSetRate(AUDIO_CHANNEL, 48000);
-	//		//ndspChnSetFormat(AUDIO_CHANNEL, NDSP_FORMAT_STEREO_PCM16);
-
-	//		//float mix[12];
-	//		//memset(mix, 0, sizeof(mix));
-	//		//mix[0] = 1.0;
-	//		//mix[1] = 1.0;
-	//		//ndspChnSetMix(0, mix);
-
-
-	//		//ndspWaveBuf waveBuf[2];
-	//		//memset(waveBuf, 0, sizeof(waveBuf));
-	//		//waveBuf[0].data_vaddr = &audioBuffer[0];
-	//		//waveBuf[0].nsamples = SAMPLESPERBUF;
-	//		//waveBuf[1].data_vaddr = &audioBuffer[SAMPLESPERBUF];
-	//		//waveBuf[1].nsamples = SAMPLESPERBUF;
-
-	//		//ndspChnWaveBufAdd(AUDIO_CHANNEL, &waveBuf[0]);
-	//		//ndspChnWaveBufAdd(AUDIO_CHANNEL, &waveBuf[1]);
-	//	}else
-	//	{
-	//		int16_t* bufferOut;
-	//		u32 samplesToRead = 32 * 1024; // 32Kb buffer
-
-	//		// read more buffer
-	//		u32 bufferToRead = 120 * 48 * 2;
-	//		int samplesRead = op_read_stereo(SS_opusFile, bufferOut, samplesToRead > bufferToRead ? bufferToRead : samplesToRead);
-
-	//		if(samplesRead == 0)
-	//		{
-	//			//finish read this
-	//		}else if(samplesRead < 0)
-	//		{
-	//			// error ?
-	//			return;
-	//		}
-	//	}
-
-	//	break;
-	//}
 	default: break;
 	}
 }

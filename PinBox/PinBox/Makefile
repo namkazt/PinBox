@@ -1,6 +1,5 @@
 export DEVKITPRO = /c/devkitPro
 export DEVKITARM = /c/devkitPro/devkitARM
-
 #---------------------------------------------------------------------------------
 .SUFFIXES:
 #---------------------------------------------------------------------------------
@@ -49,26 +48,26 @@ APP_ENCRYPTED				:= false
 #---------------------------------------------------------------------------------
 # options for code generation
 #---------------------------------------------------------------------------------
-ARCH	:=	-march=armv6k -mtune=mpcore -mtp=soft -mfloat-abi=hard
+ARCH	:=	-march=armv6k -mtune=mpcore -mfloat-abi=hard
 
-CFLAGS	:=	-ggdb -Wall -Og -mword-relocations -DDEBUG=1 \
+CFLAGS	:=	-ggdb -Wall -Og -mword-relocations -DDEBUG=1 -fomit-frame-pointer -ffast-math \
 			-ffunction-sections \
 			$(ARCH)
 
 CFLAGS	+=	$(INCLUDE) -DARM11 -D_3DS
 
-CXXFLAGS	:= $(CFLAGS) -fno-rtti -fno-exceptions -std=gnu++11 -fexceptions -fpermissive 
+CXXFLAGS	:= $(CFLAGS) -fno-rtti -fno-exceptions -std=gnu++11
 
 ASFLAGS	:=	-g $(ARCH)
 LDFLAGS	=	-specs=3dsx.specs -g $(ARCH) -Wl,-Map,$(notdir $*.map)
 
-LIBS	:= -lconfig -lturbojpeg -lwebp -lcitro3dd -lctrud -lm -lz
+LIBS	:= -lavformat -lavcodec -lavutil -lswscale -lswresample -lconfig -lturbojpeg -lwebp -lcitro3dd -lctrud -lz -lm 
 
 #---------------------------------------------------------------------------------
 # list of directories containing libraries, this must be the top level containing
 # include and lib
 #---------------------------------------------------------------------------------
-ADDITION_LIBS := $(DEVKITPRO)/libwebp
+ADDITION_LIBS := $(DEVKITPRO)/libwebp $(DEVKITPRO)/libcitro3d
 LIBDIRS	:= $(CTRULIB) $(PORTLIBS) $(ADDITION_LIBS)
 
 
@@ -169,7 +168,7 @@ cia: $(TARGET)-strip.elf
 	@$(CURDIR)/tools/makerom32.exe -f cia -o $(TARGET).cia -elf $(TARGET)-strip.elf -rsf $(CURDIR)/$(TARGET).rsf -exefslogo -target t
 #---------------------------------------------------------------------------------
 netlink: $(BUILD)
-	$(DEVKITARM)/bin/3dslink.exe --address 192.168.31.173 $(TARGET).3dsx
+	$(DEVKITARM)/bin/3dslink.exe --address 192.168.50.231 $(TARGET).3dsx
 #---------------------------------------------------------------------------------
 citra: $(BUILD)
 	$(CURDIR)/tools/citra/citra.exe $(TARGET).3dsx

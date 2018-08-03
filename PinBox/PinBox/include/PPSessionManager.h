@@ -2,10 +2,14 @@
 #include <vector>
 #include "PPSession.h"
 #include <webp/decode.h>
+#include <turbojpeg.h>
 #include "opusfile.h"
 #include <map>
 #include <stack>
+#include "PPDecoder.h"
 
+#define ENCODE_TYPE_WEBP 0x01
+#define ENCODE_TYPE_JPEG_TURBO 0x02
 
 typedef std::function<void(int code)> PPNotifyCallback;
 
@@ -43,15 +47,15 @@ public:
 	void											_startStreaming();
 	void											_oneByOneConnectScreenCapture(int index, const char* ip, const char* port, PPNotifyCallback callback);
 
-	std::map<int, FramePiece*>						m_frameTracker;
-	FramePiece*										m_activeFramePiece = nullptr;
+	FrameData*										m_activeFrame = nullptr;
+	PPDecoder*										m_decoder = nullptr;
 	Mutex*											m_frameTrackerMutex;
 	u32												m_currentDisplayFrame = 0;
 	//------------------------------------------
 	// UI ref variables
 	//------------------------------------------
 	int												mManagerState = -1;
-	char											mIPAddress[100] = "";
+	char											mIPAddress[100] = "192.168.31.183";
 public:
 	PPSessionManager();
 	~PPSessionManager();
@@ -67,7 +71,7 @@ public:
 	void InitInputStream();
 	void UpdateInputStream(u32 down, u32 up, short cx, short cy, short ctx, short cty);
 
-	void SafeTrack(FramePiece* piece);
+	void SafeTrack(u8* buffer, u32 size);
 	void StartDecodeThread();
 	void ReleaseDecodeThead();
 	void UpdateVideoFrame();
@@ -75,8 +79,10 @@ public:
 	int GetManagerState() const { return mManagerState; };
 	float GetFPS() const { return mCurrentFPS; }
 	float GetVideoFPS() const { return mVideoFPS; }
-	int GetFrameLeft() const { return m_frameTracker.size(); }
 	u32 getFrameIndex() const;
+
+
+	void UpdateStreamSetting();
 	//------------------------------------------
 	// UI ref functions
 	//------------------------------------------

@@ -62,6 +62,8 @@ void ConfigManager::InitConfig()
 		{
 			_cfg_wait_for_received = wait_for_received;
 		}
+
+		printf("IP: %s\n", _cfg_ip);
 	}
 }
 
@@ -70,7 +72,7 @@ void ConfigManager::Save()
 	config_setting_t *root, *setting;
 	root = config_root_setting(&_config);
 	setting = config_setting_get_member(root, "ip");
-	config_setting_set_string(setting, std::string(_cfg_ip).c_str());
+	config_setting_set_string(setting, _cfg_ip);
 	setting = config_setting_get_member(root, "video_quality");
 	config_setting_set_int(setting, _cfg_video_quality);
 	setting = config_setting_get_member(root, "video_scale");
@@ -80,6 +82,8 @@ void ConfigManager::Save()
 	setting = config_setting_get_member(root, "wait_for_received");
 	config_setting_set_bool(setting, _cfg_wait_for_received);
 	config_write_file(&_config, CONFIG_FILE_NAME);
+
+	printf("Save IP: %s\n", _cfg_ip);
 }
 
 void ConfigManager::Destroy()

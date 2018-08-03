@@ -17,16 +17,20 @@
 #include <opencv2/opencv.hpp>
 #include "AudioStreamSession.h"
 #include <thread>
+
+
 //ffmpeg
 extern "C" {
-#include <libavformat/avformat.h>
-#include <libavcodec/avcodec.h>
+#include <libavutil/common.h>
 #include <libavutil/imgutils.h>
-#include <libavutil/parseutils.h>
+#include <libavutil/samplefmt.h>
+#include <libavutil/timestamp.h>
+#include <libavformat/avformat.h>
+#include <libavformat/avio.h>
+#include <libavutil/file.h>
 #include <libavutil/opt.h>
 #include <libswscale/swscale.h>
 #include <libswresample/swresample.h>
-#include <libavutil/timestamp.h>
 }
 
 typedef struct
@@ -43,7 +47,47 @@ typedef std::function<void()> OnClientReallyClose;
 #define ENCODE_TYPE_JPEG_TURBO 0x02
 #define ENCODE_TYPE_MPEG4 0x03
 
-#define TRANSFER_BUFFER_SIZE 0x1000
+#define TRANSFER_BUFFER_SIZE 0x50000
+
+#define MEMORY_BUFFER_SIZE 0x1400000
+#define MEMORY_BUFFER_PADDING 0x04
+
+typedef struct MemoryBuffer {
+	u8* pBufferAddr;
+	u32 iCursor;
+	u32 iSize;
+	u32 iMaxSize;
+	std::mutex*	pMutex;
+
+	void write(u8* buf, u32 size)
+	{
+		if (iSize < size) return;
+		pMutex->lock();
+		memcpy(pBufferAddr + iCursor, buf, size);
+		iCursor += size;
+		iSize -= size;
+		pMutex->unlock();
+	}
+
+	int read(u8* buf, u32 size)
+	{
+		if (iCursor == 0) return -1;
+		pMutex->lock();
+		int ret = FFMIN(iCursor, size);
+		memcpy(buf, pBufferAddr, ret);
+		iSize += ret;
+		iCursor -= ret;
+		pMutex->unlock();
+		return ret;
+	}
+}MemoryBuffer;
+
+typedef struct FPSCounter {
+	u32 onNewFramecounter = 0;
+	u32 currentFPS = 0;
+	std::chrono::time_point<std::chrono::steady_clock> onNewFramestart = std::chrono::high_resolution_clock::now();
+	std::chrono::time_point<std::chrono::steady_clock> onFrameChanged = std::chrono::high_resolution_clock::now();
+};
 
 typedef struct FrameData {
 	uint8_t*				DataAddr;
@@ -53,19 +97,6 @@ typedef struct FrameData {
 	bool					Drew;
 }FrameData;
 
-typedef struct OutputStream
-{
-	AVStream					*Stream;
-	AVCodecContext				*CodecContext;
-	AVFrame						*Frame;
-	AVFrame						*TmpFrame;
-	struct SwsContext			*SWSContext;
-	struct SwrContext			*SWRContext;
-	AVPacket					*Packet;
-
-	int							SamplesCount;
-	int64_t						NextFrameIdx ;
-};
 
 class ScreenCaptureSession
 {
@@ -75,39 +106,33 @@ private:
 
 	std::shared_ptr<SL::Screen_Capture::IScreenCaptureManager>	m_frameGrabber;
 	AudioStreamSession*											m_audioGrabber;
-	u32															m_frameIndex = 0;
 	bool														m_isStartStreaming = false;
 
 	u8															m_encodeType = ENCODE_TYPE_MPEG4;
-	u8*															m_staticPacketBuffer = nullptr;
 
-	//---------------------------------------------------------------------------------------------------------------------------
-	//--------------------MPEG4 ENCODE-------------------------------------------------------------------------------------------
-	//---------------------------------------------------------------------------------------------------------------------------
-	AVFormatContext												*mFormatContext;
-	AVOutputFormat												*mOutputFormat;
-	OutputStream												mVideoStream;
-	OutputStream												mAudioStream;
-	AVDictionary												*mDebugVideoFileOptions = NULL;
-	const AVCodec												*mVideoCodec;
-	const AVCodec												*mAudioCodec;
+
+
 	int															mFrameRate;
 
-	void														initVideoStream(int srcW, int srcH);
-	void														initAudioStream();
+	// Video
+	int															iSourceWidth;
+	int															iSourceHeight;
 
-	AVFrame*													getVideoFrame(FrameData* frameData);
-	void														writeVideoFrame(FrameData* frameData);
+	AVCodecContext*												pVideoContext;
+	AVPacket*													pVideoPacket;
+	AVFrame*													pVideoFrame;
+	SwsContext*													pVideoScaler;
+	u32															iVideoFrameIndex = 0;
+	void														encodeVideoFrame(u8* buf);
 
-	AVFrame*													getAudioFrame();
-	void														writeAudioFrame();
-
-	void														closeStream(OutputStream* stream);
+	// custom IO
+	MemoryBuffer*												pVideoIOBuffer;
+	u8*															pTransferBuffer;
 
 	bool														mInitializedCodec = false;
 	u32															mLastSentFrame = 0;
 	volatile bool												mIsStopEncode = false;
-	void														initEncoder(FrameData* frameData);
+	void														initEncoder();
 public:
 	ScreenCaptureSession();
 	~ScreenCaptureSession();
@@ -118,9 +143,6 @@ public:
 	std::mutex									*g_threadMutex;
 	static void									onProcessUpdateThread(void* context);
 
-	/*std::thread								g_serverThread;
-	std::mutex									*g_serverMutex;
-	static void									serverProgress(void* context);*/
 
 	void										serverUpdate();
 
@@ -129,7 +151,7 @@ public:
 	void										registerClientSession(PPClientSession* sesison);
 	void										initScreenCaptuure(PPServer* parent);
 
-	u32											currentFrame() const { return m_frameIndex; }
+	u32											currentFrame() const { return iVideoFrameIndex; }
 	bool										isStreaming() const { return m_isStartStreaming; }
 };
 

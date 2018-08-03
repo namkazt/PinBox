@@ -15,17 +15,17 @@
 #include "PPGraphics.h"
 #include "PPSessionManager.h"
 
-#include "dog_webp.h"
 #include "PPUI.h"
 
 #define SOC_ALIGN       0x1000
 #define SOC_BUFFERSIZE  0x100000
 
-#define USE_CITRA 1
+//#define CONSOLE_DEBUG 1
+//#define USE_CITRA 1
 
 void initDbgConsole()
 {
-#ifdef __CONSOLE_DEBUGING__
+#ifdef CONSOLE_DEBUG
 	consoleInit(GFX_TOP, NULL);
 	printf("Console log initialized\n");
 #endif
@@ -46,7 +46,7 @@ int main()
 	// Init Graphics
 	//---------------------------------------------
 	PPGraphics::Get()->GraphicsInit();
-	//initDbgConsole();
+	initDbgConsole();
 
 	//---------------------------------------------
 	// Init SOCKET
@@ -102,13 +102,12 @@ int main()
 	// wifiStatus = 2 : New 3DS internet
 	//---------------------------------------------
 	if (wifiStatus) {
-		
 		sm->InitInputStream();
 
 		if(wifiStatus == 1)
 		{
 			// New 3DS
-			osSetSpeedupEnable(1);
+			osSetSpeedupEnable(true);
 			sm->InitScreenCapture(1);
 		}else
 		{
@@ -141,6 +140,7 @@ int main()
 			//---------------------------------------------
 			// Draw top UI
 			//---------------------------------------------
+#ifndef CONSOLE_DEBUG
 			PPGraphics::Get()->RenderOn(GFX_TOP);
 			if(sm->GetManagerState() == 2)
 			{
@@ -149,6 +149,7 @@ int main()
 			{
 				PPUI::DrawIdleTopScreen(sm);
 			}
+#endif
 			//---------------------------------------------
 			// Draw bottom UI
 			//---------------------------------------------

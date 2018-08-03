@@ -84,7 +84,8 @@ class PPGraphics
 public:
 	ppColor PrimaryColor = ppColor{ 76, 175, 80, 255 };
 	ppColor PrimaryDarkColor = ppColor{ 0, 150, 136, 255 };
-	ppColor AccentColor = ppColor{ 255, 193, 7, 255 };
+	ppColor AccentColor = ppColor{ 230, 126, 34, 255 };
+	ppColor AccentDarkColor = ppColor{ 211, 84, 0, 255 };
 	ppColor PrimaryTextColor = ppColor{ 38, 50, 56, 255 };
 	ppColor AccentTextColor = ppColor{ 255, 255, 255, 255 };
 
