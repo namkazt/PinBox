@@ -359,7 +359,7 @@ int PPUI::DrawIdleBottomScreen(PPSessionManager* sessionManager)
 		sleepModeState = 1;
 	}
 	// label
-	LabelBox(0, 0, 320, 240, "Touch screen to wake up", rgb(26, 188, 156), rgb(255, 255, 255));
+	LabelBox(0, 0, 320, 240, "Touch screen to wake up", rgb(0, 0, 0), rgb(125, 125, 125));
 
 	DrawFPS(sessionManager);
 
