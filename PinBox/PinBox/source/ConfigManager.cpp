@@ -1,5 +1,6 @@
 #include "ConfigManager.h"
 #include <string>
+#include "../include/ConfigManager.h"
 #define CONFIG_FILE_NAME "pinbox.cfg"
 
 static ConfigManager* ref;

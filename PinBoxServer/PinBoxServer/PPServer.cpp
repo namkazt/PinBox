@@ -1,6 +1,7 @@
 #include "stdafx.h"
 #include "PPServer.h"
 #include "ServerConfig.h"
+#include <string>
 
 void PPServer::PrintIPAddressList()
 {

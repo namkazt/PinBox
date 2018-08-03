@@ -177,7 +177,7 @@ void ScreenCaptureSession::encodeVideoFrame(u8* buf)
 		vFPS.onNewFramecounter = 0;
 		vFPS.onNewFramestart = std::chrono::high_resolution_clock::now();
 	}
-	std::cout << "FPS: " << vFPS.currentFPS << " | FrameSize : " << pVideoPacket->size << std::endl << std::flush;
+	//std::cout << "FPS: " << vFPS.currentFPS << " | FrameSize : " << pVideoPacket->size << std::endl << std::flush;
 
 
 	//======================================================
@@ -246,14 +246,15 @@ void ScreenCaptureSession::initEncoder()
 
 void ScreenCaptureSession::startStream()
 {
+	if (m_isStartStreaming) return;
 	m_isStartStreaming = true;
 	iVideoFrameIndex = 0;
 	m_frameGrabber->resume();
-	//m_audioGrabber->Resume();
 }
 
 void ScreenCaptureSession::stopStream()
 {
+	if (!m_isStartStreaming) return;
 	m_isStartStreaming = false;
 	m_frameGrabber->pause();
 }

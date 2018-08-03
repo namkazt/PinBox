@@ -221,18 +221,12 @@ void PPClientSession::preprocessMessageCode(u8 code)
 		switch (code)
 		{
 		case MSG_CODE_REQUEST_START_SCREEN_CAPTURE:
-			if(!m_server->ScreenCapturer->isStreaming())
-			{
-				std::cout << "Client send COMMAND: Start Stream" << std::endl;
-				m_server->ScreenCapturer->startStream();
-			}
+			std::cout << "Client send COMMAND: Start Stream" << std::endl;
+			m_server->ScreenCapturer->startStream();
 			break;
 		case MSG_CODE_REQUEST_STOP_SCREEN_CAPTURE:
-			if (m_server->ScreenCapturer->isStreaming())
-			{
-				std::cout << "Client send COMMAND: Stop Stream" << std::endl;
-				m_server->ScreenCapturer->stopStream();
-			}
+			std::cout << "Client send COMMAND: Stop Stream" << std::endl;
+			m_server->ScreenCapturer->stopStream();
 			break;
 		case MSG_CODE_REQUEST_SCREEN_RECEIVED_FRAME: {
 			//std::cout << "Client " << g_connection->remote_addr() << " send RECEIVED_FRAME" << std::endl;
