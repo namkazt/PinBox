@@ -137,6 +137,8 @@ public:
 	ScreenCaptureSession();
 	~ScreenCaptureSession();
 
+	bool										Initialized = false;
+
 	bool										mIsFirstFrame = true;
 	FrameData*									mLastFrameData = nullptr;
 	std::thread									g_thread;
@@ -149,7 +151,7 @@ public:
 	void										startStream();
 	void										stopStream();
 	void										registerClientSession(PPClientSession* sesison);
-	void										initScreenCaptuure(PPServer* parent);
+	void										initScreenCapture(PPServer* parent);
 
 	u32											currentFrame() const { return iVideoFrameIndex; }
 	bool										isStreaming() const { return m_isStartStreaming; }

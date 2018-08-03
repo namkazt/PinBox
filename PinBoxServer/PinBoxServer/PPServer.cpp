@@ -37,7 +37,7 @@ void PPServer::InitServer()
 	google::SetCommandLineOption("GLOG_minloglevel", "2");
 	//===========================================================================
 	int cfgPort = 1234;
-	int cfgThreadNum = 8;
+	int cfgThreadNum = 2;
 	//===========================================================================
 	// Init config
 	//===========================================================================
@@ -46,7 +46,7 @@ void PPServer::InitServer()
 	// Screen capture session
 	//===========================================================================
 	ScreenCapturer = new ScreenCaptureSession();
-	ScreenCapturer->initScreenCaptuure(this);
+	ScreenCapturer->initScreenCapture(this);
 	//===========================================================================
 	// Screen capture session
 	//===========================================================================

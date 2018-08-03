@@ -13,7 +13,9 @@ public:
 	static ServerConfig* Get();
 
 	int							MonitorIndex = 0;
-	int							CaptureFPS = 40;
+	int							CaptureFPS = 30;
+	int							NetworkThread = 2;
+	int							ServerPort = 1234;
 	void LoadConfig();
 };
 

@@ -34,8 +34,11 @@ ScreenCaptureSession::~ScreenCaptureSession()
 
 
 
-void ScreenCaptureSession::initScreenCaptuure(PPServer* parent)
+void ScreenCaptureSession::initScreenCapture(PPServer* parent)
 {
+	if (Initialized) return;
+
+	Initialized = true;
 	m_server = parent;
 	mFrameRate = ServerConfig::Get()->CaptureFPS;
 	//---------------------------------------------------------------------
