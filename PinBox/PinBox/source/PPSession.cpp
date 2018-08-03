@@ -349,12 +349,12 @@ bool PPSession::IN_SendInputData(u32 down, u32 up, short cx, short cy, short ctx
 	u8* contentBuffer = (u8*)malloc(sizeof(u8) * contentSize);
 	u8* pointer = contentBuffer;
 	//----------------------------------------------
-	WRITE_U32(pointer, down);
-	WRITE_U32(pointer, up);
-	WRITE_U16(pointer, cx);
-	WRITE_U16(pointer, cy);
-	WRITE_U16(pointer, ctx);
-	WRITE_U16(pointer, cty);
+	memcpy(pointer, &down, 4);
+	memcpy(pointer + 4, &up, 4);
+	memcpy(pointer + 8, &cx, 2);
+	memcpy(pointer + 10, &cy, 2);
+	memcpy(pointer + 12, &ctx, 2);
+	memcpy(pointer + 14, &cty, 2);
 	//-----------------------------------------------
 	// build message and send
 	u8* msgBuffer = msg->BuildMessage(contentBuffer, contentSize);

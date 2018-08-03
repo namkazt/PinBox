@@ -9,7 +9,6 @@ InputStreamSession::InputStreamSession()
 	initMapKey();
 	LoadInputConfig();
 	initVIGEM();
-	m_receivedInput = false;
 }
 
 
@@ -24,8 +23,8 @@ void InputStreamSession::LoadInputConfig()
 	//-----------------------------------------------
 	m_defaultProfile = new KeyMappingProfile();
 	m_defaultProfile->name = "Default";
-	m_defaultProfile->type = "keyboard";
-	//m_defaultProfile->type = "x360";
+	//m_defaultProfile->type = "keyboard";
+	m_defaultProfile->type = "x360";
 	m_defaultProfile->mappings[0] = FakeInput::Key_Z;
 	m_defaultProfile->mappings[1] = FakeInput::Key_X;
 	m_defaultProfile->mappings[10] = FakeInput::Key_A;
@@ -128,6 +127,8 @@ void InputStreamSession::LoadInputConfig()
 			profile->mappings[11] = m_keyMapping[btn_Y];
 			profile->mappings[9] = m_keyMapping[btn_L];
 			profile->mappings[8] = m_keyMapping[btn_R];
+			profile->mappings[14] = m_keyMapping[btn_ZL];
+			profile->mappings[15] = m_keyMapping[btn_ZR];
 			profile->mappings[6] = m_keyMapping[btn_DPAD_RIGHT];
 			profile->mappings[7] = m_keyMapping[btn_DPAD_DOWN];
 			profile->mappings[5] = m_keyMapping[btn_DPAD_LEFT];
@@ -178,15 +179,18 @@ void InputStreamSession::UpdateInput(uint32_t down, uint32_t up, short cx, short
 	m_OldCY = cy;
 	m_OldCTX = ctx;
 	m_OldCTY = cty;
-	m_receivedInput = true;
-
+	std::cout << "Input Down:" << down << 
+		" - Up:" << up << 
+		" - CX:" << cx <<
+		" - CY:" << cy <<
+		" - CTX:" << ctx << 
+		" - CTY:" << cty << std::endl << std::flush;
+	ProcessInput();
 }
 void InputStreamSession::ProcessInput()
 {
-	if (!m_receivedInput) return;
-
 	// validate profile
-	if (m_currentProfile == "") m_currentProfile = "Default";
+	if (m_currentProfile.empty()) m_currentProfile = "Default";
 	if (m_keyMappingProfiles.find(m_currentProfile) == m_keyMappingProfiles.end()) m_currentProfile = "Default";
 
 	KeyMappingProfile *profile = m_keyMappingProfiles[m_currentProfile];
@@ -235,20 +239,22 @@ void InputStreamSession::ProcessInput()
 			}
 		}
 
-		// L
+		// ZL
 		if (m_OldDown & BIT(14))
 		{
-			m_x360Report.bLeftTrigger = 255;
-		}else
+			m_x360Report.bLeftTrigger = 250;
+		}
+		if(m_OldUp & BIT(14))
 		{
 			m_x360Report.bLeftTrigger = 0;
 		}
 
-		// R
+		// ZR
 		if (m_OldDown & BIT(15))
 		{
-			m_x360Report.bRightTrigger = 255;
-		}else
+			m_x360Report.bRightTrigger = 250;
+		}
+		if (m_OldUp & BIT(15))
 		{
 			m_x360Report.bRightTrigger = 0;
 		}

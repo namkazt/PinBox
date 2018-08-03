@@ -1,5 +1,3 @@
-export DEVKITPRO = /c/devkitPro
-export DEVKITARM = /c/devkitPro/devkitARM
 #---------------------------------------------------------------------------------
 .SUFFIXES:
 #---------------------------------------------------------------------------------
@@ -48,15 +46,15 @@ APP_ENCRYPTED				:= false
 #---------------------------------------------------------------------------------
 # options for code generation
 #---------------------------------------------------------------------------------
-ARCH	:=	-march=armv6k -mtune=mpcore -mfloat-abi=hard
+ARCH	:=	-march=armv6k -mtune=mpcore -mtp=soft -mfloat-abi=hard
 
-CFLAGS	:=	-ggdb -Wall -Og -mword-relocations -DDEBUG=1 -fomit-frame-pointer -ffast-math -fpermissive \
+CFLAGS	:=	-ggdb -Wall -Og -mword-relocations -DDEBUG=1 \
 			-ffunction-sections \
 			$(ARCH)
 
 CFLAGS	+=	$(INCLUDE) -DARM11 -D_3DS
 
-CXXFLAGS	:= $(CFLAGS) -fno-rtti -fno-exceptions -std=gnu++11
+CXXFLAGS	:= $(CFLAGS) -fno-rtti -fno-exceptions -std=gnu++11 -fpermissive -fexceptions -fomit-frame-pointer -ffast-math
 
 ASFLAGS	:=	-g $(ARCH)
 LDFLAGS	=	-specs=3dsx.specs -g $(ARCH) -Wl,-Map,$(notdir $*.map)

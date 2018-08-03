@@ -9,8 +9,8 @@
 #include <cstdio>
 
 #define WRITE_CHAR_PTR(BUFFER, DATA, SIZE) memcpy(BUFFER, DATA, SIZE); BUFFER += SIZE;
-#define WRITE_U8(BUFFER, DATA) *(BUFFER++) = DATA;
-#define WRITE_U16(BUFFER, DATA) *(BUFFER++) = DATA; *(BUFFER++) = DATA >> 8;
+#define WRITE_U8(BUFFER, DATA) *(BUFFER++) = DATA & 0xff;
+#define WRITE_U16(BUFFER, DATA) *(BUFFER++) = DATA & 0xff; *(BUFFER++) = (DATA >> 8) & 0xff;
 #define WRITE_U32(BUFFER, DATA) *(BUFFER++) = DATA; *(BUFFER++) = DATA >> 8; *(BUFFER++) = DATA >> 16; *(BUFFER++) = DATA >> 24;
 #define READ_U8(BUFFER, INDEX) BUFFER[INDEX];
 #define READ_U16(BUFFER, INDEX) BUFFER[INDEX] | BUFFER[INDEX + 1] << 8;

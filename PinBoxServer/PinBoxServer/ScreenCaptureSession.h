@@ -143,10 +143,7 @@ public:
 	FrameData*									mLastFrameData = nullptr;
 	std::thread									g_thread;
 	std::mutex									*g_threadMutex;
-	static void									onProcessUpdateThread(void* context);
 
-
-	void										serverUpdate();
 
 	void										startStream();
 	void										stopStream();

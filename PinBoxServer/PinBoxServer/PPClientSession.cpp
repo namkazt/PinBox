@@ -274,6 +274,8 @@ void PPClientSession::processMessageBody(u8* buffer, u8 code)
 		switch (code)
 		{
 		case MSG_CODE_REQUEST_CHANGE_SETTING_SCREEN_CAPTURE: {
+			//NOTE: do those setting are useless for now.
+
 			// wait for frame
 			int8_t waitForReceived = READ_U8(buffer, 0);
 			bool _waitForClientReceived = !(waitForReceived == 0);
@@ -284,7 +286,7 @@ void PPClientSession::processMessageBody(u8* buffer, u8 code)
 			// smoother frame
 			u32 _outputScale = READ_U32(buffer, 9);
 			///-----------------------------------
-			std::cout << "Change Stream Setting: "<< std::endl;
+			std::cout << "Change Stream Setting: " << std::endl;
 			std::cout << "Smooth Frame: " << _waitForFrame << std::endl;
 			std::cout << "Quality: " << _outputQuality << std::endl;
 			std::cout << "Scale: " << _outputScale << std::endl;
@@ -303,12 +305,18 @@ void PPClientSession::processMessageBody(u8* buffer, u8 code)
 		{
 			//--------------------------------------
 			//read input data
-			u32 down = READ_U32(buffer, 0);
-			u32 up = READ_U32(buffer, 4);
-			short cx = READ_U16(buffer, 8);
-			short cy = READ_U16(buffer, 10);
-			short ctx = READ_U16(buffer, 12);
-			short cty = READ_U16(buffer, 14);
+			u32 down = 0;
+			memcpy(&down, buffer, 4);
+			u32 up = 0;
+			memcpy(&up, buffer + 4, 4);
+			short cx = 0;
+			memcpy(&cx, buffer + 8, 2);
+			short cy = 0;
+			memcpy(&cy, buffer + 10, 2);
+			short ctx = 0;
+			memcpy(&ctx, buffer + 12, 2);
+			short cty = 0;
+			memcpy(&cty, buffer + 14, 2);
 			//--------------------------------------
 			m_server->InputStreamer->UpdateInput(down, up, cx, cy, ctx, cty);
 			break;

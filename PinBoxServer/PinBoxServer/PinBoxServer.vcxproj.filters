@@ -38,9 +38,6 @@
     <ClInclude Include="winmain-inl.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="AudioStreamSession.h">
-      <Filter>Source Files</Filter>
-    </ClInclude>
     <ClInclude Include="ScreenCaptureSession.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -48,6 +45,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="ServerConfig.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="AudioStreamSession.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

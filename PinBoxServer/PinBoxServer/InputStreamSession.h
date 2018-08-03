@@ -63,7 +63,6 @@ private:
 	short										m_OldCY;
 	short										m_OldCTX;
 	short										m_OldCTY;
-	bool										m_receivedInput = false;
 
 	std::string									m_currentProfile = "Default";
 	KeyMappingProfile*							m_defaultProfile;

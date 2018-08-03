@@ -76,7 +76,7 @@ void ScreenCaptureSession::initScreenCapture(PPServer* parent)
 				captureFPS.onNewFramecounter = 0;
 				captureFPS.onNewFramestart = std::chrono::high_resolution_clock::now();
 			}
-			std::cout << "Capture FPS: " << captureFPS.currentFPS << std::endl << std::flush;
+			//std::cout << "Capture FPS: " << captureFPS.currentFPS << std::endl << std::flush;
 		}
 	)->start_capturing();
 	int timeDelay = 1000.0f / (float)mFrameRate;
@@ -90,64 +90,6 @@ void ScreenCaptureSession::initScreenCapture(PPServer* parent)
 	//-----------------------------------------------------
 	// start loopback record thread
 	g_threadMutex = new std::mutex();
-}
-
-void ScreenCaptureSession::onProcessUpdateThread(void* context)
-{
-	ScreenCaptureSession* self = (ScreenCaptureSession*)context;
-	int timeDelay = 1000.0f / (float)self->mFrameRate;
-	auto timer = new SL::Screen_Capture::Timer<int, std::milli>( std::chrono::duration<int, std::milli>(1));
-	//======================================================
-	// start loop
-	//======================================================
-	while(!self->mIsStopEncode)
-	{
-		//======================================================
-		// stream do not start yet so we keep thread alive here
-		if (!self->m_isStartStreaming || self->m_clientSession == nullptr)
-		{
-			timer->start();
-			timer->wait();
-			continue;
-		}
-
-		//======================================================
-		// server update
-		//======================================================
-		timer->start();
-		self->serverUpdate();
-		timer->wait();
-
-
-		//======================================================
-		// test
-		//======================================================
-		//if (self->iVideoFrameIndex - self->mLastSentFrame > (self->mFrameRate * 5))
-		//{
-		//	// flush video frames
-		//	avcodec_send_frame(self->pVideoContext, NULL);
-		//	self->mIsStopEncode = true;
-		//	break;
-		//}
-	}
-
-	//======================================================
-	// test
-	//======================================================
-	/*FILE *file = fopen("custom_io.flv", "wb");
-	fwrite(self->pVideoIOBuffer->pBufferAddr, 1, self->pVideoIOBuffer->iCursor, file);
-	uint8_t endcode[] = { 0, 0, 1, 0xb7 };
-	fwrite(endcode, 1, sizeof(endcode), file);
-	fclose(file);
-	std::cout << "Finish Test Local file" << std::endl;*/
-
-	//======================================================
-	// free video encoder
-	//======================================================
-	avcodec_free_context(&self->pVideoContext);
-	av_frame_free(&self->pVideoFrame);
-	av_packet_free(&self->pVideoPacket);
-	sws_freeContext(self->pVideoScaler);
 }
 
 void ScreenCaptureSession::encodeVideoFrame(u8* buf)
@@ -182,23 +124,6 @@ void ScreenCaptureSession::encodeVideoFrame(u8* buf)
 
 	//======================================================
 	av_packet_unref(pVideoPacket);
-}
-
-
-void ScreenCaptureSession::serverUpdate()
-{
-	if (!m_isStartStreaming || m_clientSession == nullptr) return;
-
-	//-------------------------------------------------
-	// progress input on each frame
-	//-------------------------------------------------
-	m_server->InputStreamer->ProcessInput();
-
-	//-------------------------------------------------
-	// grab packet and send to client
-	//-------------------------------------------------
-	//m_clientSession->g_ss_isReceived && 
-	
 }
 
 
@@ -241,8 +166,6 @@ void ScreenCaptureSession::initEncoder()
 	pVideoIOBuffer->iCursor = 0;
 	pVideoIOBuffer->pMutex = new std::mutex();
 }
-
-
 
 void ScreenCaptureSession::startStream()
 {
