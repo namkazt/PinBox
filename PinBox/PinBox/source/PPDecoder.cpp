@@ -101,6 +101,7 @@ void PPDecoder::convertColor()
 	const s16 img_w = pDecodeState->y2rParams.input_line_width;
 	const s16 img_h = pDecodeState->y2rParams.input_lines;
 	const u32 img_size = img_w * img_h;
+	const u32 img_w_UV = img_w >> 1;
 	size_t src_Y_size = 0;
 	size_t src_UV_size = 0;
 
@@ -132,15 +133,15 @@ void PPDecoder::convertColor()
 	u8 *src_U = (u8*)pVideoFrame->data[1];
 	u8 *src_V = (u8*)pVideoFrame->data[2];
 	const s16 src_Y_padding = pVideoFrame->linesize[0] - img_w;
-	const s16 src_UV_padding = pVideoFrame->linesize[1] - (img_w / 2);
+	const s16 src_UV_padding = pVideoFrame->linesize[1] - img_w_UV;
 
 	res = Y2RU_SetSendingY(src_Y, src_Y_size, img_w, src_Y_padding);
 	if (res != 0) 
 		printf("Error on Y2RU_SetSendingY\n");
-	res = Y2RU_SetSendingU(src_U, src_UV_size, (img_w / 2), src_UV_padding);
+	res = Y2RU_SetSendingU(src_U, src_UV_size, img_w_UV, src_UV_padding);
 	if (res != 0) 
 		printf("Error on Y2RU_SetSendingU\n");
-	res = Y2RU_SetSendingV(src_V, src_UV_size, (img_w / 2), src_UV_padding);
+	res = Y2RU_SetSendingV(src_V, src_UV_size, img_w_UV, src_UV_padding);
 	if (res != 0) 
 		printf("Error on Y2RU_SetSendingV\n");
 
@@ -154,7 +155,7 @@ void PPDecoder::convertColor()
 	res = Y2RU_StartConversion();
 	if (res != 0) 
 		printf("Error on Y2RU_StartConversion\n");
-	res = svcWaitSynchronization(pDecodeState->endEvent, 10000000000ull);
+	res = svcWaitSynchronization(pDecodeState->endEvent, 1000000000ull);
 	if (res != 0) 
 		printf("Error on svcWaitSynchronization\n");
 }

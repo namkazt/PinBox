@@ -209,13 +209,13 @@ void ScreenCaptureSession::initEncoder()
 	const AVCodec* videoCodec = avcodec_find_encoder(AV_CODEC_ID_MPEG4);
 	pVideoContext = avcodec_alloc_context3(videoCodec);
 	// TODO: update by config here
-	pVideoContext->bit_rate = 720000;
+	pVideoContext->bit_rate = 1100000;
 	pVideoContext->width = 400;
 	pVideoContext->height = 240;
 	pVideoContext->time_base = AVRational { 1, mFrameRate };
 	pVideoContext->framerate = AVRational { mFrameRate, 1 };
-	pVideoContext->gop_size = 20;
-	pVideoContext->max_b_frames = 1;
+	pVideoContext->gop_size = 10;
+	pVideoContext->max_b_frames = 2;
 	pVideoContext->pix_fmt = AV_PIX_FMT_YUV420P;
 	// Open
 	ERROR_PRINT(avcodec_open2(pVideoContext, videoCodec, NULL));
@@ -227,7 +227,7 @@ void ScreenCaptureSession::initEncoder()
 	ERROR_PRINT(av_frame_get_buffer(pVideoFrame, 8));
 	pVideoScaler = sws_getContext(
 			iSourceWidth, iSourceHeight, AV_PIX_FMT_BGRA,
-			pVideoContext->width, pVideoContext->height, AV_PIX_FMT_YUV420P, 
+			pVideoContext->width, pVideoContext->height, AV_PIX_FMT_YUV420P,
 			SWS_FAST_BILINEAR, 0, 0, 0);
 	// Init custom memory buffer
 	pVideoIOBuffer = new MemoryBuffer();
