@@ -179,12 +179,12 @@ void InputStreamSession::UpdateInput(uint32_t down, uint32_t up, short cx, short
 	m_OldCY = cy;
 	m_OldCTX = ctx;
 	m_OldCTY = cty;
-	std::cout << "Input Down:" << down << 
+	/*std::cout << "Input Down:" << down << 
 		" - Up:" << up << 
 		" - CX:" << cx <<
 		" - CY:" << cy <<
 		" - CTX:" << ctx << 
-		" - CTY:" << cty << std::endl << std::flush;
+		" - CTY:" << cty << std::endl << std::flush;*/
 	ProcessInput();
 }
 void InputStreamSession::ProcessInput()
