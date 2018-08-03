@@ -10,8 +10,13 @@ https://discord.gg/9Qae7fT
 - Optimized with webp format
 - Emulation Xbox 360 Controller for awesome game support ( by ViGEm )
  - Support for Keyboard mapping with profile select from 3DS side
- - Streaming configurable to optimize experiments
- 
+ - Added libconfig to store some stream config and connect config
+ - Added FPS config on server.cfg
+#### Plans
+- Implement streaming audio to 3DS
+-  Implement Qt UI for basic use
+-  add Hub UI for fast access to game or app
+ - Checker for wifi and sleepmode and other events relating to 3DS
 # Requirements to get Pinbox to run:
 * Visual C++ Redistributable for Visual Studio 2015
 https://goo.gl/ijdZ1x
@@ -26,15 +31,14 @@ https://goo.gl/qcuVbp
 #### Notes
 - Enable firewall to allow port 1234 in and out (or disable the firewall when using the software and enable the firewall when done)
 - Make sure both devices are connected to Wifi
-
+- You do not have to type in port 1234, this will crash the app
+- If you are getting a black screen in Pinbox, open server.cfg in the Pinbox server directory and change monitor index to zero
 # Installation
 
 Tutorial Video (Thanks to @GameInCanada): https://www.youtube.com/watch?v=Q-R2cy-vBgY
-
 # Troubleshooting
 
 Please follow the instructions in the Pinbox Discord since the troubleshooting requirements are changing all the time and will be updated constantly.
 
-## If you are having issues don't hesitate to ask for help in our official discord channel! 
+## If you are having issues don't hesitate to ask for help on our official Discord channel! 
 ## https://discord.gg/9Qae7fT
-
