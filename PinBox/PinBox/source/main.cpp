@@ -1,7 +1,7 @@
 ﻿//===============================================================================
 // enable this for debug log console on top
 //===============================================================================
-#define __CONSOLE_DEBUGING__
+//define __CONSOLE_DEBUGING__
 //===============================================================================
 
 #include <3ds.h>
@@ -154,22 +154,21 @@ int main()
 			// Draw bottom UI
 			//---------------------------------------------
 			PPGraphics::Get()->RenderOn(GFX_BOTTOM);
-			int ret = 0;
-			// TODO: should be option : auto set idle mode when start streaming
+			int r = 0;
 			if(sm->GetManagerState() == 2 && PPUI::getSleepModeState() == 0)
 			{
-				ret = PPUI::DrawIdleBottomScreen(sm);
+				r = PPUI::DrawIdleBottomScreen(sm);
 			}else
 			{
 				if (PPUI::HasPopup())
 				{
 					PopupCallback popupFunc = PPUI::GetPopup();
-					ret = popupFunc();
+					r = popupFunc();
 				}
 				else
 				{
 					// if there is no popup then render main UI
-					ret = PPUI::DrawBottomScreenUI(sm);
+					r = PPUI::DrawBottomScreenUI(sm);
 				}
 			}
 			
@@ -179,7 +178,7 @@ int main()
 			sm->CollectFPSData();
 
 
-			if (ret == -1) break;
+			if (r == -1) break;
 		}
 		//---------------------------------------------
 		// End

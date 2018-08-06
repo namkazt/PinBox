@@ -1,5 +1,5 @@
 BasicInfo:
-  Title                   : PINBOX
+  Title                   : PINBOX r0.2.1
   ProductCode             : CTR-P-PINBOX
   ContentType            : Application # Application / SystemUpdate / Manual / Child / Trial
   Logo                    : Nintendo # Nintendo / Licensed / Distributed / iQue / iQueForSystem
@@ -9,7 +9,7 @@ RomFs:
 
 TitleInfo:
   Category                : Application
-  UniqueId                : 0x18DE
+  UniqueId                : 0x18EF
 
 Option:
   UseOnSD                 : true # true if App is to be installed to SD

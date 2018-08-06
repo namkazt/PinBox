@@ -358,3 +358,6 @@ PinBoxServer/Release/
 *.rar
 *.flv
 *.mp4
+*.cia
+*.smdh
+PinBox/PinBox/Pre-Built/PinBox.smdh

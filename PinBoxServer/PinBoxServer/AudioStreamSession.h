@@ -12,6 +12,7 @@
 class AudioStreamSession
 {
 private:
+
 	IMMDevice					*m_pMMDevice;
 	HANDLE						g_StopEvent;
 	std::thread					g_thread;
@@ -21,6 +22,7 @@ private:
 	u8*							mTmpAudioBuffer = nullptr;
 	u32							mTmpAudioBufferSize = 0;
 	int							mTmpAudioFrames = 0;
+	u32							mSampleRate = 0;
 	std::mutex					*mutex;
 public:
 	u32							GetLastFramesRecorded() { return g_totalFrameRecorded; }
@@ -43,7 +45,9 @@ public:
 	u8*							GetAudioBuffer() { return mTmpAudioBuffer; }
 	u32							GetAudioBufferSize() { return mTmpAudioBufferSize; }
 	int							GetAudioFrames() { return mTmpAudioFrames; }
-	int						FinishReadAudioBuffer(u32 sizeRead, int framesRead);
+	u32							GetSampleRate() { return mSampleRate; }
+	void						FinishReadAudioBuffer();
+	int							Cutoff(u32 sizeRead, int framesRead);
 
 public: // test functions
 	HMMIO						g_tmpWavFile;

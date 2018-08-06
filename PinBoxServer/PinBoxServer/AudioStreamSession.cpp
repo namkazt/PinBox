@@ -68,7 +68,12 @@ void AudioStreamSession::BeginReadAudioBuffer()
 	mutex->lock();
 }
 
-int AudioStreamSession::FinishReadAudioBuffer(u32 sizeRead, int framesRead)
+void AudioStreamSession::FinishReadAudioBuffer()
+{
+	mutex->unlock();
+}
+
+int AudioStreamSession::Cutoff(u32 sizeRead, int framesRead)
 {
 	if (mTmpAudioBufferSize < sizeRead) sizeRead = mTmpAudioBufferSize;
 	if (mTmpAudioFrames < framesRead) framesRead = mTmpAudioFrames;
@@ -78,7 +83,6 @@ int AudioStreamSession::FinishReadAudioBuffer(u32 sizeRead, int framesRead)
 	// clean data
 	mTmpAudioBufferSize -= sizeRead;
 	mTmpAudioFrames -= framesRead;
-	mutex->unlock();
 	return mTmpAudioFrames;
 }
 
@@ -174,6 +178,9 @@ void AudioStreamSession::loopbackCaptureThreadFunction(void* context)
 		AUDCLNT_STREAMFLAGS_LOOPBACK,
 		0, 0, pwfx, 0
 	);
+
+	self->mSampleRate = (u32)pwfx->nSamplesPerSec;
+
 	// activate an IAudioCaptureClient
 	IAudioCaptureClient *pAudioCaptureClient;
 	hr = pAudioClient->GetService( __uuidof(IAudioCaptureClient), (void**)&pAudioCaptureClient );

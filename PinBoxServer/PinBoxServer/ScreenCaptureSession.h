@@ -31,6 +31,7 @@ extern "C" {
 #include <libavutil/opt.h>
 #include <libswscale/swscale.h>
 #include <libswresample/swresample.h>
+#include "libavutil/audio_fifo.h"
 }
 
 typedef struct
@@ -125,6 +126,15 @@ private:
 	u32															iVideoFrameIndex = 0;
 	void														encodeVideoFrame(u8* buf);
 
+	// Audio
+	AVCodecContext*												pAudioContext;
+	AVPacket*													pAudioPacket;
+	AVFrame*													pAudioFrame;
+	SwrContext*													pAudioResampler;
+	AVAudioFifo*												pAudioFIFO;
+	int64_t														iAudioPts = 0;
+	void														encodeAudioFrame();
+
 	// custom IO
 	MemoryBuffer*												pVideoIOBuffer;
 	u8*															pTransferBuffer;
@@ -141,8 +151,6 @@ public:
 
 	bool										mIsFirstFrame = true;
 	FrameData*									mLastFrameData = nullptr;
-	std::thread									g_thread;
-	std::mutex									*g_threadMutex;
 
 
 	void										startStream();
