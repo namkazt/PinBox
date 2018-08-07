@@ -6,14 +6,14 @@ Welcome to Pinbox! Pinbox is a homebrew application (Soon .cia) for the Nintendo
 https://discord.gg/9Qae7fT
 
 # Current Support
-- Smooth streaming from Windows PC to a 3DS ( or over internet from VPS windows server )
-- Optimized with webp format
+- Streaming from Windows PC to a 3DS ( or over internet from VPS windows server )
+- Hardware acceleration Y2R
 - Emulation Xbox 360 Controller for awesome game support ( by ViGEm )
- - Support for Keyboard mapping with profile select from 3DS side
- - Added libconfig to store some stream config and connect config
- - Added FPS config on server.cfg
-#### Plans
+- Support for Keyboard mapping with profile select from 3DS side
+- Realtime config from 3DS side
+# WIP
 - Implement streaming audio to 3DS
+#### Plans
 -  Implement Qt UI for basic use
 -  add Hub UI for fast access to game or app
  - Checker for wifi and sleepmode and other events relating to 3DS
