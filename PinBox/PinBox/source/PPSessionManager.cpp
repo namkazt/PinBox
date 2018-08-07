@@ -19,9 +19,6 @@ PPSessionManager::~PPSessionManager()
 }
 
 static u32 mFrameIndex = 0;
-static u8* mStaticFramesPool = nullptr;
-static u32 mStaticFramesIndex = 0;
-static u8* mStaticPreAllocBuffer = nullptr;
 static u8* mStaticFrameBuffer = nullptr;
 static volatile bool mHaveNewFrame = false;
 
@@ -48,16 +45,54 @@ void PPSessionManager::InitScreenCapture(u32 numberOfSessions)
 
 void PPSessionManager::SafeTrack(u8* buffer, u32 size)
 {
+	if(m_decoder == nullptr)
+	{
+		m_decoder = new PPDecoder();
+		m_decoder->initDecoder();
+	}
+
 	m_frameTrackerMutex->Lock();
-	//------------------------------------------------
-	// move piece addr into new block
-	//------------------------------------------------
-	//printf("Tracked frame at : %d / %d\n", mStaticFramesIndex, STATIC_FRAMES_POOL_SIZE);
-	memcpy(mStaticFramesPool, buffer, size);
-	if (m_activeFrame == nullptr) m_activeFrame = new FrameData();
-	m_activeFrame->pieceAddr = mStaticFramesPool;
-	m_activeFrame->pieceSize = size;
-	m_activeFrame->decoded = false;
+
+	//decode frame
+	u8* rgbBuffer = m_decoder->appendVideoBuffer(buffer, size);
+	if (rgbBuffer != nullptr)
+	{
+		//-------------------------------------------
+		// convert to correct format in 3DS
+		//-------------------------------------------
+		g_frameMutex->Lock();
+		int i, j;
+		int nw3 = m_decoder->iFrameWidth * 3;
+		for (i = 0; i < m_decoder->iFrameHeight; i++) {
+			// i * 512 * 3
+			memcpy(mStaticFrameBuffer + (i * 1536), rgbBuffer + (i*nw3), nw3);
+		}
+		g_frameMutex->Unlock();
+		mHaveNewFrame = true;
+	}
+
+	//-------------------------------------------
+	// update frame video FPS
+	//-------------------------------------------
+	if (!mReceivedFirstFrame)
+	{
+		mReceivedFirstFrame = true;
+		mLastTimeGetFrame = osGetTime();
+		mVideoFPS = 0.0f;
+		mVideoFrame = 0;
+	}
+	else
+	{
+		mVideoFrame++;
+		u64 deltaTime = osGetTime() - mLastTimeGetFrame;
+		if (deltaTime > 1000)
+		{
+			mVideoFPS = mVideoFrame / (deltaTime / 1000.0f);
+			mVideoFrame = 0;
+			mLastTimeGetFrame = osGetTime();
+		}
+	}
+
 	//------------------------------------------------
 	m_frameTrackerMutex->Unlock();
 	
@@ -73,106 +108,15 @@ void PPSessionManager::UpdateStreamSetting()
 	m_screenCaptureSessions[0]->SS_ChangeSetting();
 }
 
-void UpdateFrameTracker(void *arg)
-{
-	PPSessionManager* self = (PPSessionManager*)arg;
-	if (self == nullptr) {
-		return;
-	}
-	printf("Starting decode thread....\n");
-	//-----------------------------------------------------------------
-	// init decoder
-	//-----------------------------------------------------------------
-	self->m_decoder = new PPDecoder();
-	self->m_decoder->initDecoder();
-
-	//---------------------------------------------------
-	// this function should be run on a loop on main thread so that
-	// we display image on main thread only
-	//---------------------------------------------------
-
-	u64 sleepDuration = 1000000ULL * 0.2;
-	while (!self->g_threadExit) {
-
-		// get first frame in tracker ( first frame alway is the newest )
-		self->m_frameTrackerMutex->Lock();
-		if(self->m_activeFrame != nullptr && !self->m_activeFrame->decoded)
-		{
-			self->m_activeFrame->decoded = true;
-			//-------------------------------------------
-			mFrameIndex++;
-
-			//decode frame
-			u8* rgbBuffer = self->m_decoder->appendVideoBuffer(self->m_activeFrame->pieceAddr, self->m_activeFrame->pieceSize);
-			if(rgbBuffer != nullptr)
-			{
-				//printf("Decoded frame : %d\n", mFrameIndex);
-				//-------------------------------------------
-				// convert to correct format in 3DS
-				//-------------------------------------------
-				self->g_frameMutex->Lock();
-				int i, j;
-				int nw3 = self->m_decoder->iFrameWidth * 3;
-				for (i = 0; i < self->m_decoder->iFrameHeight ; i++) {
-					// i * 512 * 3
-					memcpy(mStaticFrameBuffer + (i * 1536), rgbBuffer + (i*nw3), nw3);
-				}
-				self->g_frameMutex->Unlock();
-				mHaveNewFrame = true;
-			}
-
-			//-------------------------------------------
-			// update frame video FPS
-			//-------------------------------------------
-			if (!self->mReceivedFirstFrame)
-			{
-				self->mReceivedFirstFrame = true;
-				self->mLastTimeGetFrame = osGetTime();
-				self->mVideoFPS = 0.0f;
-				self->mVideoFrame = 0;
-			}
-			else
-			{
-				self->mVideoFrame++;
-				u64 deltaTime = osGetTime() - self->mLastTimeGetFrame;
-				if (deltaTime > 1000)
-				{
-					self->mVideoFPS = self->mVideoFrame / (deltaTime / 1000.0f);
-					self->mVideoFrame = 0;
-					self->mLastTimeGetFrame = osGetTime();
-				}
-
-			}
-		}
-		self->m_frameTrackerMutex->Unlock();
-
-		svcSleepThread(sleepDuration);
-	}
-	printf("Releasing decode thread....\n");
-	self->ReleaseDecodeThead();
-}
-
 
 
 void PPSessionManager::StartDecodeThread()
 {
-	mStaticFramesPool = (u8*)malloc(STATIC_FRAMES_POOL_SIZE);
-	//-----------------------------------------------------------------
-	// init static buffer for 1 frame only
-	//-----------------------------------------------------------------
-	mStaticPreAllocBuffer = (u8*)malloc(STATIC_FRAME_SIZE);
 	mStaticFrameBuffer = (u8*)linearAlloc(STATIC_FRAME_SIZE);
-	
-	//-----------------------------------------------------------------
-	// start thread
-	//-----------------------------------------------------------------
-	g_thread = threadCreate(UpdateFrameTracker, this, 100 * 1024, mMainThreadPrio - 2, -2, true);
 }
 
 void PPSessionManager::ReleaseDecodeThead()
 {
-	if(mStaticFramesPool!= nullptr) free(mStaticFramesPool);
-	if (mStaticPreAllocBuffer != nullptr) free(mStaticPreAllocBuffer);
 	if (mStaticFrameBuffer != nullptr) free(mStaticFrameBuffer);
 	m_decoder->releaseDecoder();
 }

@@ -17,7 +17,7 @@ void PPNetwork::ppNetwork_threadRun(void * arg)
 	network->g_receivedBuffer = (u8*)malloc(POOLSIZE);
 	network->g_receivedCounter = 0;
 	//--------------------------------------------------
-	u64 sleepDuration = 1000000ULL * 1;
+	u64 sleepDuration = 1000000ULL * 0.1;
 	while(!network->g_threadExit){
 
 		if(network->g_connect_state == ppConectState::IDLE)
