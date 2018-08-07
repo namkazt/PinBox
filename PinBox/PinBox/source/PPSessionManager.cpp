@@ -242,7 +242,7 @@ void PPSessionManager::UpdateInputStream(u32 down, u32 up, short cx, short cy, s
 
 void PPSessionManager::_oneByOneConnectScreenCapture(int index, const char* ip, const char* port, PPNotifyCallback callback)
 {
-	m_screenCaptureSessions[index]->StartSession(ip, port, mMainThreadPrio - 4, [=](PPNetwork *self, u8* data, u32 code)
+	m_screenCaptureSessions[index]->StartSession(ip, port, mMainThreadPrio - 2, [=](PPNetwork *self, u8* data, u32 code)
 	{
 		m_connectedSession++;
 		if (m_connectedSession == m_screenCaptureSessions.size())
@@ -279,7 +279,7 @@ void PPSessionManager::StartStreaming(const char* ip)
 		//--------------------------------------------------
 		//start input connect when all other connect is done
 		if (m_inputStreamSession != nullptr) {
-			m_inputStreamSession->StartSession(ip, "1234", mMainThreadPrio - 3, [=](PPNetwork *self, u8* data, u32 code)
+			m_inputStreamSession->StartSession(ip, "1234", mMainThreadPrio - 1, [=](PPNetwork *self, u8* data, u32 code)
 			{
 				mManagerState = 2;
 				m_inputStreamSession->IN_Start();

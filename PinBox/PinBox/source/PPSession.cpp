@@ -223,6 +223,14 @@ void PPSession::processScreenCaptureSession(u8* buffer, size_t size)
 		
 		break;
 	}
+	case MSG_CODE_REQUEST_NEW_AUDIO_FRAME:
+	{
+		SS_SendReceivedFrame();
+
+		g_manager->SafeTrack(buffer, size);
+
+		break;
+	}
 	default: break;
 	}
 }
@@ -307,6 +315,17 @@ void PPSession::SS_SendReceivedFrame()
 	g_network->SendMessageData(msgBuffer, msgObj->GetMessageSize());
 	delete msgObj;
 }
+
+
+void PPSession::SS_SendReceivedAudioFrame()
+{
+	PPMessage *msgObj = new PPMessage();
+	msgObj->BuildMessageHeader(MSG_CODE_REQUEST_RECEIVED_AUDIO_FRAME);
+	u8* msgBuffer = msgObj->BuildMessageEmpty();
+	g_network->SendMessageData(msgBuffer, msgObj->GetMessageSize());
+	delete msgObj;
+}
+
 
 void PPSession::SS_Reset()
 {

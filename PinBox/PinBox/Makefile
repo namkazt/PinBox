@@ -1,3 +1,5 @@
+export DEVKITPRO = /c/devkitPro
+export DEVKITARM = /c/devkitPro/devkitARM
 #---------------------------------------------------------------------------------
 .SUFFIXES:
 #---------------------------------------------------------------------------------
@@ -48,19 +50,30 @@ APP_ENCRYPTED				:= false
 #---------------------------------------------------------------------------------
 ARCH	:=	-march=armv6k -mtune=mpcore -mtp=soft -mfloat-abi=hard
 
-CFLAGS	:=	-ggdb -Wall -Og -mword-relocations -DDEBUG=1 \
-			-ffunction-sections \
-			$(ARCH)
+#---------------------------------------------------------------------------------
+# debug mode
+#---------------------------------------------------------------------------------
+#PINBOX_DEBUG				:= false
 
-CFLAGS	+=	$(INCLUDE) -DARM11 -D_3DS
-
-CXXFLAGS	:= $(CFLAGS) -fno-rtti -fno-exceptions -std=gnu++11 -fpermissive -fexceptions -fomit-frame-pointer -ffast-math
-
-ASFLAGS	:=	-g $(ARCH)
-LDFLAGS	=	-specs=3dsx.specs -g $(ARCH) -Wl,-Map,$(notdir $*.map)
-
-LIBS	:= -lavformat -lavcodec -lavutil -lswscale -lswresample -lconfig -lturbojpeg -lwebp -lcitro3dd -lctrud -lz -lm 
-
+ifneq ($(strip $(PINBOX_DEBUG)),)
+	CFLAGS	:=	-ggdb -Wall -Og -mword-relocations -DDEBUG=1 \
+				-ffunction-sections \
+				$(ARCH)
+	CFLAGS	+=	$(INCLUDE) -DARM11 -D_3DS
+	CXXFLAGS	:= $(CFLAGS) -fno-rtti -fno-exceptions -std=gnu++11 -fpermissive -fexceptions -ffast-math
+	ASFLAGS	:=	-g $(ARCH)
+	LDFLAGS	=	-specs=3dsx.specs -g $(ARCH) -Wl,-Map,$(notdir $*.map)
+	LIBS	:= -lavformat -lavcodec -lavutil -lswscale -lswresample -lconfig -lturbojpeg -lwebp -lcitro3dd -lctrud -lz -lm
+else
+	CFLAGS	:=	-g -Wall -mword-relocations \
+				-ffunction-sections \
+				$(ARCH)
+	CFLAGS	+=	$(INCLUDE) -DARM11 -D_3DS -DNDEBUG=1
+	CXXFLAGS	:= $(CFLAGS) -fno-rtti -fno-exceptions -std=gnu++11 -fpermissive -fexceptions -fomit-frame-pointer -ffast-math
+	ASFLAGS	:=	-g $(ARCH)
+	LDFLAGS	=	-specs=3dsx.specs -g $(ARCH) -Wl,-Map,$(notdir $*.map)
+	LIBS	:= -lavformat -lavcodec -lavutil -lswscale -lswresample -lconfig -lturbojpeg -lwebp -lcitro3d -lctru -lz -lm
+endif
 #---------------------------------------------------------------------------------
 # list of directories containing libraries, this must be the top level containing
 # include and lib
@@ -153,8 +166,8 @@ $(BUILD):
 #---------------------------------------------------------------------------------
 clean:
 	@echo clean ...
-	@rm -fr $(BUILD) $(TARGET).3dsx $(OUTPUT).smdh $(TARGET).elf
-
+	@rm -fr $(BUILD) $(TARGET).3dsx $(TARGET).elf
+	
 #---------------------------------------------------------------------------------
 $(TARGET)-strip.elf: $(BUILD)
 	@$(STRIP) $(TARGET).elf -o $(TARGET)-strip.elf

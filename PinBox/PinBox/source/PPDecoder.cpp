@@ -8,6 +8,7 @@ PPDecoder::PPDecoder()
 
 PPDecoder::~PPDecoder()
 {
+	linearFree(pRGBBuffer);
 }
 
 void PPDecoder::initDecoder()

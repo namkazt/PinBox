@@ -149,6 +149,7 @@ public:
 	void								SS_StopStream();
 	void								SS_ChangeSetting();
 	void								SS_SendReceivedFrame();
+	void								SS_SendReceivedAudioFrame();
 
 	void								SS_Reset();
 	//-----------------------------------------------------
