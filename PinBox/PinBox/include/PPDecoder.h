@@ -59,16 +59,20 @@ class PPDecoder
 private:
 
 	// video stream
-	AVCodecParserContext*		pVideoParser;
+	//AVCodecParserContext*		pVideoParser;
 	AVCodecContext*				pVideoContext;
 	AVPacket*					pVideoPacket;
 	AVFrame*					pVideoFrame;
 	u32							iVideoFrameIndex = 0;
 	DecodeState*				pDecodeState;
 	u8*							decodeVideoStream();
-
 	void						initY2RImageConverter();
 	void						convertColor();
+
+	// audio stream
+	AVCodecContext*				pAudioContext;
+	AVPacket*					pAudioPacket;
+	AVFrame*					pAudioFrame;
 
 public:
 	PPDecoder();

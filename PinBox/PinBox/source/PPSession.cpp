@@ -227,7 +227,7 @@ void PPSession::processScreenCaptureSession(u8* buffer, size_t size)
 	{
 		SS_SendReceivedAudioFrame();
 
-		//g_manager->SafeTrack(buffer, size);
+		g_manager->SafeTrackAudio(buffer, size);
 
 		break;
 	}

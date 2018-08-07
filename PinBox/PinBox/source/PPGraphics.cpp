@@ -171,7 +171,7 @@ void PPGraphics::UpdateTopScreenSprite(u8* data, u32 size, u32 width, u32 height
 		GSPGPU_FlushDataCache(data, size);
 		u32 dim = GX_BUFFER_DIM(width, height);
 		C3D_SafeDisplayTransfer((u32*)data, dim, (u32*)mTopScreenSprite->spriteTexture.data, GX_BUFFER_DIM(512, 256), TEXTURE_TRANSFER_FLAGS);
-		//gspWaitForPPF();
+		gspWaitForPPF();
 	}
 
 }

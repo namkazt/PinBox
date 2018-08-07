@@ -7,15 +7,15 @@
 
 PPSessionManager::PPSessionManager()
 {
-	m_frameTrackerMutex = new Mutex();
-	g_frameMutex = new Mutex();
+	g_VideoFrameMutex = new Mutex();
+	g_AudioFrameMutex = new Mutex();
 }
 
 
 PPSessionManager::~PPSessionManager()
 {
-	delete m_frameTrackerMutex;
-	delete g_frameMutex;
+	delete g_VideoFrameMutex;
+	delete g_AudioFrameMutex;
 }
 
 static u32 mFrameIndex = 0;
@@ -51,8 +51,7 @@ void PPSessionManager::SafeTrack(u8* buffer, u32 size)
 		m_decoder->initDecoder();
 	}
 
-	m_frameTrackerMutex->Lock();
-
+	g_VideoFrameMutex->Lock();
 	//decode frame
 	u8* rgbBuffer = m_decoder->appendVideoBuffer(buffer, size);
 	if (rgbBuffer != nullptr)
@@ -60,16 +59,15 @@ void PPSessionManager::SafeTrack(u8* buffer, u32 size)
 		//-------------------------------------------
 		// convert to correct format in 3DS
 		//-------------------------------------------
-		g_frameMutex->Lock();
 		int i, j;
 		int nw3 = m_decoder->iFrameWidth * 3;
 		for (i = 0; i < m_decoder->iFrameHeight; i++) {
 			// i * 512 * 3
 			memcpy(mStaticFrameBuffer + (i * 1536), rgbBuffer + (i*nw3), nw3);
 		}
-		g_frameMutex->Unlock();
 		mHaveNewFrame = true;
 	}
+	g_VideoFrameMutex->Unlock();
 
 	//-------------------------------------------
 	// update frame video FPS
@@ -92,10 +90,17 @@ void PPSessionManager::SafeTrack(u8* buffer, u32 size)
 			mLastTimeGetFrame = osGetTime();
 		}
 	}
+}
 
-	//------------------------------------------------
-	m_frameTrackerMutex->Unlock();
-	
+void PPSessionManager::SafeTrackAudio(u8* buffer, u32 size)
+{
+	if (m_decoder == nullptr)
+	{
+		m_decoder = new PPDecoder();
+		m_decoder->initDecoder();
+	}
+
+
 }
 
 u32 PPSessionManager::getFrameIndex() const
@@ -124,12 +129,11 @@ void PPSessionManager::ReleaseDecodeThead()
 void PPSessionManager::UpdateVideoFrame()
 {
 	if (!mHaveNewFrame) return;
-	//printf("Uploading frame \n");
 
-	g_frameMutex->Lock();
+	g_VideoFrameMutex->Lock();
 	PPGraphics::Get()->UpdateTopScreenSprite(mStaticFrameBuffer, 393216, 400, 240);
 	mHaveNewFrame = false;
-	g_frameMutex->Unlock();
+	g_VideoFrameMutex->Unlock();
 }
 
 

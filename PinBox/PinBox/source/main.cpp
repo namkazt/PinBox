@@ -16,6 +16,7 @@
 #include "PPSessionManager.h"
 
 #include "PPUI.h"
+#include "PPAudio.h"
 
 #define SOC_ALIGN       0x1000
 #define SOC_BUFFERSIZE  0x100000
@@ -33,6 +34,50 @@ void initDbgConsole()
 
 static u32 *SOC_buffer = NULL;
 
+void _ded()
+{
+	gfxSetScreenFormat(GFX_TOP, GSP_RGB565_OES);
+	gfxSetDoubleBuffering(GFX_TOP, false);
+	gfxSwapBuffers();
+	gfxSwapBuffers();
+	gfxFlushBuffers();
+
+	puts("\e[0m\n\n- The application has crashed\n\n");
+
+	try
+	{
+		throw;
+	}
+	catch (std::exception &e)
+	{
+		printf("std::exception: %s\n", e.what());
+	}
+	catch (Result res)
+	{
+		printf("Result: %08X\n", res);
+		//NNERR(res);
+	}
+	catch (int e)
+	{
+		printf("(int) %i\n", e);
+	}
+	catch (...)
+	{
+		puts("<unknown exception>");
+	}
+
+	puts("\nPress a key to exit...");
+	while (aptMainLoop())
+	{
+		hidScanInput();
+		if (hidKeysDown())
+		{
+			break;
+		}
+		gspWaitForVBlank();
+	}
+}
+
 int main()
 {
 	//---------------------------------------------
@@ -46,7 +91,13 @@ int main()
 	// Init Graphics
 	//---------------------------------------------
 	PPGraphics::Get()->GraphicsInit();
+	PPAudio::Get()->AudioInit();
 	initDbgConsole();
+
+#ifdef _3DS
+	std::set_unexpected(_ded);
+	std::set_terminate(_ded);
+#endif
 
 	//---------------------------------------------
 	// Init SOCKET
@@ -189,6 +240,7 @@ int main()
 		
 	
 	PPGraphics::Get()->GraphicExit();
+	PPAudio::Get()->AudioExit();
 	ConfigManager::Get()->Destroy();
 	irrstExit();
 	socExit();

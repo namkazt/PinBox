@@ -19,23 +19,36 @@ void PPDecoder::initDecoder()
 	// init video encoder
 	//-----------------------------------------------------------------
 	const AVCodec* videoCodec = avcodec_find_decoder(AV_CODEC_ID_MPEG4);
-	pVideoParser = av_parser_init(videoCodec->id);
+	//pVideoParser = av_parser_init(videoCodec->id);
 	pVideoContext = avcodec_alloc_context3(videoCodec);
 	// Open
 	int ret = avcodec_open2(pVideoContext, videoCodec, NULL);
+	printf("Open Video decoder: %d\n", ret);
 	pVideoPacket = av_packet_alloc();
 	pVideoFrame = av_frame_alloc();
-	// decode state
-	
 	initY2RImageConverter();
+
+	//-----------------------------------------------------------------
+	// init audio encoder
+	//-----------------------------------------------------------------
+	const AVCodec *audioCodec = avcodec_find_decoder(AV_CODEC_ID_MP2);
+	pAudioContext = avcodec_alloc_context3(audioCodec);
+	ret = avcodec_open2(pAudioContext, audioCodec, NULL);
+	printf("Open Audio decoder: %d\n", ret);
+	pAudioPacket = av_packet_alloc();
+	pAudioFrame = av_frame_alloc();
 }
 
 void PPDecoder::releaseDecoder()
 {
-	av_parser_close(pVideoParser);
+	// free video
 	avcodec_free_context(&pVideoContext);
 	av_frame_free(&pVideoFrame);
 	av_packet_free(&pVideoPacket);
+	// free audio
+	avcodec_free_context(&pAudioContext);
+	av_frame_free(&pAudioFrame);
+	av_packet_free(&pAudioPacket);
 	//---------------------------------------------------
 	bool is_busy = 0;
 	Y2RU_StopConversion();
@@ -136,6 +149,8 @@ void PPDecoder::convertColor()
 	const s16 src_Y_padding = pVideoFrame->linesize[0] - img_w;
 	const s16 src_UV_padding = pVideoFrame->linesize[1] - img_w_UV;
 
+	Y2RU_StopConversion();
+
 	res = Y2RU_SetSendingY(src_Y, src_Y_size, img_w, src_Y_padding);
 	if (res != 0) 
 		printf("Error on Y2RU_SetSendingY\n");
@@ -148,7 +163,7 @@ void PPDecoder::convertColor()
 
 	const u16 pixSize = 3;
 	size_t rgb_size = img_size * pixSize;
-	s16 transfer_unit = 4;
+	s16 transfer_unit = 8;
 	s16 gap = (iFrameWidth - img_w) * transfer_unit * pixSize;
 
 	res = Y2RU_SetReceiving(pRGBBuffer, rgb_size, img_w * transfer_unit * pixSize, gap);

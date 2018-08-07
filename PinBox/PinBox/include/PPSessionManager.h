@@ -39,7 +39,8 @@ public:
 
 	Thread											g_thread = nullptr;
 	volatile bool									g_threadExit = false;
-	Mutex*											g_frameMutex;
+	Mutex*											g_VideoFrameMutex;
+	Mutex*											g_AudioFrameMutex;
 
 	std::vector<PPSession*>							m_screenCaptureSessions;
 	int												m_commandSessionIndex = 0;
@@ -47,9 +48,7 @@ public:
 	void											_startStreaming();
 	void											_oneByOneConnectScreenCapture(int index, const char* ip, const char* port, PPNotifyCallback callback);
 
-	FrameData*										m_activeFrame = nullptr;
 	PPDecoder*										m_decoder = nullptr;
-	Mutex*											m_frameTrackerMutex;
 	u32												m_currentDisplayFrame = 0;
 	//------------------------------------------
 	// UI ref variables
@@ -72,6 +71,7 @@ public:
 	void UpdateInputStream(u32 down, u32 up, short cx, short cy, short ctx, short cty);
 
 	void SafeTrack(u8* buffer, u32 size);
+	void SafeTrackAudio(u8* buffer, u32 size);
 	void StartDecodeThread();
 	void ReleaseDecodeThead();
 	void UpdateVideoFrame();
