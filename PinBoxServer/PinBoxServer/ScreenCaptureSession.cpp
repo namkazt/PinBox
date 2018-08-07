@@ -20,7 +20,7 @@ static void printError(int errorCode)
 FPSCounter vFPS;
 FPSCounter captureFPS;
 
-static FILE* testAudioOutFLAC;
+//static FILE* testAudioOutFLAC;
 
 ScreenCaptureSession::ScreenCaptureSession()
 {
@@ -31,7 +31,7 @@ ScreenCaptureSession::~ScreenCaptureSession()
 {
 	m_frameGrabber->pause();
 
-	fclose(testAudioOutFLAC);
+	//fclose(testAudioOutFLAC);
 }
 
 
@@ -58,7 +58,7 @@ void ScreenCaptureSession::initScreenCapture(PPServer* parent)
 	})->onNewFrame([&](const SL::Screen_Capture::Image& img, const SL::Screen_Capture::Monitor& monitor)
 	{
 		if (!mInitializedCodec) return;
-		//if (!m_isStartStreaming || m_clientSession == nullptr) return;
+		if (!m_isStartStreaming || m_clientSession == nullptr) return;
 
 		int totalSize = 0;
 		if (mLastFrameData == nullptr) {
@@ -88,12 +88,13 @@ void ScreenCaptureSession::initScreenCapture(PPServer* parent)
 	})->start_capturing();
 	int timeDelay = 1000.0f / (float)mFrameRate;
 	m_frameGrabber->setFrameChangeInterval(std::chrono::milliseconds(timeDelay));
-	//m_frameGrabber->pause();
+	m_frameGrabber->pause();
 
 	//-----------------------------------------------------
 	// decoder
 	m_audioGrabber = new AudioStreamSession();
 	m_audioGrabber->StartAudioStream();
+	m_audioGrabber->Pause();
 
 	//-----------------------------------------------------
 	// decoder
@@ -118,7 +119,7 @@ void ScreenCaptureSession::encodeVideoFrame(u8* buf)
 	if (ret == AVERROR(EAGAIN) || ret == AVERROR_EOF) return;
 	if (ret < 0) return;
 	//======================================================
-	if(m_clientSession != nullptr) m_clientSession->PreparePacketAndSend(pVideoPacket->data, pVideoPacket->size);
+	if(m_clientSession != nullptr) m_clientSession->PrepareVideoPacketAndSend(pVideoPacket->data, pVideoPacket->size);
 
 	//======================================================
 	// FPS sent
@@ -131,34 +132,6 @@ void ScreenCaptureSession::encodeVideoFrame(u8* buf)
 	}
 	//======================================================
 	av_packet_unref(pVideoPacket);
-}
-
-static int init_converted_samples(uint8_t ***converted_input_samples,AVCodecContext *output_codec_context,int frame_size)
-{
-	int error;
-
-	/* Allocate as many pointers as there are audio channels.
-	* Each pointer will later point to the audio samples of the corresponding
-	* channels (although it may be NULL for interleaved formats).
-	*/
-	if (!(*converted_input_samples = (uint8_t **)calloc(output_codec_context->channels,
-		sizeof(**converted_input_samples)))) {
-		fprintf(stderr, "Could not allocate converted input sample pointers\n");
-		return AVERROR(ENOMEM);
-	}
-
-	/* Allocate memory for the samples of all channels in one consecutive
-	* block for convenience. */
-	if ((error = av_samples_alloc(*converted_input_samples, NULL,
-		output_codec_context->channels,
-		frame_size,
-		output_codec_context->sample_fmt, 0)) < 0) {
-
-		av_freep(&(*converted_input_samples)[0]);
-		free(*converted_input_samples);
-		return error;
-	}
-	return 0;
 }
 
 void ScreenCaptureSession::encodeAudioFrame()
@@ -185,7 +158,8 @@ void ScreenCaptureSession::encodeAudioFrame()
 			if (ret < 0) break;
 
 			//TODO: do something with packet data
-			fwrite(pAudioPacket->data, 1, pAudioPacket->size, testAudioOutFLAC);
+			if (m_clientSession != nullptr) m_clientSession->PrepareAudioPacketAndSend(pAudioPacket->data, pAudioPacket->size, pAudioFrame->pts);
+			//fwrite(pAudioPacket->data, 1, pAudioPacket->size, testAudioOutFLAC);
 
 			av_packet_unref(pAudioPacket);
 		}
@@ -213,6 +187,7 @@ void ScreenCaptureSession::initEncoder()
 	pVideoContext->framerate = AVRational { mFrameRate, 1 };
 	pVideoContext->gop_size = 15;
 	pVideoContext->max_b_frames = 1;
+	pVideoContext->block_align = 4;
 	pVideoContext->pix_fmt = AV_PIX_FMT_YUV420P;
 	// Open
 	ERROR_PRINT(avcodec_open2(pVideoContext, videoCodec, NULL));
@@ -289,7 +264,7 @@ void ScreenCaptureSession::initEncoder()
 	}
 
 	// test
-	testAudioOutFLAC = fopen("test_audio.wav", "wb");
+	//testAudioOutFLAC = fopen("test_audio.wav", "wb");
 
 	mInitializedCodec = true;
 }
@@ -300,6 +275,7 @@ void ScreenCaptureSession::startStream()
 	m_isStartStreaming = true;
 	iVideoFrameIndex = 0;
 	m_frameGrabber->resume();
+	m_audioGrabber->Resume();
 }
 
 void ScreenCaptureSession::stopStream()
@@ -307,6 +283,7 @@ void ScreenCaptureSession::stopStream()
 	if (!m_isStartStreaming) return;
 	m_isStartStreaming = false;
 	m_frameGrabber->pause();
+	m_audioGrabber->Pause();
 }
 
 void ScreenCaptureSession::registerClientSession(PPClientSession* sesison)

@@ -28,12 +28,20 @@ void PPClientSession::DisconnectFromServer()
 	}
 }
 
-void PPClientSession::PreparePacketAndSend(u8* buffer, int bufferSize)
+void PPClientSession::PrepareVideoPacketAndSend(u8* buffer, int bufferSize)
 {
 	g_ss_isReceived = false;
 	//-------------------------------------------------------
 	//std::cout << "SEND MESSAGE FRAME #" << piece->frameIndex << " PIECE #" << (u32)piece->index << " to " << g_connection->remote_addr() << " | msg size: " << (piece->size + 5) << std::endl;
 	sendMessageWithCodeAndData(MSG_CODE_REQUEST_NEW_SCREEN_FRAME, buffer, bufferSize);
+}
+
+void PPClientSession::PrepareAudioPacketAndSend(u8* buffer, int bufferSize, uint64_t pts)
+{
+	g_ss_isReceived = false;
+	//-------------------------------------------------------
+
+	sendMessageWithCodeAndData(MSG_CODE_REQUEST_NEW_AUDIO_FRAME, buffer, bufferSize);
 }
 
 void PPClientSession::ProcessMessage(evpp::Buffer* msg)

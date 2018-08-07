@@ -91,7 +91,7 @@ void UpdateFrameTracker(void *arg)
 	// we display image on main thread only
 	//---------------------------------------------------
 
-	u64 sleepDuration = 1000000ULL * 0.95;
+	u64 sleepDuration = 1000000ULL * 0.2;
 	while (!self->g_threadExit) {
 
 		// get first frame in tracker ( first frame alway is the newest )
@@ -115,7 +115,7 @@ void UpdateFrameTracker(void *arg)
 				int nw3 = self->m_decoder->iFrameWidth * 3;
 				for (i = 0; i < self->m_decoder->iFrameHeight ; i++) {
 					// i * 512 * 3
-					memmove(mStaticFrameBuffer + (i * 1536), rgbBuffer + (i*nw3), nw3);
+					memcpy(mStaticFrameBuffer + (i * 1536), rgbBuffer + (i*nw3), nw3);
 				}
 				self->g_frameMutex->Unlock();
 				mHaveNewFrame = true;

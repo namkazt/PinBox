@@ -80,10 +80,10 @@ void PPDecoder::initY2RImageConverter()
 	//pDecodeState->y2rParams.block_alignment = BLOCK_8_BY_8;
 	pDecodeState->y2rParams.input_line_width = 400;
 	pDecodeState->y2rParams.input_lines = 240;
-	if (pDecodeState->y2rParams.input_lines % 8) {
+	/*if (pDecodeState->y2rParams.input_lines % 8) {
 		pDecodeState->y2rParams.input_lines += 8 - (pDecodeState->y2rParams.input_lines % 8);
-	}
-	pDecodeState->y2rParams.standard_coefficient = COEFFICIENT_ITU_R_BT_709;
+	}*/
+	pDecodeState->y2rParams.standard_coefficient = COEFFICIENT_ITU_R_BT_601;
 	pDecodeState->y2rParams.unused = 0;
 	pDecodeState->y2rParams.alpha = 0xFF;
 	res = Y2RU_SetConversionParams(&pDecodeState->y2rParams);
@@ -147,9 +147,10 @@ void PPDecoder::convertColor()
 
 	const u16 pixSize = 3;
 	size_t rgb_size = img_size * pixSize;
-	s16 gap = (iFrameWidth - img_w) * 8 * pixSize;
+	s16 transfer_unit = 4;
+	s16 gap = (iFrameWidth - img_w) * transfer_unit * pixSize;
 
-	res = Y2RU_SetReceiving(pRGBBuffer, rgb_size, img_w * 8 * pixSize, gap);
+	res = Y2RU_SetReceiving(pRGBBuffer, rgb_size, img_w * transfer_unit * pixSize, gap);
 	if (res != 0) 
 		printf("Error on Y2RU_SetReceiving\n");
 	res = Y2RU_StartConversion();
@@ -170,22 +171,12 @@ u8* PPDecoder::decodeVideoStream()
 	else if (ret < 0) return nullptr;
 
 	//----------------------------------------------
-	// init process
+	// decode video frame
 	//----------------------------------------------
 	iFrameWidth = pVideoFrame->width;
 	iFrameHeight =pVideoFrame->height;
-	if (pRGBBuffer == nullptr) pRGBBuffer = (u8*)linearMemAlign(3 * iFrameWidth * iFrameHeight, 0x80);
-
-	//TODO: this part have problem ...
+	if (pRGBBuffer == nullptr) pRGBBuffer = (u8*)linearMemAlign(3 * iFrameWidth * iFrameHeight, 0x8);
 	convertColor();
-	//----------------------------------------------
-	// convert frame
-	//----------------------------------------------
-	/*u8* Y = (u8*)pVideoFrame->data[0];
-	u8* U = (u8*)pVideoFrame->data[1];
-	u8* V = (u8*)pVideoFrame->data[2];
-	yuv420_rgb24_std(iFrameWidth, iFrameHeight, Y, U, V, pVideoFrame->linesize[0], pVideoFrame->linesize[1], pRGBBuffer, iFrameWidth * 3, YCBCR_JPEG);
-*/
 
 	return pRGBBuffer;
 }

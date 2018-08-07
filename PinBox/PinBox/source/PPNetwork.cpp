@@ -194,7 +194,7 @@ void PPNetwork::ppNetwork_processPoolData()
 		g_onReceivedRequest(this, g_receivedBuffer, tmpWfz, tmpTag);
 	}
 	if (dataLeft > 0)
-		memmove(g_receivedBuffer, g_receivedBuffer + tmpWfz, dataLeft);
+		memcpy(g_receivedBuffer, g_receivedBuffer + tmpWfz, dataLeft);
 	
 	g_receivedCounter = dataLeft;
 }
