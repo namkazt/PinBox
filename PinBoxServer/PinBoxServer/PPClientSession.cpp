@@ -30,7 +30,6 @@ void PPClientSession::DisconnectFromServer()
 
 void PPClientSession::PrepareVideoPacketAndSend(u8* buffer, int bufferSize)
 {
-	g_ss_isReceived = false;
 	//-------------------------------------------------------
 	//std::cout << "SEND MESSAGE FRAME #" << piece->frameIndex << " PIECE #" << (u32)piece->index << " to " << g_connection->remote_addr() << " | msg size: " << (piece->size + 5) << std::endl;
 	sendMessageWithCodeAndData(MSG_CODE_REQUEST_NEW_SCREEN_FRAME, buffer, bufferSize);
@@ -38,7 +37,6 @@ void PPClientSession::PrepareVideoPacketAndSend(u8* buffer, int bufferSize)
 
 void PPClientSession::PrepareAudioPacketAndSend(u8* buffer, int bufferSize, uint64_t pts)
 {
-	g_ss_isReceived = false;
 	//-------------------------------------------------------
 
 	sendMessageWithCodeAndData(MSG_CODE_REQUEST_NEW_AUDIO_FRAME, buffer, bufferSize);
@@ -237,8 +235,7 @@ void PPClientSession::preprocessMessageCode(u8 code)
 			m_server->ScreenCapturer->stopStream();
 			break;
 		case MSG_CODE_REQUEST_SCREEN_RECEIVED_FRAME: {
-			//std::cout << "Client " << g_connection->remote_addr() << " send RECEIVED_FRAME" << std::endl;
-			g_ss_isReceived = true;
+
 			break;
 		}
 		case MSG_CODE_REQUEST_RECEIVED_AUDIO_FRAME: {

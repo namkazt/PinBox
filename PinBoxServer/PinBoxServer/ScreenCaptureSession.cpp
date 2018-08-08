@@ -72,18 +72,18 @@ void ScreenCaptureSession::initScreenCapture(PPServer* parent)
 			totalSize = mLastFrameData->StrideWidth * mLastFrameData->Height;
 		}
 
-		encodeAudioFrame();
+		//encodeAudioFrame();
 
 		// encode video
 		encodeVideoFrame((u8*)img.Data);
 
 		//=================================================================
-		captureFPS.onNewFramecounter++;
+		/*captureFPS.onNewFramecounter++;
 		if (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - captureFPS.onNewFramestart).count() >= 1000) {
 			captureFPS.currentFPS = captureFPS.onNewFramecounter;
 			captureFPS.onNewFramecounter = 0;
 			captureFPS.onNewFramestart = std::chrono::high_resolution_clock::now();
-		}
+		}*/
 		//std::cout << "Capture FPS: " << captureFPS.currentFPS << std::endl << std::flush;
 	})->start_capturing();
 	int timeDelay = 1000.0f / (float)mFrameRate;
@@ -95,6 +95,9 @@ void ScreenCaptureSession::initScreenCapture(PPServer* parent)
 	m_audioGrabber = new AudioStreamSession();
 	m_audioGrabber->StartAudioStream();
 	m_audioGrabber->Pause();
+
+	pAudiothread = std::thread(audioThread, this);
+	pAudiothread.detach();
 
 	//-----------------------------------------------------
 	// decoder
@@ -132,6 +135,20 @@ void ScreenCaptureSession::encodeVideoFrame(u8* buf)
 	}
 	//======================================================
 	av_packet_unref(pVideoPacket);
+}
+
+void ScreenCaptureSession::audioThread(void* context)
+{
+	ScreenCaptureSession* self = (ScreenCaptureSession*)context;
+
+	while(1)
+	{
+		if (!self->mInitializedCodec) continue;
+		if (!self->m_isStartStreaming || self->m_clientSession == nullptr) continue;
+
+		self->encodeAudioFrame();
+		std::this_thread::sleep_for(std::chrono::milliseconds(16));
+	}
 }
 
 void ScreenCaptureSession::encodeAudioFrame()
@@ -185,9 +202,9 @@ void ScreenCaptureSession::initEncoder()
 	pVideoContext->height = 240;
 	pVideoContext->time_base = AVRational { 1, mFrameRate };
 	pVideoContext->framerate = AVRational { mFrameRate, 1 };
-	pVideoContext->gop_size = 15;
-	pVideoContext->max_b_frames = 1;
-	pVideoContext->block_align = 4;
+	pVideoContext->gop_size = 20;
+	pVideoContext->max_b_frames = 2;
+	//pVideoContext->block_align = 4;
 	pVideoContext->pix_fmt = AV_PIX_FMT_YUV420P;
 	// Open
 	ERROR_PRINT(avcodec_open2(pVideoContext, videoCodec, NULL));

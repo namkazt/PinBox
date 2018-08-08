@@ -133,6 +133,8 @@ private:
 	SwrContext*													pAudioResampler;
 	AVAudioFifo*												pAudioFIFO;
 	int64_t														iAudioPts = 0;
+	static void													audioThread(void* context);
+	std::thread													pAudiothread;
 	void														encodeAudioFrame();
 
 	// custom IO
