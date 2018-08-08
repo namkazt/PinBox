@@ -15,11 +15,11 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <None Include="Makefile">
-      <Filter>Source Files</Filter>
-    </None>
     <None Include="source\vshader.v.pica">
       <Filter>Source Files</Filter>
+    </None>
+    <None Include="Makefile">
+      <Filter>Resource Files</Filter>
     </None>
   </ItemGroup>
   <ItemGroup>

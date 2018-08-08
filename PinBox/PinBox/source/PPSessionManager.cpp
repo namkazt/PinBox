@@ -100,7 +100,11 @@ void PPSessionManager::SafeTrackAudio(u8* buffer, u32 size)
 		m_decoder->initDecoder();
 	}
 
+	g_AudioFrameMutex->Lock();
 
+	m_decoder->decodeAudioStream(buffer, size);
+
+	g_AudioFrameMutex->Unlock();
 }
 
 u32 PPSessionManager::getFrameIndex() const

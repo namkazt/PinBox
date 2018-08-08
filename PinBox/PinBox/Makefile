@@ -50,13 +50,7 @@ APP_ENCRYPTED				:= false
 #---------------------------------------------------------------------------------
 ARCH	:=	-march=armv6k -mtune=mpcore -mtp=soft -mfloat-abi=hard
 
-#---------------------------------------------------------------------------------
-# debug mode
-#---------------------------------------------------------------------------------
-#PINBOX_DEBUG				:= false
-
-ifneq ($(strip $(PINBOX_DEBUG)),)
-	CFLAGS	:=	-ggdb -Wall -Og -mword-relocations -DDEBUG=1 \
+CFLAGS	:=	-ggdb -Wall -Og -mword-relocations -DDEBUG=1 \
 				-ffunction-sections \
 				$(ARCH)
 	CFLAGS	+=	$(INCLUDE) -DARM11 -D_3DS
@@ -64,16 +58,6 @@ ifneq ($(strip $(PINBOX_DEBUG)),)
 	ASFLAGS	:=	-g $(ARCH)
 	LDFLAGS	=	-specs=3dsx.specs -g $(ARCH) -Wl,-Map,$(notdir $*.map)
 	LIBS	:= -lavformat -lavcodec -lavutil -lswscale -lswresample -lconfig -lturbojpeg -lwebp -lcitro3dd -lctrud -lz -lm
-else
-	CFLAGS	:=	-g -Wall -mword-relocations \
-				-ffunction-sections \
-				$(ARCH)
-	CFLAGS	+=	$(INCLUDE) -DARM11 -D_3DS -DNDEBUG=1
-	CXXFLAGS	:= $(CFLAGS) -fno-rtti -fno-exceptions -std=gnu++11 -fpermissive -fexceptions -fomit-frame-pointer -ffast-math
-	ASFLAGS	:=	-g $(ARCH)
-	LDFLAGS	=	-specs=3dsx.specs -g $(ARCH) -Wl,-Map,$(notdir $*.map)
-	LIBS	:= -lavformat -lavcodec -lavutil -lswscale -lswresample -lconfig -lturbojpeg -lwebp -lcitro3d -lctru -lz -lm
-endif
 #---------------------------------------------------------------------------------
 # list of directories containing libraries, this must be the top level containing
 # include and lib

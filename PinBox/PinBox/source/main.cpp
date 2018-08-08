@@ -21,7 +21,7 @@
 #define SOC_ALIGN       0x1000
 #define SOC_BUFFERSIZE  0x100000
 
-//#define CONSOLE_DEBUG 1
+#define CONSOLE_DEBUG 1
 //#define USE_CITRA 1
 
 void initDbgConsole()
@@ -94,10 +94,8 @@ int main()
 	PPAudio::Get()->AudioInit();
 	initDbgConsole();
 
-#ifdef _3DS
 	std::set_unexpected(_ded);
 	std::set_terminate(_ded);
-#endif
 
 	//---------------------------------------------
 	// Init SOCKET

@@ -1,4 +1,5 @@
 #include "PPDecoder.h"
+#include "PPAudio.h"
 
 static u8* pRGBBuffer = nullptr;
 
@@ -23,7 +24,10 @@ void PPDecoder::initDecoder()
 	pVideoContext = avcodec_alloc_context3(videoCodec);
 	// Open
 	int ret = avcodec_open2(pVideoContext, videoCodec, NULL);
-	printf("Open Video decoder: %d\n", ret);
+	if (ret < 0)
+	{
+		printf("failed to open Video decoder: %d\n", ret);
+	}
 	pVideoPacket = av_packet_alloc();
 	pVideoFrame = av_frame_alloc();
 	initY2RImageConverter();
@@ -32,9 +36,21 @@ void PPDecoder::initDecoder()
 	// init audio encoder
 	//-----------------------------------------------------------------
 	const AVCodec *audioCodec = avcodec_find_decoder(AV_CODEC_ID_MP2);
+	if(!audioCodec)
+	{
+		printf("[Audio] Codec not found!\n");
+	}
 	pAudioContext = avcodec_alloc_context3(audioCodec);
+	pAudioContext->bit_rate = 64000;
+	pAudioContext->sample_fmt = audioCodec->sample_fmts[0];
+	pAudioContext->sample_rate = 48000;
+	pAudioContext->channels = av_get_channel_layout_nb_channels(AV_CH_LAYOUT_STEREO);;
+	pAudioContext->channel_layout = AV_CH_LAYOUT_STEREO;
 	ret = avcodec_open2(pAudioContext, audioCodec, NULL);
-	printf("Open Audio decoder: %d\n", ret);
+	if(ret < 0)
+	{
+		printf("[Audio] Failed to open context: %d\n", ret);
+	}
 	pAudioPacket = av_packet_alloc();
 	pAudioFrame = av_frame_alloc();
 }
@@ -184,7 +200,7 @@ u8* PPDecoder::decodeVideoStream()
 	if (ret < 0) return nullptr;
 	ret = avcodec_receive_frame(pVideoContext, pVideoFrame);
 	if (ret == AVERROR(EAGAIN) || ret == AVERROR_EOF) return nullptr;
-	else if (ret < 0) return nullptr;
+	if (ret < 0) return nullptr;
 
 	//----------------------------------------------
 	// decode video frame
@@ -194,6 +210,39 @@ u8* PPDecoder::decodeVideoStream()
 	if (pRGBBuffer == nullptr) pRGBBuffer = (u8*)linearMemAlign(3 * iFrameWidth * iFrameHeight, 0x8);
 	convertColor();
 
+	av_frame_unref(pVideoFrame);
+	av_packet_unref(pVideoPacket);
+
 	return pRGBBuffer;
 }
 
+void PPDecoder::decodeAudioStream(u8* buffer, u32 size)
+{
+	if (size == 0) return;
+
+	int ret = 0;
+
+	pAudioPacket->data = buffer;
+	pAudioPacket->size = size;
+
+	ret = avcodec_send_packet(pAudioContext, pAudioPacket);
+	if (ret < 0) {
+		printf("[Audio] Error submitting the packet to the decoder: %d\n", ret);
+	}
+	else {
+		while (ret >= 0) {
+			ret = avcodec_receive_frame(pAudioContext, pAudioFrame);
+			if (ret == AVERROR(EAGAIN) || ret == AVERROR_EOF) return;
+			if (ret < 0)
+			{
+				printf("[Audio] get frame failed: %d\n", ret);
+				return;
+			}
+
+			printf("[Audio] frame format: %d - sample rate: %d\n", pAudioFrame->format, pAudioFrame->linesize[0]);
+			PPAudio::Get()->FillBuffer(pAudioFrame->data[0], pAudioFrame->data[1], pAudioFrame->linesize[0]);
+
+			av_frame_unref(pAudioFrame);
+		}
+	}
+}

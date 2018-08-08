@@ -85,4 +85,5 @@ public:
 	void releaseDecoder();
 
 	u8* appendVideoBuffer(u8* buffer, u32 size);
+	void decodeAudioStream(u8* buffer, u32 size);
 };
