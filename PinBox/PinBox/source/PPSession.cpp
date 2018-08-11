@@ -3,249 +3,342 @@
 #include "PPSessionManager.h"
 #include "ConfigManager.h"
 
+#define BUFFERSIZE 4096
+#define BUFFER_POOL_SIZE (BUFFERSIZE * 12)
+// static buffer to store socket data
+static u8*						g_receivedBuffer;
+static u64						g_receivedSize;
+static u64						g_waitForSize;
+static u32						g_msgTag;
+
+namespace { // helpers
+	void createNew(void* arg) {
+		static_cast<PPSession*>(arg)->threadMain();
+	}
+}
+
+PPSession::PPSession()
+{
+	// init static buffer
+	g_receivedBuffer = (u8*)malloc(BUFFER_POOL_SIZE);
+	g_receivedSize = 0;
+	g_waitForSize = 0;
+	g_msgTag = 0;
+}
+
 PPSession::~PPSession()
 {
-	if (g_network != nullptr) delete g_network;
+	closeConnect();
+	// free static buffer
+	free(g_receivedBuffer);
+	free(&_ip);
+	free(&_port);
 }
 
 
-void PPSession::initSession()
+void PPSession::InitSession(PPSessionManager* manager, const char* ip, const char* port)
 {
-	if (g_network != nullptr) return;
-	g_network = new PPNetwork();
-	g_network->g_session = this;
-	g_tmpMessage = new PPMessage();
-	//------------------------------------------------------
-	// callback when request data is received
-	g_network->SetOnReceivedRequest([=](PPNetwork *self, u8* buffer, u32 size, u32 tag) {
-		//------------------------------------------------------
-		// verify authentication
-		//------------------------------------------------------
-		if (!g_authenticated)
-		{
-			if (tag == PPREQUEST_AUTHEN)
-			{
-				// check for authentication
-				PPMessage *authenMsg = new PPMessage();
-				if (authenMsg->ParseHeader(buffer))
-				{
-					if (authenMsg->GetMessageCode() == MSG_CODE_RESULT_AUTHENTICATION_SUCCESS)
-					{
-						printf("#%d : Authentication successted.\n", sessionID);
-						g_authenticated = true;
-						if (g_onAuthenSuccessed != nullptr) 
-							g_onAuthenSuccessed(self, nullptr, 0);
-					}
-					else
-					{
-						printf("#%d : Authenticaiton failed.\n", sessionID);
-						return;
-					}
-				}
-				else
-				{
-					printf("#%d : Authenticaiton failed.\n", sessionID);
-					return;
-				}
-				delete authenMsg;
-			}
-			else
-			{
-				printf("Client was not authentication.\n");
-				return;
-			}
-		}
-		//------------------------------------------------------
-		// process data by tag
-		switch (tag)
-		{
-		case PPREQUEST_HEADER:
-		{
-			if (g_tmpMessage->ParseHeader(buffer))
-				self->SetRequestData(g_tmpMessage->GetContentSize(), PPREQUEST_BODY);
-			else
-				g_tmpMessage->ClearHeader();
-			break;
-		}
-		case PPREQUEST_BODY:
-		{
-			//------------------------------------------------------
-			// if tmp message is null that mean this is useless data then we avoid it
-			if (g_tmpMessage->GetContentSize() == 0) return;
-			// verify buffer size with message estimate size
-			if (size == g_tmpMessage->GetContentSize())
-			{
-				// process message
-				switch (g_sessionType)
-				{
-				case PPSESSION_MOVIE:
-				{
-					processMovieSession(buffer, size);
-					break;
-				}
-				case PPSESSION_SCREEN_CAPTURE:
-				{
-					printf("Have new request: %d\n", size);
-					processScreenCaptureSession(buffer, size);
-					break;
-				}
-				case PPSESSION_INPUT_CAPTURE:
-				{
-					processInputSession(buffer, size);
-					break;
-				}
-				}
-
-				//----------------------------------------------------------
-				// Request for next message
-				self->SetRequestData(MSG_COMMAND_SIZE, PPREQUEST_HEADER);
-			}
-			//------------------------------------------------------
-			// remove message after use
-			g_tmpMessage->ClearHeader();
-			break;
-		}
-		default: break;
-		}
-	});
-}
-
-
-void PPSession::InitMovieSession()
-{
-	initSession();
-	//--------------------------------------
-	// init specific for movie session
-	g_sessionType = PPSESSION_MOVIE;
-
-	printf("#%d : Init new MOVIE session.\n", sessionID);
-	gfxFlushBuffers();
-}
-
-void PPSession::InitScreenCaptureSession(PPSessionManager* manager)
-{
-	g_manager = manager;
-	initSession();
-	//--------------------------------------
-	// init specific for movie session
-	g_sessionType = PPSESSION_SCREEN_CAPTURE;
-	//--------------------------------------
-	printf("#%d : Init new SCREEN CAPTURE session.\n", sessionID);
-	gfxFlushBuffers();
-}
-
-void PPSession::InitInputCaptureSession(PPSessionManager* manager)
-{
-	g_manager = manager;
-	initSession();
-	//--------------------------------------
-	// init specific for movie session
-	g_sessionType = PPSESSION_INPUT_CAPTURE;
-
-	printf("#%d : Init new INPUT session.\n", sessionID);
-	gfxFlushBuffers();
-}
-
-
-void PPSession::StartSession(const char* ip, const char* port, s32 prio, PPNetworkCallback authenSuccessed)
-{
-	if (g_network == nullptr) return;
-	g_onAuthenSuccessed = authenSuccessed;
-	g_network->SetOnConnectionSuccessed([=](PPNetwork *self, u8* data, u32 size)
-	{
-		//NOTE: this not called on main thread !
-		//--------------------------------------------------
-		int8_t code = 0;
-		if (g_sessionType == PPSESSION_MOVIE) code = MSG_CODE_REQUEST_AUTHENTICATION_MOVIE;
-		else if (g_sessionType == PPSESSION_SCREEN_CAPTURE) code = MSG_CODE_REQUEST_AUTHENTICATION_SCREEN_CAPTURE;
-		else if (g_sessionType == PPSESSION_INPUT_CAPTURE) code = MSG_CODE_REQUEST_AUTHENTICATION_INPUT;
-		if (code == 0)
-		{
-			printf("#%d : Invalid session type\n", sessionID);
-			gfxFlushBuffers();
-			return;
-		}
-		//--------------------------------------------------
-		// screen capture session authen
-		PPMessage *authenMsg = new PPMessage();
-		authenMsg->BuildMessageHeader(code);
-		u8* msgBuffer = authenMsg->BuildMessageEmpty();
-		//--------------------------------------------------
-		// send authentication message
-		self->SendMessageData(msgBuffer, authenMsg->GetMessageSize());
-		//--------------------------------------------------
-		// set request to get result message
-		self->SetRequestData(MSG_COMMAND_SIZE, PPREQUEST_AUTHEN);
-		delete authenMsg;
-	});
-	g_network->SetOnConnectionClosed([=](PPNetwork *self, u8* data, u32 size)
-	{
-		//NOTE: this not called on main thread !
-		printf("#%d : Connection interupted.\n", sessionID);
-		gfxFlushBuffers();
-	});
-	g_network->Start(ip, port, prio);
+	_sendingMessages = std::queue<QueueMessage*>();
+	_queueMessageMutex = new Mutex();
+	//-------------------------------------------------------------
+	_manager = manager;
+	_ip = strdup(ip);
+	_port = strdup(port);
+	//-------------------------------------------------------------
+	_authenticated = false;
+	s32 priority = 0;
+	svcGetThreadPriority(&priority, CUR_THREAD_HANDLE);
+	_thread = threadCreate(createNew, static_cast<void*>(this), 4 * 1024, priority - 1, -2, false);
 }
 
 void PPSession::CloseSession()
 {
-	if (g_network == nullptr) return;
-	g_network->Stop();
-	g_authenticated = false;
-	SS_Reset();
+	_kill = true;
+}
+
+void PPSession::connectToServer()
+{
+	_connect_state = CONNECTING;
+	//--------------------------------------------------
+	// define socket
+	_sock = socket(AF_INET, SOCK_STREAM, 0);
+	if (_sock < 0)
+	{
+		printf("Can't create new socket.\n");
+		gfxFlushBuffers();
+		// Error: can't create socket
+		_connect_state = FAIL;
+		return;
+	}
+
+	struct sockaddr_in addr = { 0 };
+	addr.sin_family = AF_INET;
+	unsigned short nPort = (unsigned short)strtoul(_port, NULL, 0);
+	addr.sin_port = htons(nPort);
+	inet_pton(addr.sin_family, _ip, &addr.sin_addr);
+
+	int ret = connect(_sock, (struct sockaddr *) &addr, sizeof(addr));
+	if (ret < 0)
+	{
+		printf("Could not connect to server.\n");
+		_connect_state = FAIL;
+		return;
+	}
+	_connect_state = CONNECTED;
+
+	// set socket to non blocking so we can easy control it
+	//fcntl(sockManager->sock, F_SETFL, O_NONBLOCK);
+	fcntl(_sock, F_SETFL, fcntl(_sock, F_GETFL, 0) | O_NONBLOCK);
+	printf("Connected to server.\n");
+	gfxFlushBuffers();
+
+	//TODO: on connected successfully here
+
+}
+
+void PPSession::closeConnect()
+{
+	if (!_running) return;
+	// set kill again to make sure it set
+
+	// close connection
+	if(_connect_state == CONNECTED)
+	{
+		Result rc = closesocket(_sock);
+		if(rc != 0)
+		{
+			printf("Failed when close socket.\n");
+		}
+	}
+	_sock = -1;
+	_connect_state = IDLE;
+	g_receivedSize = 0;
+	g_waitForSize = 0;
+	g_msgTag = 0;
+	_authenticated = false;
+	if(_tmpMessage)
+	{
+		delete _tmpMessage;
+	}
+	// clear all message in queue
+	while (!_sendingMessages.empty())
+	{
+		QueueMessage* queueMsg = (QueueMessage*)_sendingMessages.front();
+		_sendingMessages.pop();
+		free(queueMsg->msgBuffer);
+		delete queueMsg;
+	}
+	std::queue<QueueMessage*>().swap(_sendingMessages);
+	delete _queueMessageMutex;
+	// join thread
+	threadJoin(_thread, U64_MAX);
+	threadFree(_thread);
+	_running = false;
+}
+
+void PPSession::recvSocketData()
+{
+	//---------------------------------------------------------------------------------
+	// receive data
+	//---------------------------------------------------------------------------------
+	int recvAmount = recv(_sock, g_receivedBuffer + g_receivedSize, BUFFERSIZE, 0);
+	if (recvAmount <= 0)
+	{
+		if (errno != EWOULDBLOCK)
+			_kill = true;
+		return;
+	}else if(recvAmount > BUFFERSIZE)
+	{
+		// sound like something are wrong here so we do notthing
+		return;
+	}else
+	{
+		g_receivedSize += recvAmount;
+	}
+	//---------------------------------------------------------------------------------
+	// process data
+	//---------------------------------------------------------------------------------
+	if (g_receivedSize < g_waitForSize || g_waitForSize == 0) return;
+
+	u32 dataAfterProcess = g_receivedSize - g_waitForSize;
+	while(dataAfterProcess > 0)
+	{
+		processReceivedMsg(g_receivedBuffer, g_waitForSize, g_msgTag);
+		// shifting mem
+		memcpy(g_receivedBuffer, g_receivedBuffer + g_waitForSize, dataAfterProcess);
+		// reset information
+		g_receivedSize = dataAfterProcess;
+		g_waitForSize = 0;
+		g_msgTag = 0;
+		// update coddition
+		dataAfterProcess = g_receivedSize - g_waitForSize;
+	}
+}
+
+void PPSession::sendMessageData()
+{
+	_queueMessageMutex->Lock();
+	while(!_sendingMessages.empty())
+	{
+		// get top message
+		QueueMessage* queueMsg = (QueueMessage*)_sendingMessages.front();
+		_sendingMessages.pop();
+
+		if(queueMsg->msgSize > 0 && queueMsg->msgBuffer != nullptr)
+		{
+			u32 totalSent = 0;
+			// send message
+			do
+			{
+				int sendAmount = send(_sock, queueMsg->msgBuffer, queueMsg->msgSize, 0);
+				if (sendAmount < 0)
+				{
+					// ERROR when send message
+					printf("Error when send message.\n");
+					CloseSession();
+					return;
+				}
+				totalSent += sendAmount;
+			} while (totalSent < queueMsg->msgSize);
+			//--------------------------------------------------------
+			// free message
+			free(queueMsg->msgBuffer);
+			delete queueMsg;
+		}
+	}
+	_queueMessageMutex->Unlock();
 }
 
 
-void PPSession::processMovieSession(u8* buffer, size_t size)
+void PPSession::threadMain()
 {
-	//NOTE: this not called on main thread !
-	//------------------------------------------------------
-	// process message data	by message type
-	//------------------------------------------------------
-	switch (g_tmpMessage->GetMessageCode())
+	if (_running) return;
+	_running = true;
+	u64 sleepDuration = 1000000ULL * 30;
+	// thread loop
+	while(!_kill)
 	{
+		switch (_connect_state) { 
+		case IDLE: 
+			connectToServer();
+			break;
+		case CONNECTING: 
+			// do notthing on connection state
+			break;
+		case CONNECTED: 
+			// check and recv data from server
+			recvSocketData();
+			// send queue message
+			sendMessageData();
+			break;
+		case FAIL: 
+			_kill = true;
+			break;
+		}
+
+		svcSleepThread(sleepDuration);
+	}
+
+
+	closeConnect();
+}
+
+void PPSession::RequestForData(u32 size, u32 tag)
+{
+	if(g_waitForSize <= 0)
+	{
+		g_waitForSize = size;
+		g_msgTag = tag;
+	}
+}
+
+void PPSession::AddMessageToQueue(u8* msgBuffer, int32_t msgSize)
+{
+	if (_running && _connect_state == CONNECTED) {
+		_queueMessageMutex->Lock();
+		QueueMessage *msg = new QueueMessage();
+		msg->msgBuffer = msgBuffer;
+		msg->msgSize = msgSize;
+		_sendingMessages.push(msg);
+		_queueMessageMutex->Unlock();
+	}
+}
+
+
+void PPSession::processReceivedMsg(u8* buffer, u32 size, u32 tag)
+{
+	if(!_tmpMessage)
+	{
+		_tmpMessage = new PPMessage();
+	}
+	//------------------------------------------------------
+	// verify authentication
+	//------------------------------------------------------
+	if (!_authenticated)
+	{
+		if (tag == PPREQUEST_AUTHEN)
+		{
+			PPMessage *authenMsg = new PPMessage();
+			if (authenMsg->ParseHeader(buffer))
+				if (authenMsg->GetMessageCode() == MSG_CODE_RESULT_AUTHENTICATION_SUCCESS)
+				{
+					printf("Authentication successted.\n");
+					_authenticated = true;
+				}
+				else printf("Authenticaiton failed.\n");
+			else printf("Authenticaiton failed.\n");
+			delete authenMsg;
+		}
+		else printf("Client was not authentication.\n");
+		return;
+	}
+	//------------------------------------------------------
+	// process data by tag
+	switch (tag)
+	{
+	case PPREQUEST_HEADER:
+	{
+		if (_tmpMessage->ParseHeader(buffer))
+			RequestForData(_tmpMessage->GetContentSize(), PPREQUEST_BODY);
+		else
+			_tmpMessage->ClearHeader();
+		break;
+	}
+	case PPREQUEST_BODY:
+	{
+		//------------------------------------------------------
+		// if tmp message is null that mean this is useless data then we avoid it
+		if (_tmpMessage->GetContentSize() == 0) return;
+		// verify buffer size with message estimate size
+		if (size == _tmpMessage->GetContentSize())
+		{
+			processMessageData(buffer, size);
+			// Request for next message
+			RequestForData(MSG_COMMAND_SIZE, PPREQUEST_HEADER);
+		}
+		//------------------------------------------------------
+		// remove message after use
+		_tmpMessage->ClearHeader();
+		break;
+	}
 	default: break;
 	}
 }
 
-void PPSession::processScreenCaptureSession(u8* buffer, size_t size)
+
+void PPSession::processMessageData(u8* buffer, size_t size)
 {
-	//NOTE: this not called on main thread !
-	//------------------------------------------------------
 	// process message data	by message type
-	//------------------------------------------------------
-	switch (g_tmpMessage->GetMessageCode())
+	switch (_tmpMessage->GetMessageCode())
 	{
 	case MSG_CODE_REQUEST_NEW_SCREEN_FRAME:
-	{
-		//SS_SendReceivedFrame();
-
-		g_manager->SafeTrack(buffer, size);
-		
+		_manager->ProcessVideoFrame(buffer, size);
 		break;
-	}
 	case MSG_CODE_REQUEST_NEW_AUDIO_FRAME:
-	{
-		//SS_SendReceivedAudioFrame();
-
-		g_manager->SafeTrackAudio(buffer, size);
-
+		_manager->ProcessAudioFrame(buffer, size);
 		break;
-	}
-	default: break;
-	}
-}
-
-
-void PPSession::processInputSession(u8* buffer, size_t size)
-{
-	//NOTE: this not called on main thread !
-	//------------------------------------------------------
-	// process message data	by message type
-	//------------------------------------------------------
-	switch (g_tmpMessage->GetMessageCode())
-	{
-	default: break;
+	default: 
+		break;
 	}
 }
 
@@ -253,37 +346,44 @@ void PPSession::processInputSession(u8* buffer, size_t size)
 //-----------------------------------------------------
 // screen capture
 //-----------------------------------------------------
-void PPSession::SS_StartStream()
+void PPSession::SendMsgAuthentication()
 {
 	PPMessage *msg = new PPMessage();
-	msg->BuildMessageHeader(MSG_CODE_REQUEST_START_SCREEN_CAPTURE);
+	msg->BuildMessageHeader(MSG_CODE_REQUEST_AUTHENTICATION_SESSION);
 	u8* msgBuffer = msg->BuildMessageEmpty();
-	g_network->SendMessageData(msgBuffer, msg->GetMessageSize());
-	g_network->SetRequestData(MSG_COMMAND_SIZE, PPREQUEST_HEADER);
-	SS_v_isStartStreaming = true;
+	AddMessageToQueue(msgBuffer, msg->GetMessageSize());
 	delete msg;
 }
 
-void PPSession::SS_StopStream()
+void PPSession::SendMsgStartSession()
 {
-	if (!SS_v_isStartStreaming) return;
+	if (isSessionStarted) return;
+	PPMessage *msg = new PPMessage();
+	msg->BuildMessageHeader(MSG_CODE_REQUEST_START_SCREEN_CAPTURE);
+	u8* msgBuffer = msg->BuildMessageEmpty();
+	AddMessageToQueue(msgBuffer, msg->GetMessageSize());
+	isSessionStarted = true;
+	delete msg;
+}
+
+void PPSession::SendMsgStopSession()
+{
+	if (!isSessionStarted) return;
 	//--------------------------------------
 	PPMessage *msg = new PPMessage();
 	msg->BuildMessageHeader(MSG_CODE_REQUEST_STOP_SCREEN_CAPTURE);
 	u8* msgBuffer = msg->BuildMessageEmpty();
-	g_network->SendMessageData(msgBuffer, msg->GetMessageSize());
-	g_network->SetRequestData(MSG_COMMAND_SIZE, PPREQUEST_HEADER);
-	SS_v_isStartStreaming = false;
+	AddMessageToQueue(msgBuffer, msg->GetMessageSize());
+	isSessionStarted = false;
 	delete msg;
 	//--------------------------------------
-	this->CloseSession();
+	CloseSession();
 }
 
-void PPSession::SS_ChangeSetting()
+void PPSession::SendMsgChangeSetting()
 {
 	PPMessage *authenMsg = new PPMessage();
 	authenMsg->BuildMessageHeader(MSG_CODE_REQUEST_CHANGE_SETTING_SCREEN_CAPTURE);
-
 	//-----------------------------------------------
 	// alloc msg content block
 	size_t contentSize = 13;
@@ -302,65 +402,34 @@ void PPSession::SS_ChangeSetting()
 	//-----------------------------------------------
 	// build message
 	u8* msgBuffer = authenMsg->BuildMessage(contentBuffer, contentSize);
-	g_network->SendMessageData(msgBuffer, authenMsg->GetMessageSize());
-	g_network->SetRequestData(MSG_COMMAND_SIZE, PPREQUEST_HEADER);
+	AddMessageToQueue(msgBuffer, authenMsg->GetMessageSize());
 	free(contentBuffer);
 	delete authenMsg;
 }
 
-void PPSession::SS_SendReceivedFrame()
+
+void PPSession::SendMsgResetSession()
 {
-	PPMessage *msgObj = new PPMessage();
-	msgObj->BuildMessageHeader(MSG_CODE_REQUEST_SCREEN_RECEIVED_FRAME);
-	u8* msgBuffer = msgObj->BuildMessageEmpty();
-	g_network->SendMessageData(msgBuffer, msgObj->GetMessageSize());
-	delete msgObj;
-}
 
-
-void PPSession::SS_SendReceivedAudioFrame()
-{
-	PPMessage *msgObj = new PPMessage();
-	msgObj->BuildMessageHeader(MSG_CODE_REQUEST_RECEIVED_AUDIO_FRAME);
-	u8* msgBuffer = msgObj->BuildMessageEmpty();
-	g_network->SendMessageData(msgBuffer, msgObj->GetMessageSize());
-	delete msgObj;
-}
-
-
-void PPSession::SS_Reset()
-{
-	SS_v_isStartStreaming = false;
-}
-
-//-----------------------------------------------------
-// common
-//-----------------------------------------------------
-
-void PPSession::RequestForheader()
-{
-	g_network->SetRequestData(MSG_COMMAND_SIZE, PPREQUEST_HEADER);
 }
 
 //-----------------------------------------------------
 // Input
 //-----------------------------------------------------
-void PPSession::IN_Start()
+void PPSession::SendMsgStartInput()
 {
-	if (IN_isStart) return;
+	if (isInputStarted) return;
 	PPMessage *msg = new PPMessage();
 	msg->BuildMessageHeader(MSG_CODE_REQUEST_START_INPUT_CAPTURE);
 	u8* msgBuffer = msg->BuildMessageEmpty();
-	g_network->SendMessageData(msgBuffer, msg->GetMessageSize());
-	g_network->SetRequestData(MSG_COMMAND_SIZE, PPREQUEST_HEADER);
+	AddMessageToQueue(msgBuffer, msg->GetMessageSize());
 	delete msg;
-
-	IN_isStart = true;
+	isInputStarted = true;
 }
 
-bool PPSession::IN_SendInputData(u32 down, u32 up, short cx, short cy, short ctx, short cty)
+bool PPSession::SendMsgSendInputData(u32 down, u32 up, short cx, short cy, short ctx, short cty)
 {
-	if (!IN_isStart) return false;
+	if (!isInputStarted) return false;
 	PPMessage *msg = new PPMessage();
 	msg->BuildMessageHeader(MSG_CODE_SEND_INPUT_CAPTURE);
 	//-----------------------------------------------
@@ -378,33 +447,18 @@ bool PPSession::IN_SendInputData(u32 down, u32 up, short cx, short cy, short ctx
 	//-----------------------------------------------
 	// build message and send
 	u8* msgBuffer = msg->BuildMessage(contentBuffer, contentSize);
-	g_network->SendMessageData(msgBuffer, msg->GetMessageSize());
-	g_network->SetRequestData(MSG_COMMAND_SIZE, PPREQUEST_HEADER);
+	AddMessageToQueue(msgBuffer, msg->GetMessageSize());
 	delete msg;
 	return true;
 }
 
-void PPSession::IN_SendIdleInput()
-{
-	PPMessage *msg = new PPMessage();
-	msg->BuildMessageHeader(MSG_CODE_SEND_INPUT_CAPTURE_IDLE);
-	u8* msgBuffer = msg->BuildMessageEmpty();
-	g_network->SendMessageData(msgBuffer, msg->GetMessageSize());
-	g_network->SetRequestData(MSG_COMMAND_SIZE, PPREQUEST_HEADER);
-	delete msg;
-}
 
-void PPSession::IN_Stop()
+void PPSession::SendMsgStoptInput()
 {
-	if (!IN_isStart) return;
+	if (!isInputStarted) return;
 	PPMessage *msg = new PPMessage();
 	msg->BuildMessageHeader(MSG_CODE_REQUEST_STOP_INPUT_CAPTURE);
 	u8* msgBuffer = msg->BuildMessageEmpty();
-	g_network->SendMessageData(msgBuffer, msg->GetMessageSize());
-	g_network->SetRequestData(MSG_COMMAND_SIZE, PPREQUEST_HEADER);
+	AddMessageToQueue(msgBuffer, msg->GetMessageSize());
 	delete msg;
-
-	IN_isStart = false;
-
-	this->CloseSession();
 }

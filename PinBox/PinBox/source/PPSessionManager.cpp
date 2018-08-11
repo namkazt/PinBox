@@ -28,40 +28,22 @@ static volatile bool mHaveNewFrame = false;
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void PPSessionManager::InitScreenCapture(u32 numberOfSessions)
+void PPSessionManager::NewSession()
 {
-	if (numberOfSessions <= 0) numberOfSessions = 1;
-	if (m_screenCaptureSessions.size() > 0) return;
-	m_screenCaptureSessions = std::vector<PPSession*>();
-	for(int i = 1; i <= numberOfSessions; i++)
-	{
-		PPSession* session = new PPSession();
-		session->sessionID = i;
-		session->InitScreenCaptureSession(this);
-		m_screenCaptureSessions.push_back(session);
-	}
-	mManagerState = 0;
+	_session = new PPSession();
+	managerState = 0;
 }
 
-void PPSessionManager::SafeTrack(u8* buffer, u32 size)
+void PPSessionManager::ProcessVideoFrame(u8* buffer, u32 size)
 {
-	if(m_decoder == nullptr)
-	{
-		m_decoder = new PPDecoder();
-		m_decoder->initDecoder();
-	}
-
 	g_VideoFrameMutex->Lock();
-	//decode frame
-	u8* rgbBuffer = m_decoder->appendVideoBuffer(buffer, size);
+	u8* rgbBuffer = _decoder->appendVideoBuffer(buffer, size);
 	if (rgbBuffer != nullptr)
 	{
-		//-------------------------------------------
 		// convert to correct format in 3DS
-		//-------------------------------------------
 		int i, j;
-		int nw3 = m_decoder->iFrameWidth * 3;
-		for (i = 0; i < m_decoder->iFrameHeight; i++) {
+		int nw3 = _decoder->iFrameWidth * 3;
+		for (i = 0; i < _decoder->iFrameHeight; i++) {
 			// i * 512 * 3
 			memcpy(mStaticFrameBuffer + (i * 1536), rgbBuffer + (i*nw3), nw3);
 		}
@@ -69,9 +51,7 @@ void PPSessionManager::SafeTrack(u8* buffer, u32 size)
 	}
 	g_VideoFrameMutex->Unlock();
 
-	//-------------------------------------------
 	// update frame video FPS
-	//-------------------------------------------
 	if (!mReceivedFirstFrame)
 	{
 		mReceivedFirstFrame = true;
@@ -92,88 +72,46 @@ void PPSessionManager::SafeTrack(u8* buffer, u32 size)
 	}
 }
 
-void PPSessionManager::SafeTrackAudio(u8* buffer, u32 size)
+void PPSessionManager::ProcessAudioFrame(u8* buffer, u32 size)
 {
-	if (m_decoder == nullptr)
-	{
-		m_decoder = new PPDecoder();
-		m_decoder->initDecoder();
-	}
-
 	g_AudioFrameMutex->Lock();
-
-	m_decoder->decodeAudioStream(buffer, size);
-
+	_decoder->decodeAudioStream(buffer, size);
 	g_AudioFrameMutex->Unlock();
-}
-
-u32 PPSessionManager::getFrameIndex() const
-{
-	return mFrameIndex;
 }
 
 void PPSessionManager::UpdateStreamSetting()
 {
-	m_screenCaptureSessions[0]->SS_ChangeSetting();
+	//_session->SendMsgChangeSetting();
 }
-
-
 
 void PPSessionManager::StartDecodeThread()
 {
 	mStaticFrameBuffer = (u8*)linearAlloc(STATIC_FRAME_SIZE);
+	_decoder = new PPDecoder();
+	_decoder->initDecoder();
 }
 
 void PPSessionManager::ReleaseDecodeThead()
 {
 	if (mStaticFrameBuffer != nullptr) free(mStaticFrameBuffer);
-	m_decoder->releaseDecoder();
+	_decoder->releaseDecoder();
 }
 
 void PPSessionManager::UpdateVideoFrame()
 {
 	if (!mHaveNewFrame) return;
-
 	g_VideoFrameMutex->Lock();
 	PPGraphics::Get()->UpdateTopScreenSprite(mStaticFrameBuffer, 393216, 400, 240);
 	mHaveNewFrame = false;
 	g_VideoFrameMutex->Unlock();
 }
 
-
-void PPSessionManager::_startStreaming()
-{
-	m_screenCaptureSessions[0]->SS_ChangeSetting();
-	m_screenCaptureSessions[0]->SS_StartStream();
-	for (int i = 1; i < m_screenCaptureSessions.size(); i++)
-	{
-		m_screenCaptureSessions[i]->RequestForheader();
-	}
-	
-}
-
-
-///////////////////////////////////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////////////////////////////////
-/// INPUT
-///////////////////////////////////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-void PPSessionManager::InitInputStream()
-{
-	if (m_inputStreamSession != nullptr) return;
-	m_inputStreamSession = new PPSession();
-	m_inputStreamSession->sessionID = 0;
-	m_inputStreamSession->InitInputCaptureSession(this);
-	m_initInputFirstFrame = false;
-}
-
 void PPSessionManager::UpdateInputStream(u32 down, u32 up, short cx, short cy, short ctx, short cty)
 {
-	if (m_inputStreamSession == nullptr) return;
+	if (_session == nullptr) return;
 	if(down != m_OldDown || up != m_OldUp || cx != m_OldCX || cy != m_OldCY || ctx != m_OldCTX || cty != m_OldCTY || !m_initInputFirstFrame)
 	{
-		if(m_inputStreamSession->IN_SendInputData(down, up, cx, cy, ctx, cty))
+		if(_session->SendMsgSendInputData(down, up, cx, cy, ctx, cty))
 		{
 			m_initInputFirstFrame = true;
 			m_OldDown = down;
@@ -186,93 +124,18 @@ void PPSessionManager::UpdateInputStream(u32 down, u32 up, short cx, short cy, s
 	}
 }
 
-///////////////////////////////////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////////////////////////////////
-/// COMMON
-///////////////////////////////////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-void PPSessionManager::_oneByOneConnectScreenCapture(int index, const char* ip, const char* port, PPNotifyCallback callback)
-{
-	m_screenCaptureSessions[index]->StartSession(ip, port, mMainThreadPrio - 2, [=](PPNetwork *self, u8* data, u32 code)
-	{
-		m_connectedSession++;
-		if (m_connectedSession == m_screenCaptureSessions.size())
-		{
-			if (callback != nullptr) callback(0);
-		}else
-		{
-			_oneByOneConnectScreenCapture(m_connectedSession, ip, port, callback);
-		}
-	});
-}
-
 
 void PPSessionManager::StartStreaming(const char* ip)
 {
 	if (!strcmp(ip, "")) return;
-
-	m_currentDisplayFrame = 0;
-	m_connectedSession = 0;
-
-	mManagerState = 1;
-
-	//--------------------------------------------------
-	// get current thread priority
-	svcGetThreadPriority(&mMainThreadPrio, CUR_THREAD_HANDLE);
-
-	//------------------------------------------------
-	// start video decode thread
+	managerState = 1;
 	StartDecodeThread();
-
-	//------------------------------------------------
-	_oneByOneConnectScreenCapture(m_connectedSession, ip, "1234", [=](int ret)
-	{
-		//--------------------------------------------------
-		//start input connect when all other connect is done
-		if (m_inputStreamSession != nullptr) {
-			m_inputStreamSession->StartSession(ip, "1234", mMainThreadPrio - 1, [=](PPNetwork *self, u8* data, u32 code)
-			{
-				mManagerState = 2;
-				m_inputStreamSession->IN_Start();
-				//--------------------------------------------------
-				// when all session is authenticated
-				// start streaming here
-				printf("[Success] All clients is connected to server \n");
-				gfxFlushBuffers();
-				_startStreaming();
-			});
-		}
-	});
-
-	
+	_session->InitSession(this, ip, "1234");
 }
 
 void PPSessionManager::StopStreaming()
 {
-	for (int i = 0; i < m_screenCaptureSessions.size(); i++)
-	{
-		m_screenCaptureSessions[i]->SS_StopStream();
-	}
-
-	if (m_inputStreamSession != nullptr)
-	{
-		m_inputStreamSession->IN_Stop();
-		m_inputStreamSession->CloseSession();
-	}
-}
-
-void PPSessionManager::Close()
-{
-	for (int i = 0; i < m_screenCaptureSessions.size(); i++)
-	{
-		m_screenCaptureSessions[i]->CloseSession();
-	}
-
-	if (m_inputStreamSession != nullptr)
-	{
-		m_inputStreamSession->CloseSession();
-	}
+	_session->SendMsgStopSession();
 }
 
 void PPSessionManager::StartFPSCounter()

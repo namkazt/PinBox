@@ -38,7 +38,6 @@
     <ClCompile Include="source\PPDecoder.cpp" />
     <ClCompile Include="source\PPGraphics.cpp" />
     <ClCompile Include="source\PPMessage.cpp" />
-    <ClCompile Include="source\PPNetwork.cpp" />
     <ClCompile Include="source\PPSession.cpp" />
     <ClCompile Include="source\PPSessionManager.cpp" />
     <ClCompile Include="source\PPUI.cpp" />
@@ -51,7 +50,6 @@
     <ClInclude Include="include\PPDecoder.h" />
     <ClInclude Include="include\PPGraphics.h" />
     <ClInclude Include="include\PPMessage.h" />
-    <ClInclude Include="include\PPNetwork.h" />
     <ClInclude Include="include\PPSession.h" />
     <ClInclude Include="include\PPSessionManager.h" />
     <ClInclude Include="include\PPUI.h" />

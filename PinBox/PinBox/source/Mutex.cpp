@@ -5,13 +5,13 @@
 Mutex::Mutex()
 {
 	g_isLocked = false;
-	svcCreateMutex(&g_mutexHandle, false);
+	svcCreateMutex(&g_mutexHandle, g_isLocked);
 }
 
 
 Mutex::~Mutex()
 {
-	svcCloseHandle(g_mutexHandle);
+	svcReleaseMutex(g_mutexHandle);
 }
 
 void Mutex::Lock()
@@ -29,7 +29,7 @@ void Mutex::Unlock()
 {
 	if (g_isLocked)
 	{
-		svcReleaseMutex(g_mutexHandle);
+		svcSignalEvent(g_mutexHandle);
 		g_isLocked = false;
 	}
 }

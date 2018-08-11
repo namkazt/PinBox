@@ -12,6 +12,7 @@ private:
 
 public:
 	const char* _cfg_ip;
+	const char* _cfg_port;
 	int _cfg_video_quality;
 	int _cfg_video_scale;
 	int _cfg_skip_frame;

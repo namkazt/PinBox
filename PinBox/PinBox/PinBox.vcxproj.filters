@@ -29,9 +29,6 @@
     <ClCompile Include="source\PPGraphics.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="source\PPNetwork.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="source\PPSession.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -62,9 +59,6 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="include\PPGraphics.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="include\PPNetwork.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="include\PPSession.h">

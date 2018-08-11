@@ -16,8 +16,9 @@ typedef std::function<void(int code)> PPNotifyCallback;
 class PPSessionManager
 {
 public:
+	PPSession*										_session = nullptr;
 
-	PPSession*										m_inputStreamSession = nullptr;
+	// input store
 	u32												m_OldDown;
 	u32												m_OldUp;
 	short											m_OldCX;
@@ -26,8 +27,7 @@ public:
 	short											m_OldCTY;
 	bool											m_initInputFirstFrame = false;
 
-	s32												mMainThreadPrio = 0;
-
+	// fps calculate
 	u64												mLastTime = 0;
 	float											mCurrentFPS = 0.0f;
 	u32												mFrames = 0;
@@ -42,44 +42,37 @@ public:
 	Mutex*											g_VideoFrameMutex;
 	Mutex*											g_AudioFrameMutex;
 
-	std::vector<PPSession*>							m_screenCaptureSessions;
-	int												m_commandSessionIndex = 0;
-	u32												m_connectedSession = 0;
-	void											_startStreaming();
-	void											_oneByOneConnectScreenCapture(int index, const char* ip, const char* port, PPNotifyCallback callback);
 
-	PPDecoder*										m_decoder = nullptr;
-	u32												m_currentDisplayFrame = 0;
+	PPDecoder*										_decoder = nullptr;
 	//------------------------------------------
 	// UI ref variables
 	//------------------------------------------
-	int												mManagerState = -1;
+	int												managerState = -1;
 	char											mIPAddress[100] = "192.168.31.183";
 public:
 	PPSessionManager();
 	~PPSessionManager();
 
-	void InitScreenCapture(u32 numberOfSessions);
+	void NewSession();
+
 	void StartStreaming(const char* ip);
 	void StopStreaming();
-	void Close();
 
 	void StartFPSCounter();
 	void CollectFPSData();
 
-	void InitInputStream();
+	
 	void UpdateInputStream(u32 down, u32 up, short cx, short cy, short ctx, short cty);
+	void ProcessVideoFrame(u8* buffer, u32 size);
+	void ProcessAudioFrame(u8* buffer, u32 size);
 
-	void SafeTrack(u8* buffer, u32 size);
-	void SafeTrackAudio(u8* buffer, u32 size);
 	void StartDecodeThread();
 	void ReleaseDecodeThead();
 	void UpdateVideoFrame();
 
-	int GetManagerState() const { return mManagerState; };
+	int GetManagerState() const { return managerState; };
 	float GetFPS() const { return mCurrentFPS; }
 	float GetVideoFPS() const { return mVideoFPS; }
-	u32 getFrameIndex() const;
 
 
 	void UpdateStreamSetting();

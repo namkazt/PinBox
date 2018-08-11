@@ -17,11 +17,22 @@
 // at a time.
 //=======================================================================
 
-#include "PPNetwork.h"
-#include <webp/decode.h>
-#include "opusfile.h"
-#include "Mutex.h"
+#include <3ds.h>
 #include <map>
+#include <string.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <netdb.h> 
+#include <fcntl.h>
+#include <memory>
+#include <cerrno>
+#include <functional>
+#include <queue>
+
+#include "Mutex.h"
+#include "PPMessage.h"
 
 
 enum PPSession_Type { PPSESSION_NONE, PPSESSION_MOVIE, PPSESSION_SCREEN_CAPTURE, PPSESSION_INPUT_CAPTURE};
@@ -32,9 +43,8 @@ enum PPSession_Type { PPSESSION_NONE, PPSESSION_MOVIE, PPSESSION_SCREEN_CAPTURE,
 #define PPREQUEST_HEADER 10
 #define PPREQUEST_BODY 15
 // authentication code
-#define MSG_CODE_REQUEST_AUTHENTICATION_MOVIE 1
-#define MSG_CODE_REQUEST_AUTHENTICATION_SCREEN_CAPTURE 2
-#define MSG_CODE_REQUEST_AUTHENTICATION_INPUT 3
+#define MSG_CODE_REQUEST_AUTHENTICATION_SESSION 1
+
 #define MSG_CODE_RESULT_AUTHENTICATION_SUCCESS 5
 #define MSG_CODE_RESULT_AUTHENTICATION_FAILED 6
 // screen capture code
@@ -55,57 +65,68 @@ enum PPSession_Type { PPSESSION_NONE, PPSESSION_MOVIE, PPSESSION_SCREEN_CAPTURE,
 
 // audio
 #define AUDIO_CHANNEL	0x08
-typedef struct
-{
-	u8			*start;
-	u32			size;
-	u32			width;
-	u32			height;
-} QueueFrame;
+
 
 typedef struct
 {
-	u8* pieceAddr;
-	u32 pieceStart;
-	u32 pieceSize;
-	bool decoded = false;
-} FrameData;
+	void		*msgBuffer;
+	u32			msgSize;
+} QueueMessage;
+
+
 class PPSessionManager;
+
+
+enum ppConectState { IDLE, CONNECTING, CONNECTED, FAIL };
+typedef std::function<void(u8* buffer, u32 size, u32 tag)> PPNetworkReceivedRequest;
+typedef std::function<void(u8* data, u32 code)> PPNetworkCallback;
 
 class PPSession
 {
 private:
-	PPSessionManager				*g_manager;
-	PPSession_Type					g_sessionType = PPSESSION_NONE;
-	PPNetwork*						g_network = nullptr;
-	PPMessage*						g_tmpMessage = nullptr;
-	bool							g_authenticated = false;
-	PPNetworkCallback				g_onAuthenSuccessed = nullptr;
-
+	PPSessionManager				*_manager;
+	PPMessage*						_tmpMessage = nullptr;
+	bool							_authenticated = false;
+	std::queue<QueueMessage*>		_sendingMessages;
+	Mutex*							_queueMessageMutex;
 private:
-	void initSession();
+	// threading
+	bool							_running = false;
+	bool							_kill = false;
+	Thread							_thread;
+	// socket
+	const char*						_ip = 0;
+	const char*						_port = 0;
+	int								_sock = -1;
+	ppConectState					_connect_state = IDLE;
 
-	void processMovieSession(u8* buffer, size_t size);
-	void processScreenCaptureSession(u8* buffer, size_t size);
-	void processInputSession(u8* buffer, size_t size);
+	void connectToServer();
+	void closeConnect();
+	void recvSocketData();
+	void sendMessageData();
+
+	void processReceivedMsg(u8* buffer, u32 size, u32 tag);;
+	void processMessageData(u8* buffer, size_t size);
 
 public:
-	int								sessionID = -1;
+	PPSession();
 	~PPSession();
 
-	void InitMovieSession();
-	void InitScreenCaptureSession(PPSessionManager* manager);
-	void InitInputCaptureSession(PPSessionManager* manager);
+	void InitSession(PPSessionManager* manager, const char* ip, const char* port);
 
 	void StartSession(const char* ip, const char* port, s32 prio, PPNetworkCallback authenSuccessed);
 	void CloseSession();
 
+	void threadMain();
+
+	void RequestForData(u32 size, u32 tag = 0);
+	void AddMessageToQueue(u8 *msgBuffer, int32_t msgSize);
 
 
+private:
+	bool								isInputStarted = false;
+	bool								isSessionStarted = false;
 
-	//-----------------------------------------------------
-	// screen capture
-	//-----------------------------------------------------
 public:
 	//-----------------------------------------------------
 	// profile setting
@@ -118,52 +139,21 @@ public:
 		u32 sourceScale = 100;
 	} SSProfile;
 	//----------------------------------------------------
-	bool								SS_v_isStartStreaming = false;
-	bool								SS_setting_waitToReceivedFrame = true;
-	u32									SS_setting_smoothStepFrames = 1;		// this setting allow frame switch smoother if there is delay when received frame
-	u32									SS_setting_sourceQuality = 75;			// webp quality control
-	u32									SS_setting_sourceScale = 100;			// frame size control eg: 75% = 0.75 of real size
 	//----------------------------------------------------
 
-
-	//-----------------------------------------------------
-	// input
-	//-----------------------------------------------------
-private:
-	bool								IN_isStart = false;
-
-
 public:
-	//-----------------------------------------------------
-	// common
-	//-----------------------------------------------------
-	void								RequestForheader();
+	void								SendMsgAuthentication();
 
 
+	void								SendMsgStartSession();
+	void								SendMsgStopSession();
+	void								SendMsgChangeSetting();
 
+	void								SendMsgResetSession();
 
-	//-----------------------------------------------------
-	// screen capture
-	//-----------------------------------------------------
-	void								SS_StartStream();
-	void								SS_StopStream();
-	void								SS_ChangeSetting();
-	void								SS_SendReceivedFrame();
-	void								SS_SendReceivedAudioFrame();
-
-	void								SS_Reset();
-	//-----------------------------------------------------
-	// movie
-	//-----------------------------------------------------
-
-
-	//-----------------------------------------------------
-	// input
-	//-----------------------------------------------------
-	void								IN_Start();
-	bool								IN_SendInputData(u32 down, u32 up, short cx, short cy, short ctx, short cty);
-	void								IN_SendIdleInput();
-	void								IN_Stop();
+	void								SendMsgStartInput();
+	bool								SendMsgSendInputData(u32 down, u32 up, short cx, short cy, short ctx, short cty);
+	void								SendMsgStoptInput();
 };
 
 #endif

@@ -86,7 +86,7 @@ int main()
 	acInit();
 	aptInit();
 	irrstInit();
-
+	APT_SetAppCpuTimeLimit(80);
 	//---------------------------------------------
 	// Init Graphics
 	//---------------------------------------------
@@ -151,19 +151,10 @@ int main()
 	// wifiStatus = 2 : New 3DS internet
 	//---------------------------------------------
 	if (wifiStatus) {
-		sm->InitInputStream();
-
 		if(wifiStatus == 1)
-		{
-			// New 3DS
 			osSetSpeedupEnable(true);
-			sm->InitScreenCapture(1);
-		}else
-		{
-			// Old 3ds
-			sm->InitScreenCapture(1);
-		}
 
+		sm->NewSession();
 		sm->StartFPSCounter();
 		//---------------------------------------------
 		// Main loop
@@ -233,7 +224,6 @@ int main()
 		// End
 		//---------------------------------------------
 		sm->StopStreaming();
-		sm->Close();
 	}
 		
 	

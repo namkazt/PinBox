@@ -18,9 +18,6 @@
 #include "Mutex.h"
 
 class PPNetwork;
-enum ppConectState { IDLE, CONNECTING, CONNECTED, FAIL };
-typedef std::function<void(PPNetwork *self, u8* buffer, u32 size, u32 tag)> PPNetworkReceivedRequest;
-typedef std::function<void(PPNetwork *self, u8* data, u32 code)> PPNetworkCallback;
 class PPSession;
 typedef struct
 {
@@ -34,7 +31,7 @@ private:
 	// socket
 	const char*					g_ip = 0;
 	const char*					g_port = 0;
-	u32							g_sock = -1;
+	int							g_sock = -1;
 	ppConectState				g_connect_state = IDLE;
 	// in-out variables
 	u32							g_tag = 0;
@@ -46,7 +43,7 @@ private:
 	Thread						g_thread = nullptr;
 	volatile bool				g_threadExit = false;
 	Mutex*						g_queueMessageMutex;
-	std::queue<QueueMessage*>	g_sendingMessage;
+	
 	// callback
 	PPNetworkReceivedRequest	g_onReceivedRequest = nullptr;
 	PPNetworkCallback			g_onConnectionSuccessed = nullptr;
