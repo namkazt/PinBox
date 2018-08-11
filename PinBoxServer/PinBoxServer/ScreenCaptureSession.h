@@ -130,8 +130,6 @@ private:
 	AVCodecContext*												pAudioContext;
 	AVPacket*													pAudioPacket;
 	AVFrame*													pAudioFrame;
-	SwrContext*													pAudioResampler;
-	AVAudioFifo*												pAudioFIFO;
 	int64_t														iAudioPts = 0;
 	static void													audioThread(void* context);
 	std::thread													pAudiothread;

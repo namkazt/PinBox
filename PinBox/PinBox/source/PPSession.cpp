@@ -85,6 +85,7 @@ void PPSession::initSession()
 				}
 				case PPSESSION_SCREEN_CAPTURE:
 				{
+					printf("Have new request: %d\n", size);
 					processScreenCaptureSession(buffer, size);
 					break;
 				}
@@ -217,7 +218,7 @@ void PPSession::processScreenCaptureSession(u8* buffer, size_t size)
 	{
 	case MSG_CODE_REQUEST_NEW_SCREEN_FRAME:
 	{
-		SS_SendReceivedFrame();
+		//SS_SendReceivedFrame();
 
 		g_manager->SafeTrack(buffer, size);
 		
@@ -225,7 +226,7 @@ void PPSession::processScreenCaptureSession(u8* buffer, size_t size)
 	}
 	case MSG_CODE_REQUEST_NEW_AUDIO_FRAME:
 	{
-		SS_SendReceivedAudioFrame();
+		//SS_SendReceivedAudioFrame();
 
 		g_manager->SafeTrackAudio(buffer, size);
 

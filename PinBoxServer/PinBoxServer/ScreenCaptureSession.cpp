@@ -72,7 +72,7 @@ void ScreenCaptureSession::initScreenCapture(PPServer* parent)
 			totalSize = mLastFrameData->StrideWidth * mLastFrameData->Height;
 		}
 
-		//encodeAudioFrame();
+		encodeAudioFrame();
 
 		// encode video
 		encodeVideoFrame((u8*)img.Data);
@@ -96,8 +96,8 @@ void ScreenCaptureSession::initScreenCapture(PPServer* parent)
 	m_audioGrabber->StartAudioStream();
 	m_audioGrabber->Pause();
 
-	pAudiothread = std::thread(audioThread, this);
-	pAudiothread.detach();
+	//pAudiothread = std::thread(audioThread, this);
+	//pAudiothread.detach();
 
 	//-----------------------------------------------------
 	// decoder
@@ -146,7 +146,7 @@ void ScreenCaptureSession::audioThread(void* context)
 		if (!self->mInitializedCodec) continue;
 		if (!self->m_isStartStreaming || self->m_clientSession == nullptr) continue;
 
-		self->encodeAudioFrame();
+		
 		std::this_thread::sleep_for(std::chrono::milliseconds(16));
 	}
 }
@@ -234,12 +234,12 @@ void ScreenCaptureSession::initEncoder()
 	pAudioContext = avcodec_alloc_context3(audioCodec);
 	pAudioContext->bit_rate = 64000;
 	pAudioContext->sample_fmt = audioCodec->sample_fmts[0];
-	pAudioContext->sample_rate = 48000;
+	pAudioContext->sample_rate = 44100;
 	pAudioContext->channels = av_get_channel_layout_nb_channels(AV_CH_LAYOUT_STEREO);;
 	pAudioContext->channel_layout = AV_CH_LAYOUT_STEREO;
 	/* Allow the use of the experimental AAC encoder. */
-	pAudioContext->strict_std_compliance = FF_COMPLIANCE_EXPERIMENTAL;
-	pAudioContext->block_align = 4;
+	//pAudioContext->strict_std_compliance = FF_COMPLIANCE_EXPERIMENTAL;
+	//pAudioContext->block_align = 4;
 
 	// Open
 	int ret = avcodec_open2(pAudioContext, audioCodec, NULL);
@@ -250,35 +250,6 @@ void ScreenCaptureSession::initEncoder()
 	pAudioFrame->format = pAudioContext->sample_fmt;
 	pAudioFrame->channel_layout = pAudioContext->channel_layout;
 	ERROR_PRINT(av_frame_get_buffer(pAudioFrame, 0));
-	// init resampler
-	pAudioResampler = swr_alloc_set_opts(NULL,// output
-		pAudioContext->channel_layout,
-		pAudioContext->sample_fmt,
-		pAudioContext->sample_rate,
-		// input
-		av_get_default_channel_layout(2),
-		AV_SAMPLE_FMT_FLT,
-		48000,
-		0, NULL);
-	if (!pAudioResampler) {
-		fprintf(stderr, "Could not allocate resample context\n");
-		return;
-	}
-
-	int error = 0;
-	if ((error = swr_init(pAudioResampler)) < 0) {
-		fprintf(stderr, "Could not open resample context\n");
-		swr_free(&pAudioResampler);
-		return;
-	}
-
-	// init audio fifo
-	pAudioFIFO = av_audio_fifo_alloc(pAudioContext->sample_fmt, pAudioContext->channels, 1);
-	if(!pAudioFIFO)
-	{
-		fprintf(stderr, "Could not allocate FIFO\n");
-		return;
-	}
 
 	// test
 	//testAudioOutFLAC = fopen("test_audio.wav", "wb");

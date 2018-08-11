@@ -8,8 +8,9 @@
 class PPAudio
 {
 private:
-	u8*						pAudioBuffer1;
-	u8*						pAudioBuffer2;
+	uint64_t					pIdx;
+	s16*						pAudioBuffer1;
+	s16*						pAudioBuffer2;
 	ndspWaveBuf				waveBuf[2];
 	bool					startDecode = false;
 public:
@@ -19,7 +20,7 @@ public:
 	void AudioInit();
 	void AudioExit();
 
-	void FillBuffer(void* buffer1, void* buffer2, u32 size);
+	void FillBuffer(s16* buffer1, s16* buffer2, u32 size);
 };
 
 #endif
