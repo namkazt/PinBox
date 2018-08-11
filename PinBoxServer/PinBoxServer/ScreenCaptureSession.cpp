@@ -77,14 +77,6 @@ void ScreenCaptureSession::initScreenCapture(PPServer* parent)
 		// encode video
 		encodeVideoFrame((u8*)img.Data);
 
-		//=================================================================
-		/*captureFPS.onNewFramecounter++;
-		if (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - captureFPS.onNewFramestart).count() >= 1000) {
-			captureFPS.currentFPS = captureFPS.onNewFramecounter;
-			captureFPS.onNewFramecounter = 0;
-			captureFPS.onNewFramestart = std::chrono::high_resolution_clock::now();
-		}*/
-		//std::cout << "Capture FPS: " << captureFPS.currentFPS << std::endl << std::flush;
 	})->start_capturing();
 	int timeDelay = 1000.0f / (float)mFrameRate;
 	m_frameGrabber->setFrameChangeInterval(std::chrono::milliseconds(timeDelay));
@@ -95,9 +87,6 @@ void ScreenCaptureSession::initScreenCapture(PPServer* parent)
 	m_audioGrabber = new AudioStreamSession();
 	m_audioGrabber->StartAudioStream();
 	m_audioGrabber->Pause();
-
-	//pAudiothread = std::thread(audioThread, this);
-	//pAudiothread.detach();
 
 	//-----------------------------------------------------
 	// decoder
@@ -135,20 +124,6 @@ void ScreenCaptureSession::encodeVideoFrame(u8* buf)
 	}
 	//======================================================
 	av_packet_unref(pVideoPacket);
-}
-
-void ScreenCaptureSession::audioThread(void* context)
-{
-	ScreenCaptureSession* self = (ScreenCaptureSession*)context;
-
-	while(1)
-	{
-		if (!self->mInitializedCodec) continue;
-		if (!self->m_isStartStreaming || self->m_clientSession == nullptr) continue;
-
-		
-		std::this_thread::sleep_for(std::chrono::milliseconds(16));
-	}
 }
 
 void ScreenCaptureSession::encodeAudioFrame()

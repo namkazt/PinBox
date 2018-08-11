@@ -93,13 +93,14 @@ void PPSession::connectToServer()
 	gfxFlushBuffers();
 
 	//TODO: on connected successfully here
-
+	SendMsgAuthentication();
 }
 
 void PPSession::closeConnect()
 {
 	if (!_running) return;
 	// set kill again to make sure it set
+	printf("closing session...\n");
 
 	// close connection
 	if(_connect_state == CONNECTED)
@@ -144,8 +145,10 @@ void PPSession::recvSocketData()
 	int recvAmount = recv(_sock, g_receivedBuffer + g_receivedSize, BUFFERSIZE, 0);
 	if (recvAmount <= 0)
 	{
-		if (errno != EWOULDBLOCK)
+		if (errno != EWOULDBLOCK) {
+			printf("Error receive packet: %d\n", recvAmount);
 			_kill = true;
+		}
 		return;
 	}else if(recvAmount > BUFFERSIZE)
 	{
@@ -155,24 +158,29 @@ void PPSession::recvSocketData()
 	{
 		g_receivedSize += recvAmount;
 	}
+	//printf("receive packet s:%d - total: %d - w:%d\n", recvAmount, g_receivedSize, g_waitForSize);
 	//---------------------------------------------------------------------------------
 	// process data
 	//---------------------------------------------------------------------------------
 	if (g_receivedSize < g_waitForSize || g_waitForSize == 0) return;
 
-	u32 dataAfterProcess = g_receivedSize - g_waitForSize;
-	while(dataAfterProcess > 0)
-	{
-		processReceivedMsg(g_receivedBuffer, g_waitForSize, g_msgTag);
+	int dataAfterProcess = g_receivedSize - g_waitForSize;
+	do {
+		// calculate data left
+		u32 lastWaitForSize = g_waitForSize;
+
+		// process message data
+		processReceivedMsg(g_receivedBuffer, lastWaitForSize, g_msgTag);
+
 		// shifting mem
-		memcpy(g_receivedBuffer, g_receivedBuffer + g_waitForSize, dataAfterProcess);
+		memcpy(g_receivedBuffer, g_receivedBuffer + lastWaitForSize, dataAfterProcess);
+
 		// reset information
 		g_receivedSize = dataAfterProcess;
-		g_waitForSize = 0;
-		g_msgTag = 0;
-		// update coddition
+		if(g_receivedSize < g_waitForSize || g_waitForSize == 0) return;
+
 		dataAfterProcess = g_receivedSize - g_waitForSize;
-	}
+	} while (dataAfterProcess >= 0);
 }
 
 void PPSession::sendMessageData()
@@ -245,11 +253,8 @@ void PPSession::threadMain()
 
 void PPSession::RequestForData(u32 size, u32 tag)
 {
-	if(g_waitForSize <= 0)
-	{
-		g_waitForSize = size;
-		g_msgTag = tag;
-	}
+	g_waitForSize = size;
+	g_msgTag = tag;
 }
 
 void PPSession::AddMessageToQueue(u8* msgBuffer, int32_t msgSize)
@@ -267,10 +272,7 @@ void PPSession::AddMessageToQueue(u8* msgBuffer, int32_t msgSize)
 
 void PPSession::processReceivedMsg(u8* buffer, u32 size, u32 tag)
 {
-	if(!_tmpMessage)
-	{
-		_tmpMessage = new PPMessage();
-	}
+	//printf("process receive part size: %d - tag: %d.\n", size, tag);
 	//------------------------------------------------------
 	// verify authentication
 	//------------------------------------------------------
@@ -282,33 +284,44 @@ void PPSession::processReceivedMsg(u8* buffer, u32 size, u32 tag)
 			if (authenMsg->ParseHeader(buffer))
 				if (authenMsg->GetMessageCode() == MSG_CODE_RESULT_AUTHENTICATION_SUCCESS)
 				{
-					printf("Authentication successted.\n");
+					printf("Authenticated successfully.\n");
 					_authenticated = true;
+					SendMsgStartSession();
+					RequestForData(MSG_COMMAND_SIZE, PPREQUEST_HEADER);
+					return;
 				}
 				else printf("Authenticaiton failed.\n");
 			else printf("Authenticaiton failed.\n");
 			delete authenMsg;
 		}
 		else printf("Client was not authentication.\n");
+		RequestForData(MSG_COMMAND_SIZE, PPREQUEST_AUTHEN);
 		return;
 	}
 	//------------------------------------------------------
 	// process data by tag
+	if (!_tmpMessage) _tmpMessage = new PPMessage();
 	switch (tag)
 	{
 	case PPREQUEST_HEADER:
 	{
-		if (_tmpMessage->ParseHeader(buffer))
+		if (_tmpMessage->ParseHeader(buffer)) {
 			RequestForData(_tmpMessage->GetContentSize(), PPREQUEST_BODY);
-		else
+		} else {
 			_tmpMessage->ClearHeader();
+			RequestForData(MSG_COMMAND_SIZE, PPREQUEST_HEADER);
+		}
 		break;
 	}
 	case PPREQUEST_BODY:
 	{
-		//------------------------------------------------------
 		// if tmp message is null that mean this is useless data then we avoid it
-		if (_tmpMessage->GetContentSize() == 0) return;
+		if (_tmpMessage->GetContentSize() == 0) {
+			_tmpMessage->ClearHeader();
+			// we should prepare request for new header
+			RequestForData(MSG_COMMAND_SIZE, PPREQUEST_HEADER);
+			return;
+		}
 		// verify buffer size with message estimate size
 		if (size == _tmpMessage->GetContentSize())
 		{
@@ -352,6 +365,7 @@ void PPSession::SendMsgAuthentication()
 	msg->BuildMessageHeader(MSG_CODE_REQUEST_AUTHENTICATION_SESSION);
 	u8* msgBuffer = msg->BuildMessageEmpty();
 	AddMessageToQueue(msgBuffer, msg->GetMessageSize());
+	RequestForData(MSG_COMMAND_SIZE, PPREQUEST_AUTHEN);
 	delete msg;
 }
 

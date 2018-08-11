@@ -37,12 +37,10 @@ void PPServer::InitServer()
 	google::InitGoogleLogging("PinBoxServer");
 	google::SetCommandLineOption("GLOG_minloglevel", "2");
 	//===========================================================================
-	int cfgPort = 1234;
-	int cfgThreadNum = 2;
-	//===========================================================================
 	// Init config
 	//===========================================================================
-	ServerConfig::Get();
+	int cfgPort = ServerConfig::Get()->ServerPort;
+	int cfgThreadNum = ServerConfig::Get()->NetworkThread;
 	//===========================================================================
 	// Screen capture session
 	//===========================================================================
@@ -94,6 +92,8 @@ void PPServer::InitServer()
 			PPClientSession* session = evpp::any_cast<PPClientSession*>(sessionAny);
 			if(session != nullptr)
 			{
+
+				std::cout << "Client: " << addrID << " disconnected to server!" << std::endl << std::flush;
 				session->DisconnectFromServer();
 			}
 		}

@@ -18,7 +18,6 @@ PPSessionManager::~PPSessionManager()
 	delete g_AudioFrameMutex;
 }
 
-static u32 mFrameIndex = 0;
 static u8* mStaticFrameBuffer = nullptr;
 static volatile bool mHaveNewFrame = false;
 
@@ -32,6 +31,19 @@ void PPSessionManager::NewSession()
 {
 	_session = new PPSession();
 	managerState = 0;
+}
+
+void PPSessionManager::StartStreaming(const char* ip)
+{
+	if (!strcmp(ip, "")) return;
+	managerState = 1;
+	StartDecodeThread();
+	_session->InitSession(this, ip, "1234");
+}
+
+void PPSessionManager::StopStreaming()
+{
+	_session->SendMsgStopSession();
 }
 
 void PPSessionManager::ProcessVideoFrame(u8* buffer, u32 size)
@@ -124,19 +136,6 @@ void PPSessionManager::UpdateInputStream(u32 down, u32 up, short cx, short cy, s
 	}
 }
 
-
-void PPSessionManager::StartStreaming(const char* ip)
-{
-	if (!strcmp(ip, "")) return;
-	managerState = 1;
-	StartDecodeThread();
-	_session->InitSession(this, ip, "1234");
-}
-
-void PPSessionManager::StopStreaming()
-{
-	_session->SendMsgStopSession();
-}
 
 void PPSessionManager::StartFPSCounter()
 {

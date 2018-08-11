@@ -41,9 +41,7 @@ enum PPSession_Type { PPSESSION_NONE, PPSESSION_MOVIE, PPSESSION_SCREEN_CAPTURE,
 #define MSG_CODE_SEND_INPUT_CAPTURE_IDLE 44
 
 // 8Mb default size just enough
-#define DEFAULT_CONTINUOUS_BUFFER_SIZE 1024 * 1024 *8 
-// 24Kb for each step
-#define DEFAULT_CONTINUOUS_BUFFER_STEP 1024*24 
+#define BUFFER_SIZE 1024 * 1024 * 8 
 #define CHOP_N(BUFFER, COUNT, LENGTH) memmove(BUFFER, BUFFER + COUNT, LENGTH)
 
 class PPServer;
@@ -53,21 +51,19 @@ private:
 	evpp::TCPConnPtr			_connection;
 	bool						_authenticated = false;
 
-	u8*							_continuousBuffer = nullptr;
-	u32							_bufferWriteIndex = 0;
-	u32							_bufferSize = 0;
-
-	u8							_currentReadState = PPREQUEST_NONE;
-	u8							_currentMsgCode = 0;
+	u8*							_receivedBuffer = nullptr;
+	u32							_receivedBufferSize = 0;
 	u32							_waitForSize = 0;
+	PPMessage*					_tmpMessage = nullptr;
+	u8							_currentReadState = PPREQUEST_NONE;
+
 private:
 	void						sendMessageWithCode(u8 code);
 	void						sendMessageWithCodeAndData(u8 code, u8* buffer, size_t bufferSize);
 	void						preprocessMessageCode(u8 code);
 	void						processMessageBody(u8* buffer, u8 code);
 
-	void						ProcessIncommingMessage();
-	void						ProcessAuthentication();
+	void						ProcessIncommingMessage(u8* buffer, u32 size);
 public:
 	PPServer*					_server;
 

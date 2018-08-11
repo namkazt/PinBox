@@ -58,3 +58,9 @@ bool PPMessage::ParseHeader(u8* buffer)
 	g_contentSize = READ_U32(buffer, readIndex); readIndex += 4;
 	return true;
 }
+
+void PPMessage::ClearHeader()
+{
+	g_code = 0;
+	g_contentSize = 0;
+}

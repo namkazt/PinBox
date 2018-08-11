@@ -7,13 +7,17 @@ void PPClientSession::InitSession(evpp::TCPConnPtr conn, PPServer* parent)
 {
 	_connection = conn;
 	_server = parent;
-	_continuousBuffer = (u8*)malloc(DEFAULT_CONTINUOUS_BUFFER_SIZE);
-	_bufferSize = DEFAULT_CONTINUOUS_BUFFER_SIZE;
-	_bufferWriteIndex = 0;
+	// static buffer
+	_receivedBuffer = (u8*)malloc(BUFFER_SIZE);
+	_receivedBufferSize = 0;
+	// default wait size for authentication
+	_waitForSize = 9;
 }
 
 void PPClientSession::DisconnectFromServer()
 {
+	if (_tmpMessage) delete _tmpMessage;
+	//TODO: stop all stream
 
 }
 
@@ -29,147 +33,106 @@ void PPClientSession::PrepareAudioPacketAndSend(u8* buffer, int bufferSize, uint
 
 void PPClientSession::ProcessMessage(evpp::Buffer* msg)
 {
-	//--------------------------------------------------
-	// if have new data
-	if (msg) {
-		u8* msgData = (u8*)msg->data();
-		size_t msgSize = msg->size();
-		// check with current old data
-		if (msgSize + _bufferWriteIndex > _bufferSize)
-		{
-			_bufferSize += DEFAULT_CONTINUOUS_BUFFER_STEP;
-			u8* g_continuousBufferNew = (u8*)realloc((void*)_continuousBuffer, _bufferSize * sizeof(u8));
-			if (!g_continuousBufferNew)
-			{
-				// fail to realloc memory
-				//TODO: in this cause we need process message first and remove finished part
-				// if can't be enough then app crash -> not enough memory
-				_bufferSize -= DEFAULT_CONTINUOUS_BUFFER_STEP;
-				return;
-			}
-			else
-			{
-				// point old pointer to new point after reallocated
-				_continuousBuffer = g_continuousBufferNew;
-			}
-		}
-		//------------------------------------------------
-		// append into old data
-		memcpy(_continuousBuffer + _bufferWriteIndex, msgData, msgSize);
-		_bufferWriteIndex += msgSize;
-	}
 	//------------------------------------------------
-	// process message data
-	if (this->IsAuthenticated())
-	{
-		//std::cout << "Incomming message from: " << g_connection->remote_addr() << std::endl;
-		// not enough data for header so we just leave it
-		if (_bufferWriteIndex < 9 && _currentReadState == PPREQUEST_HEADER) return;
-		// start process data
-		this->ProcessIncommingMessage();
-	}
-	else
-	{
-		//std::cout << "Process authentication from: " << g_connection->remote_addr() << std::endl;
-		this->ProcessAuthentication();
-		//--------------------------------------------
-		// remove 9 bytes of authentication message
-		CHOP_N(_continuousBuffer, 9, _bufferSize);
-		_bufferWriteIndex -= 9;
-	}
+	// merge msg data into buffer
+	memcpy(_receivedBuffer + _receivedBufferSize, msg->data(), msg->size());
+	// increment buffer size
+	_receivedBufferSize += msg->size();
 
-	//------------------------------------------------
-	// check if still need process message or not
-	if (_bufferWriteIndex >= _waitForSize) ProcessMessage(nullptr);
+	if (_receivedBufferSize < _waitForSize || _waitForSize == 0) return;
+
+	// process thought data buffer
+	int dataAfterProcessed = _receivedBufferSize - _waitForSize;
+	do
+	{
+		// calculate data left
+		u32 lastWaitForSize = _waitForSize;
+
+		// process message data 
+		// NOTE: _waitForSize should be changed inside this function
+		ProcessIncommingMessage(_receivedBuffer, lastWaitForSize);
+
+		// shifting memory
+		memcpy(_receivedBuffer, _receivedBuffer + lastWaitForSize, dataAfterProcessed);
+
+		// update data left
+		_receivedBufferSize = dataAfterProcessed;
+		if (_receivedBufferSize < _waitForSize || _waitForSize == 0) break;
+		dataAfterProcessed = _receivedBufferSize - _waitForSize;
+	} while (dataAfterProcessed >= 0);
 }
 
-
-
-void PPClientSession::ProcessIncommingMessage()
+void PPClientSession::ProcessIncommingMessage(u8* buffer, u32 size)
 {
-	//----------------------------------------------------
-	if(_currentReadState == PPREQUEST_HEADER)
+	if(!IsAuthenticated())
 	{
 		//----------------------------------------------------
 		// parse for header part
 		PPMessage* autheMsg = new PPMessage();
-		if (!autheMsg->ParseHeader(_continuousBuffer))
+		if (!autheMsg->ParseHeader(buffer))
 		{
-			std::cout << "[Parse Message Error] Vaidation code incorrect - are you sure current is header part ?" << std::endl;
+			std::cout << "[Authentication Error] Vaidation code incorrect " << std::endl;
+			sendMessageWithCode(MSG_CODE_RESULT_AUTHENTICATION_FAILED);
 			return;
 		}
 		//----------------------------------------------------
-		// switch to read body part
-		_currentReadState = PPREQUEST_BODY;
-		_currentMsgCode = autheMsg->GetMessageCode();
-		_waitForSize = autheMsg->GetContentSize();
-		//----------------------------------------------------
-		// pre process header code if need
-		preprocessMessageCode(_currentMsgCode);
-		//----------------------------------------------------
-		// it content size of message is zero so we start 
-		// wait for new message
-		if (_waitForSize <= 0) {
-			_currentReadState = PPREQUEST_HEADER;
-			_currentMsgCode = -1;
+		// validate authentication
+		if (autheMsg->GetMessageCode() != MSG_CODE_REQUEST_AUTHENTICATION_SESSION) {
+			std::cout << "[Authentication Error] Invalid session type: " << autheMsg->GetMessageCode() << std::endl;
+			sendMessageWithCode(MSG_CODE_RESULT_AUTHENTICATION_FAILED);
+			return;
 		}
-		//--------------------------------------------
-		// remove 9 bytes of header message
-		CHOP_N(_continuousBuffer, 9, _bufferSize);
-		_bufferWriteIndex -= 9;
-	}
-	else if(_currentReadState == PPREQUEST_BODY)
+
+		_server->ScreenCapturer->registerClientSession(this);
+		_authenticated = true;
+		// set waiting to a header msg
+		_currentReadState = PPREQUEST_HEADER;
+		_waitForSize = MSG_COMMAND_SIZE;
+		//----------------------------------------------------
+		// send back to client to validate authentication successfully
+		std::cout << "[Authentication Successed] Session: #" << _connection->remote_addr() << std::endl;
+		sendMessageWithCode(MSG_CODE_RESULT_AUTHENTICATION_SUCCESS);
+	}else
 	{
-		if(_bufferWriteIndex >= _waitForSize)
+		if (!_tmpMessage) _tmpMessage = new PPMessage();
+		if (_currentReadState == PPREQUEST_HEADER)
 		{
-			u8* bodyBuffer = (u8*)malloc(_waitForSize);
-			memcpy(bodyBuffer, _continuousBuffer, _waitForSize);
+			if (!_tmpMessage->ParseHeader(buffer))
+			{
+				std::cout << "[Parse Message Error] Vaidation code incorrect - are you sure current is header part ?" << std::endl;
+				_tmpMessage->ClearHeader();
+				return;
+			}
 			//----------------------------------------------------
-			// process body buffer
-			processMessageBody(bodyBuffer, _currentMsgCode);
-			// free buffer data
-			free(bodyBuffer);
-			//--------------------------------------------
-			// remove body data
-			CHOP_N(_continuousBuffer, _waitForSize, _bufferSize);
-			_bufferWriteIndex -= _waitForSize;
+			// switch to read body part
+			_currentReadState = PPREQUEST_BODY;
+			_waitForSize = _tmpMessage->GetContentSize();
 			//----------------------------------------------------
-			// switch to read next header part
-			_currentReadState = PPREQUEST_HEADER;
-			_currentMsgCode = -1;
-			_waitForSize = 0;
+			// pre process header code if need
+			preprocessMessageCode(_tmpMessage->GetMessageCode());
+			//----------------------------------------------------
+			// it content size of message is zero so we start 
+			// wait for new message
+			if (_tmpMessage->GetContentSize() == 0) {
+				_currentReadState = PPREQUEST_HEADER;
+				_waitForSize = MSG_COMMAND_SIZE;
+			}
+		}
+		else if (_currentReadState == PPREQUEST_BODY)
+		{
+			if (size == _tmpMessage->GetContentSize())
+			{
+				// process body buffer
+				processMessageBody(buffer, _tmpMessage->GetMessageCode());
+				// switch to read next header part
+				_currentReadState = PPREQUEST_HEADER;
+				_waitForSize = MSG_COMMAND_SIZE;
+				_tmpMessage->ClearHeader();
+			}
 		}
 	}
-	
 }
 
-void PPClientSession::ProcessAuthentication()
-{
-	//----------------------------------------------------
-	// parse for header part
-	PPMessage* autheMsg = new PPMessage();
-	if(!autheMsg->ParseHeader(_continuousBuffer))
-	{
-		std::cout << "[Authentication Error] Vaidation code incorrect " << std::endl;
-		sendMessageWithCode(MSG_CODE_RESULT_AUTHENTICATION_FAILED);
-		return;
-	}
-	//----------------------------------------------------
-	// validate authentication
-	if(autheMsg->GetMessageCode() != MSG_CODE_REQUEST_AUTHENTICATION_SESSION){
-		std::cout << "[Authentication Error] Invalid session type: " << autheMsg->GetMessageCode() << std::endl;
-		sendMessageWithCode(MSG_CODE_RESULT_AUTHENTICATION_FAILED);
-		return;
-	}
-	
-	_authenticated = true;
-	// set waiting to a header msg
-	_currentReadState = PPREQUEST_HEADER;
-	//----------------------------------------------------
-	// send back to client to validate authentication successfully
-	std::cout << "[Authentication Successed] Session: #" << _connection->remote_addr()  << std::endl;
-	sendMessageWithCode(MSG_CODE_RESULT_AUTHENTICATION_SUCCESS);
-}
 
 
 void PPClientSession::sendMessageWithCode(u8 code)
