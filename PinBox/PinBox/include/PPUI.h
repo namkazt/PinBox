@@ -55,8 +55,8 @@ public:
 
 	// TEXT
 	static void InputField(float x, float y, float w, float h, const char* defaultValue, const char* placeHolder);
-	static void LabelBox(float x, float y, float w, float h, const char* label, ppColor bgColor, ppColor txtColor, float scale);
-	static void LabelBoxLeft(float x, float y, float w, float h, const char* label, ppColor bgColor, ppColor txtColor, float scale);
+	static void LabelBox(float x, float y, float w, float h, const char* label, ppColor bgColor, ppColor txtColor, float scale = 0.5f);
+	static void LabelBoxLeft(float x, float y, float w, float h, const char* label, ppColor bgColor, ppColor txtColor, float scale = 0.5f);
 
 	// POPUP
 	static bool HasPopup();

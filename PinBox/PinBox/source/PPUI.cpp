@@ -499,7 +499,7 @@ bool PPUI::RepeatButton(float x, float y, float w, float h, const char* label, p
  * \param defaultValue 
  * \param placeHolder 
  */
-void PPUI::LabelBox(float x, float y, float w, float h, const char* label, ppColor bgColor, ppColor txtColor, float scale = 0.5f)
+void PPUI::LabelBox(float x, float y, float w, float h, const char* label, ppColor bgColor, ppColor txtColor, float scale)
 {
 	PPGraphics::Get()->DrawRectangle(x, y, w, h, bgColor);
 	ppVector2 tSize = PPGraphics::Get()->GetTextSize(label, scale, scale);
@@ -514,7 +514,7 @@ void PPUI::LabelBox(float x, float y, float w, float h, const char* label, ppCol
 #endif
 }
 
-void PPUI::LabelBoxLeft(float x, float y, float w, float h, const char* label, ppColor bgColor, ppColor txtColor, float scale = 0.5f)
+void PPUI::LabelBoxLeft(float x, float y, float w, float h, const char* label, ppColor bgColor, ppColor txtColor, float scale)
 {
 	PPGraphics::Get()->DrawRectangle(x, y, w, h, bgColor);
 	ppVector2 tSize = PPGraphics::Get()->GetTextSize(label, scale, scale);
