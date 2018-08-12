@@ -8,10 +8,17 @@
 #include <stack>
 #include "PPDecoder.h"
 
-#define ENCODE_TYPE_WEBP 0x01
-#define ENCODE_TYPE_JPEG_TURBO 0x02
+#include "constant.h"
+
 
 typedef std::function<void(int code)> PPNotifyCallback;
+
+typedef struct
+{
+	u8		*buffer;
+	u32			size;
+} VideoFrame;
+
 
 class PPSessionManager
 {
@@ -37,9 +44,9 @@ public:
 	u32												mVideoFrame = 0;
 	bool											mReceivedFirstFrame = false;
 
-	Thread											g_thread = nullptr;
-	volatile bool									g_threadExit = false;
-	Mutex*											g_VideoFrameMutex;
+	Mutex*											_videoFrameMutex;
+	std::queue<VideoFrame*>							_videoQueue;
+
 	Mutex*											g_AudioFrameMutex;
 
 
@@ -71,6 +78,7 @@ public:
 	void UpdateVideoFrame();
 
 	int GetManagerState() const { return managerState; };
+	void SetManagerState(int v) { managerState = v; };
 	float GetFPS() const { return mCurrentFPS; }
 	float GetVideoFPS() const { return mVideoFPS; }
 

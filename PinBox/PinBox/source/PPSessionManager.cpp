@@ -2,30 +2,26 @@
 #include "PPGraphics.h"
 #include "ConfigManager.h"
 
-#define STATIC_FRAMES_POOL_SIZE 0x19000
+#define STATIC_FRAMES_POOL_SIZE 0x100000
 #define STATIC_FRAME_SIZE 0x60000
 
 PPSessionManager::PPSessionManager()
 {
-	g_VideoFrameMutex = new Mutex();
+	_videoFrameMutex = new Mutex();
 	g_AudioFrameMutex = new Mutex();
 }
 
-
 PPSessionManager::~PPSessionManager()
 {
-	delete g_VideoFrameMutex;
+	delete _videoFrameMutex;
 	delete g_AudioFrameMutex;
 }
-
-static u8* mStaticFrameBuffer = nullptr;
-static volatile bool mHaveNewFrame = false;
-
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
+// For current displaying video frame
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
-/// SCREEN STREAM
-///////////////////////////////////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////////////////////////////////
+static u8* g_currentFrameBuffer = nullptr;
+static u8* g_continuosBuffer = nullptr;
+static u32 g_continuosCursor = 0;
 
 void PPSessionManager::NewSession()
 {
@@ -48,22 +44,30 @@ void PPSessionManager::StopStreaming()
 
 void PPSessionManager::ProcessVideoFrame(u8* buffer, u32 size)
 {
-	g_VideoFrameMutex->Lock();
-	u8* rgbBuffer = _decoder->appendVideoBuffer(buffer, size);
-	if (rgbBuffer != nullptr)
-	{
-		// convert to correct format in 3DS
-		int i, j;
-		int nw3 = _decoder->iFrameWidth * 3;
-		for (i = 0; i < _decoder->iFrameHeight; i++) {
-			// i * 512 * 3
-			memcpy(mStaticFrameBuffer + (i * 1536), rgbBuffer + (i*nw3), nw3);
-		}
-		mHaveNewFrame = true;
-	}
-	g_VideoFrameMutex->Unlock();
+	//---------------------------------------------------------
+	// PROCESS WITH BUFFER
+	//---------------------------------------------------------
+	
+	//NOTE: there is some case that maybe override old data that not use yet
+	// reset pointer
+	if(g_continuosCursor + size >= STATIC_FRAMES_POOL_SIZE)
+		g_continuosCursor = 0;
 
+	// copy data to buffer
+	memcpy(g_continuosBuffer + g_continuosCursor, buffer, size);
+
+	VideoFrame* frame = new VideoFrame();
+	frame->buffer = g_continuosBuffer + g_continuosCursor;
+	frame->size = size;
+	g_continuosCursor += size;
+
+	_videoFrameMutex->Lock();
+	_videoQueue.push(frame);
+	_videoFrameMutex->Unlock();
+
+	//---------------------------------------------------------
 	// update frame video FPS
+	//---------------------------------------------------------
 	if (!mReceivedFirstFrame)
 	{
 		mReceivedFirstFrame = true;
@@ -84,6 +88,55 @@ void PPSessionManager::ProcessVideoFrame(u8* buffer, u32 size)
 	}
 }
 
+void PPSessionManager::UpdateVideoFrame()
+{
+	bool skipFrame = true;
+	int frameSkip = 2;
+
+	_videoFrameMutex->Lock();
+	if(!_videoQueue.empty())
+	{
+		VideoFrame* frame = nullptr;
+		int frameSkipped = 0;
+		//TODO: skip frame here
+		frame = _videoQueue.front();
+		_videoQueue.pop();
+
+		if(skipFrame)
+		{
+			while(!_videoQueue.empty())
+			{
+				frameSkipped++;
+				if (frameSkipped == frameSkip) break;;
+				delete frame;
+				frame = _videoQueue.front();
+				_videoQueue.pop();
+			}
+		}
+		_videoFrameMutex->Unlock();
+
+		printf("Decoding video frame: %d\n", frame->size);
+
+		u8* rgbBuffer = _decoder->appendVideoBuffer(frame->buffer, frame->size);
+		if (rgbBuffer != nullptr)
+		{
+			// convert to correct format in 3DS
+			int nw3 = _decoder->iFrameWidth * 3;
+			for (int i = 0; i < _decoder->iFrameHeight; i++) {
+				// i * 512 * 3
+				memcpy(g_currentFrameBuffer + (i * 1536), rgbBuffer + (i*nw3), nw3);
+			}
+#ifndef CONSOLE_DEBUG
+			PPGraphics::Get()->UpdateTopScreenSprite(g_currentFrameBuffer, 393216, 400, 240);
+#endif
+		}
+		delete frame;
+	}else
+	{
+		_videoFrameMutex->Unlock();
+	}
+}
+
 void PPSessionManager::ProcessAudioFrame(u8* buffer, u32 size)
 {
 	g_AudioFrameMutex->Lock();
@@ -98,25 +151,29 @@ void PPSessionManager::UpdateStreamSetting()
 
 void PPSessionManager::StartDecodeThread()
 {
-	mStaticFrameBuffer = (u8*)linearAlloc(STATIC_FRAME_SIZE);
+	_videoQueue = std::queue<VideoFrame*>();
+	g_continuosBuffer = (u8*)malloc(STATIC_FRAMES_POOL_SIZE);
+	g_continuosCursor = 0;
+	g_currentFrameBuffer = (u8*)linearAlloc(STATIC_FRAME_SIZE);
 	_decoder = new PPDecoder();
 	_decoder->initDecoder();
 }
 
 void PPSessionManager::ReleaseDecodeThead()
 {
-	if (mStaticFrameBuffer != nullptr) free(mStaticFrameBuffer);
+	while (!_videoQueue.empty())
+	{
+		VideoFrame* queueMsg = (VideoFrame*)_videoQueue.front();
+		_videoQueue.pop();
+		delete queueMsg;
+	}
+	std::queue<VideoFrame*>().swap(_videoQueue);
+	if (g_continuosBuffer != nullptr) free(g_continuosBuffer);
+	if (g_currentFrameBuffer != nullptr) free(g_currentFrameBuffer);
 	_decoder->releaseDecoder();
 }
 
-void PPSessionManager::UpdateVideoFrame()
-{
-	if (!mHaveNewFrame) return;
-	g_VideoFrameMutex->Lock();
-	PPGraphics::Get()->UpdateTopScreenSprite(mStaticFrameBuffer, 393216, 400, 240);
-	mHaveNewFrame = false;
-	g_VideoFrameMutex->Unlock();
-}
+
 
 void PPSessionManager::UpdateInputStream(u32 down, u32 up, short cx, short cy, short ctx, short cty)
 {

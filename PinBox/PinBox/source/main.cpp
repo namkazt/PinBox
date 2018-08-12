@@ -10,19 +10,13 @@
 #include <stdlib.h>
 #include <malloc.h>
 #include <arpa/inet.h>
-
 #include "ConfigManager.h"
 #include "PPGraphics.h"
 #include "PPSessionManager.h"
 
 #include "PPUI.h"
 #include "PPAudio.h"
-
-#define SOC_ALIGN       0x1000
-#define SOC_BUFFERSIZE  0x100000
-
-#define CONSOLE_DEBUG 1
-//#define USE_CITRA 1
+#include "constant.h"
 
 void initDbgConsole()
 {
@@ -86,7 +80,7 @@ int main()
 	acInit();
 	aptInit();
 	irrstInit();
-	APT_SetAppCpuTimeLimit(80);
+	//APT_SetAppCpuTimeLimit(80);
 	//---------------------------------------------
 	// Init Graphics
 	//---------------------------------------------
@@ -151,7 +145,7 @@ int main()
 	// wifiStatus = 2 : New 3DS internet
 	//---------------------------------------------
 	if (wifiStatus) {
-		if(wifiStatus == 1)
+		if(wifiStatus == 2)
 			osSetSpeedupEnable(true);
 
 		sm->NewSession();

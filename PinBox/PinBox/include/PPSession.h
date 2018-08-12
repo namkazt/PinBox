@@ -34,7 +34,6 @@
 #include "Mutex.h"
 #include "PPMessage.h"
 
-
 enum PPSession_Type { PPSESSION_NONE, PPSESSION_MOVIE, PPSESSION_SCREEN_CAPTURE, PPSESSION_INPUT_CAPTURE};
 
 #define MSG_COMMAND_SIZE 9

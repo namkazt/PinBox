@@ -2,26 +2,6 @@
 #include <cstdio>
 #include "ConfigManager.h"
 
-
-// LOG
-void PPLog::InitLog()
-{
-	mLogMutex = new Mutex();
-}
-
-void PPLog::Write(const char* log)
-{
-	mLogMutex->Lock();
-	if(mLogContainer.size() >= mLogMaxSize)
-	{
-		mLogContainer.erase(mLogContainer.begin());
-	}
-	mLogContainer.push_back(log);
-	mLogMutex->Unlock();
-}
-
-static PPLog* mLog;
-
 static u32 kDown;
 static u32 kHeld;
 static u32 kUp;

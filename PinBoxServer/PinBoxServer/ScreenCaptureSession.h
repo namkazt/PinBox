@@ -106,7 +106,7 @@ private:
 	PPClientSession*											m_clientSession = nullptr;
 
 	std::shared_ptr<SL::Screen_Capture::IScreenCaptureManager>	m_frameGrabber;
-	AudioStreamSession*											m_audioGrabber;
+	//AudioStreamSession*											m_audioGrabber;
 	bool														m_isStartStreaming = false;
 
 	u8															m_encodeType = ENCODE_TYPE_MPEG4;

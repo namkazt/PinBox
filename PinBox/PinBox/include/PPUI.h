@@ -10,19 +10,6 @@
 typedef std::function<int()> PopupCallback;
 typedef std::function<void(void* arg1, void* arg2)> ResultCallback;
 
-class PPLog
-{
-private:
-	const u32						mLogMaxSize = 100;
-	std::vector<std::string>		mLogContainer;
-	Mutex*							mLogMutex;
-	
-public:
-	void							InitLog();
-	void							Write(const char* log);
-};
-
-
 class PPUI
 {
 

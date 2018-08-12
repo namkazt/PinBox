@@ -3,6 +3,8 @@
 #include "PPSessionManager.h"
 #include "ConfigManager.h"
 
+#define ONE_MILLISECOND 1000000ULL
+#define ONE_MICROSECOND 1000ULL
 #define BUFFERSIZE 4096
 #define BUFFER_POOL_SIZE (BUFFERSIZE * 12)
 // static buffer to store socket data
@@ -48,7 +50,7 @@ void PPSession::InitSession(PPSessionManager* manager, const char* ip, const cha
 	_authenticated = false;
 	s32 priority = 0;
 	svcGetThreadPriority(&priority, CUR_THREAD_HANDLE);
-	_thread = threadCreate(createNew, static_cast<void*>(this), 4 * 1024, priority - 1, -2, false);
+	_thread = threadCreate(createNew, static_cast<void*>(this), 80 * 1024, priority - 3, -2, false);
 }
 
 void PPSession::CloseSession()
@@ -222,24 +224,26 @@ void PPSession::threadMain()
 {
 	if (_running) return;
 	_running = true;
-	u64 sleepDuration = 1000000ULL * 30;
+	u64 sleepDuration = ONE_MILLISECOND * 1;
 	// thread loop
 	while(!_kill)
 	{
-		switch (_connect_state) { 
-		case IDLE: 
+		if(_connect_state == IDLE)
+		{
 			connectToServer();
-			break;
-		case CONNECTING: 
-			// do notthing on connection state
-			break;
-		case CONNECTED: 
+		}
+		if (_connect_state == CONNECTED)
+		{
 			// check and recv data from server
 			recvSocketData();
 			// send queue message
 			sendMessageData();
-			break;
-		case FAIL: 
+		}
+
+		if (_connect_state == FAIL)
+		{
+			printf("Connection failed for some reason.\n");
+			gfxFlushBuffers();
 			_kill = true;
 			break;
 		}
@@ -377,6 +381,7 @@ void PPSession::SendMsgStartSession()
 	u8* msgBuffer = msg->BuildMessageEmpty();
 	AddMessageToQueue(msgBuffer, msg->GetMessageSize());
 	isSessionStarted = true;
+	_manager->SetManagerState(2);
 	delete msg;
 }
 

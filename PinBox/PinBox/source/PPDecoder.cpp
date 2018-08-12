@@ -22,6 +22,12 @@ void PPDecoder::initDecoder()
 	const AVCodec* videoCodec = avcodec_find_decoder(AV_CODEC_ID_MPEG4);
 	//pVideoParser = av_parser_init(videoCodec->id);
 	pVideoContext = avcodec_alloc_context3(videoCodec);
+	pVideoContext->bit_rate = 640000;
+	pVideoContext->width = 400;
+	pVideoContext->height = 240;
+	pVideoContext->gop_size = 13;
+	pVideoContext->max_b_frames = 1;
+	pVideoContext->pix_fmt = AV_PIX_FMT_YUV420P;
 	// Open
 	int ret = avcodec_open2(pVideoContext, videoCodec, NULL);
 	if (ret < 0)
@@ -181,7 +187,7 @@ void PPDecoder::convertColor()
 	size_t rgb_size = img_size * pixSize;
 	s16 transfer_unit = 8;
 	s16 gap = (iFrameWidth - img_w) * transfer_unit * pixSize;
-
+	//TODO: try this with get frame buffer
 	res = Y2RU_SetReceiving(pRGBBuffer, rgb_size, img_w * transfer_unit * pixSize, gap);
 	if (res != 0) 
 		printf("Error on Y2RU_SetReceiving\n");

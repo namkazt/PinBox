@@ -72,7 +72,7 @@ void ScreenCaptureSession::initScreenCapture(PPServer* parent)
 			totalSize = mLastFrameData->StrideWidth * mLastFrameData->Height;
 		}
 
-		encodeAudioFrame();
+		//encodeAudioFrame();
 
 		// encode video
 		encodeVideoFrame((u8*)img.Data);
@@ -84,9 +84,9 @@ void ScreenCaptureSession::initScreenCapture(PPServer* parent)
 
 	//-----------------------------------------------------
 	// decoder
-	m_audioGrabber = new AudioStreamSession();
-	m_audioGrabber->StartAudioStream();
-	m_audioGrabber->Pause();
+	//m_audioGrabber = new AudioStreamSession();
+	//m_audioGrabber->StartAudioStream();
+	//m_audioGrabber->Pause();
 
 	//-----------------------------------------------------
 	// decoder
@@ -128,38 +128,38 @@ void ScreenCaptureSession::encodeVideoFrame(u8* buf)
 
 void ScreenCaptureSession::encodeAudioFrame()
 {
-	m_audioGrabber->BeginReadAudioBuffer();
-	u32 size = m_audioGrabber->GetAudioBufferSize();
-	const u32 frameSize = pAudioContext->frame_size;
+	//m_audioGrabber->BeginReadAudioBuffer();
+	//u32 size = m_audioGrabber->GetAudioBufferSize();
+	//const u32 frameSize = pAudioContext->frame_size;
 
-	while (size >= frameSize * 4)
-	{
-		int ret = av_frame_make_writable(pAudioFrame);
-		if (ret < 0) ERROR_PRINT(ret);
-		memcpy(pAudioFrame->data[0], m_audioGrabber->GetAudioBuffer(), frameSize * 4);
+	//while (size >= frameSize * 4)
+	//{
+	//	int ret = av_frame_make_writable(pAudioFrame);
+	//	if (ret < 0) ERROR_PRINT(ret);
+	//	memcpy(pAudioFrame->data[0], m_audioGrabber->GetAudioBuffer(), frameSize * 4);
 
-		pAudioFrame->pts = iAudioPts;
-		iAudioPts += pAudioFrame->nb_samples;
-		
-		ret = avcodec_send_frame(pAudioContext, pAudioFrame);
-		while (ret >= 0)
-		{
-			ret = avcodec_receive_packet(pAudioContext, pAudioPacket);
-			if (ret == AVERROR(EAGAIN) || ret == AVERROR_EOF)
-				break;
-			if (ret < 0) break;
+	//	pAudioFrame->pts = iAudioPts;
+	//	iAudioPts += pAudioFrame->nb_samples;
+	//	
+	//	ret = avcodec_send_frame(pAudioContext, pAudioFrame);
+	//	while (ret >= 0)
+	//	{
+	//		ret = avcodec_receive_packet(pAudioContext, pAudioPacket);
+	//		if (ret == AVERROR(EAGAIN) || ret == AVERROR_EOF)
+	//			break;
+	//		if (ret < 0) break;
 
-			//TODO: do something with packet data
-			if (m_clientSession != nullptr) m_clientSession->PrepareAudioPacketAndSend(pAudioPacket->data, pAudioPacket->size, pAudioFrame->pts);
-			//fwrite(pAudioPacket->data, 1, pAudioPacket->size, testAudioOutFLAC);
+	//		//TODO: do something with packet data
+	//		if (m_clientSession != nullptr) m_clientSession->PrepareAudioPacketAndSend(pAudioPacket->data, pAudioPacket->size, pAudioFrame->pts);
+	//		//fwrite(pAudioPacket->data, 1, pAudioPacket->size, testAudioOutFLAC);
 
-			av_packet_unref(pAudioPacket);
-		}
-		m_audioGrabber->Cutoff(frameSize * 4, frameSize);
-		size = m_audioGrabber->GetAudioBufferSize();
-	}
+	//		av_packet_unref(pAudioPacket);
+	//	}
+	//	m_audioGrabber->Cutoff(frameSize * 4, frameSize);
+	//	size = m_audioGrabber->GetAudioBufferSize();
+	//}
 
-	m_audioGrabber->FinishReadAudioBuffer();
+	//m_audioGrabber->FinishReadAudioBuffer();
 }
 
 void ScreenCaptureSession::initEncoder()
@@ -172,13 +172,13 @@ void ScreenCaptureSession::initEncoder()
 	const AVCodec* videoCodec = avcodec_find_encoder(AV_CODEC_ID_MPEG4);
 	pVideoContext = avcodec_alloc_context3(videoCodec);
 	// TODO: update by config here
-	pVideoContext->bit_rate = 960000;
+	pVideoContext->bit_rate = 640000;
 	pVideoContext->width = 400;
 	pVideoContext->height = 240;
 	pVideoContext->time_base = AVRational { 1, mFrameRate };
 	pVideoContext->framerate = AVRational { mFrameRate, 1 };
-	pVideoContext->gop_size = 20;
-	pVideoContext->max_b_frames = 2;
+	pVideoContext->gop_size = 15;
+	pVideoContext->max_b_frames = 4;
 	//pVideoContext->block_align = 4;
 	pVideoContext->pix_fmt = AV_PIX_FMT_YUV420P;
 	// Open
@@ -238,7 +238,7 @@ void ScreenCaptureSession::startStream()
 	m_isStartStreaming = true;
 	iVideoFrameIndex = 0;
 	m_frameGrabber->resume();
-	m_audioGrabber->Resume();
+	//m_audioGrabber->Resume();
 }
 
 void ScreenCaptureSession::stopStream()
@@ -246,7 +246,7 @@ void ScreenCaptureSession::stopStream()
 	if (!m_isStartStreaming) return;
 	m_isStartStreaming = false;
 	m_frameGrabber->pause();
-	m_audioGrabber->Pause();
+	//m_audioGrabber->Pause();
 }
 
 void ScreenCaptureSession::registerClientSession(PPClientSession* sesison)

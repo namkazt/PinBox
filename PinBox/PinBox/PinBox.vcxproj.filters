@@ -88,5 +88,8 @@
     <ClInclude Include="include\PPAudio.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="include\constant.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>
