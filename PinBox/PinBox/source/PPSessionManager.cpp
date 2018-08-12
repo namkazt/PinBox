@@ -23,6 +23,13 @@ static u8* g_currentFrameBuffer = nullptr;
 static u8* g_continuosBuffer = nullptr;
 static u32 g_continuosCursor = 0;
 
+// Frameskip config
+static volatile bool g_autoSkipFrame = true;
+static volatile int g_frameSkip = 1;
+static volatile int g_currentFrame = 0;
+static volatile int g_frameRate = 30;
+static volatile int g_frameSkipAtStep = static_cast<int>(g_frameRate / g_frameSkip); // should be calculated
+
 void PPSessionManager::NewSession()
 {
 	_session = new PPSession();
@@ -90,9 +97,6 @@ void PPSessionManager::ProcessVideoFrame(u8* buffer, u32 size)
 
 void PPSessionManager::UpdateVideoFrame()
 {
-	bool skipFrame = true;
-	int frameSkip = 2;
-
 	_videoFrameMutex->Lock();
 	if(!_videoQueue.empty())
 	{
@@ -102,20 +106,17 @@ void PPSessionManager::UpdateVideoFrame()
 		frame = _videoQueue.front();
 		_videoQueue.pop();
 
-		if(skipFrame)
+		g_currentFrame++;
+		if (g_autoSkipFrame && g_currentFrame % g_frameSkipAtStep == 0)
 		{
-			while(!_videoQueue.empty())
-			{
-				frameSkipped++;
-				if (frameSkipped == frameSkip) break;;
-				delete frame;
-				frame = _videoQueue.front();
-				_videoQueue.pop();
-			}
+			delete frame;
+			_videoFrameMutex->Unlock();
+			if (g_currentFrame == g_frameRate) g_currentFrame = 0;
+			return;
 		}
 		_videoFrameMutex->Unlock();
+		if (g_currentFrame == g_frameRate) g_currentFrame = 0;
 
-		printf("Decoding video frame: %d\n", frame->size);
 
 		u8* rgbBuffer = _decoder->appendVideoBuffer(frame->buffer, frame->size);
 		if (rgbBuffer != nullptr)
@@ -130,11 +131,9 @@ void PPSessionManager::UpdateVideoFrame()
 			PPGraphics::Get()->UpdateTopScreenSprite(g_currentFrameBuffer, 393216, 400, 240);
 #endif
 		}
+
 		delete frame;
-	}else
-	{
-		_videoFrameMutex->Unlock();
-	}
+	} else _videoFrameMutex->Unlock();
 }
 
 void PPSessionManager::ProcessAudioFrame(u8* buffer, u32 size)

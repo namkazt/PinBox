@@ -2,6 +2,7 @@
 #ifndef _PP_UI_H_
 #define _PP_UI_H_
 #include <3ds.h>
+#include <citro3d.h>
 #include "PPGraphics.h"
 #include "PPSessionManager.h"
 
@@ -37,6 +38,7 @@ public:
 	static int DrawIdleBottomScreen(PPSessionManager *sessionManager);
 
 	static void DrawFPS(PPSessionManager *sessionManager);
+	static void ProfileLoad(PPSessionManager *sessionManager);
 
 	// SLIDE
 	static float Slide(float x, float y, float w, float h, float val, float min, float max, const char* label);
@@ -53,8 +55,8 @@ public:
 
 	// TEXT
 	static void InputField(float x, float y, float w, float h, const char* defaultValue, const char* placeHolder);
-	static void LabelBox(float x, float y, float w, float h, const char* label, ppColor bgColor, ppColor txtColor);
-	static void LabelBoxLeft(float x, float y, float w, float h, const char* label, ppColor bgColor, ppColor txtColor);
+	static void LabelBox(float x, float y, float w, float h, const char* label, ppColor bgColor, ppColor txtColor, float scale);
+	static void LabelBoxLeft(float x, float y, float w, float h, const char* label, ppColor bgColor, ppColor txtColor, float scale);
 
 	// POPUP
 	static bool HasPopup();

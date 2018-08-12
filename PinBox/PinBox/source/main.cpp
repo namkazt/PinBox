@@ -145,8 +145,7 @@ int main()
 	// wifiStatus = 2 : New 3DS internet
 	//---------------------------------------------
 	if (wifiStatus) {
-		if(wifiStatus == 2)
-			osSetSpeedupEnable(true);
+		osSetSpeedupEnable(1);
 
 		sm->NewSession();
 		sm->StartFPSCounter();

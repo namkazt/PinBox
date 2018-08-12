@@ -22,12 +22,12 @@ void PPDecoder::initDecoder()
 	const AVCodec* videoCodec = avcodec_find_decoder(AV_CODEC_ID_MPEG4);
 	//pVideoParser = av_parser_init(videoCodec->id);
 	pVideoContext = avcodec_alloc_context3(videoCodec);
-	pVideoContext->bit_rate = 640000;
 	pVideoContext->width = 400;
 	pVideoContext->height = 240;
 	pVideoContext->gop_size = 13;
-	pVideoContext->max_b_frames = 1;
 	pVideoContext->pix_fmt = AV_PIX_FMT_YUV420P;
+	pVideoContext->thread_count = 4;
+	pVideoContext->thread_type = FF_THREAD_FRAME;
 	// Open
 	int ret = avcodec_open2(pVideoContext, videoCodec, NULL);
 	if (ret < 0)

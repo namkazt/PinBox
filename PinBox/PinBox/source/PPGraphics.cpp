@@ -2,6 +2,16 @@
 #include "vshader_shbin.h"
 #include <cstdio>
 #include <cstdlib>
+#include <3ds/gpu/enums.h>
+#include <3ds/gfx.h>
+#include <c3d/base.h>
+#include <c3d/renderqueue.h>
+#include <3ds/gpu/gx.h>
+#include <3ds/allocator/linear.h>
+#include <3ds/gpu/shaderProgram.h>
+#include <citro3d.h>
+#include <3ds/font.h>
+#include <3ds/util/utf.h>
 
 //---------------------------------------------------------------------
 // Graphics Instance
@@ -169,9 +179,7 @@ void PPGraphics::UpdateTopScreenSprite(u8* data, u32 size, u32 width, u32 height
 	if(mTopScreenSprite->initialized)
 	{
 		GSPGPU_FlushDataCache(data, size);
-		u32 dim = GX_BUFFER_DIM(width, height);
-		C3D_SafeDisplayTransfer((u32*)data, dim, (u32*)mTopScreenSprite->spriteTexture.data, GX_BUFFER_DIM(512, 256), TEXTURE_TRANSFER_FLAGS);
-		gspWaitForPPF();
+		C3D_SyncDisplayTransfer((u32*)data, GX_BUFFER_DIM(width, height), (u32*)mTopScreenSprite->spriteTexture.data, GX_BUFFER_DIM(512, 256), TEXTURE_TRANSFER_FLAGS);
 	}
 
 }
@@ -181,21 +189,26 @@ void PPGraphics::DrawTopScreenSprite()
 	if (!mTopScreenSprite->initialized) {
 		return;
 	}
-	
-	ppVertexPosTex *vertices = (ppVertexPosTex*)allocMemoryPoolAligned(sizeof(ppVertexPosTex) * 4, 8);
+
 	float x = 0, y = 0, w = mTopScreenSprite->width, h = mTopScreenSprite->height;
-	// set position
-	vertices[0].position = (ppVector3) { x, y, 0.5f };
-	vertices[1].position = (ppVector3) { x + w, y, 0.5f };
-	vertices[2].position = (ppVector3) { x, y + h, 0.5f };
-	vertices[3].position = (ppVector3) { x + w, y + h, 0.5f };
 	float u = w / 512.0f;
 	float v = h / 256.0f;
-	// set uv
+
+	ppVertexPosTex *vertices = (ppVertexPosTex*)allocMemoryPoolAligned(sizeof(ppVertexPosTex) * 4, 8);
+	
+	// set position
+	vertices[0].position = (ppVector3) { x, y, 0.5f };
 	vertices[0].textcoord = (ppVector2) { 0.0f, 0.0f };
+
+	vertices[1].position = (ppVector3) { x + w, y, 0.5f };
 	vertices[1].textcoord = (ppVector2) { u, 0.0f };
+
+	vertices[2].position = (ppVector3) { x, y + h, 0.5f };
 	vertices[2].textcoord = (ppVector2) { 0.0f, v };
+
+	vertices[3].position = (ppVector3) { x + w, y + h, 0.5f };
 	vertices[3].textcoord = (ppVector2) { u, v };
+	
 	// setup env
 	C3D_TexBind(getTextUnit(GPU_TEXUNIT0), &mTopScreenSprite->spriteTexture);
 	C3D_TexEnv* env = C3D_GetTexEnv(0);

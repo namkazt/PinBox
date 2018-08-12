@@ -299,6 +299,7 @@ int PPUI::DrawBottomScreenUI(PPSessionManager* sessionManager)
 	}
 
 
+	ProfileLoad(sessionManager);
 	DrawFPS(sessionManager);
 
 	return 0;
@@ -341,6 +342,7 @@ int PPUI::DrawIdleBottomScreen(PPSessionManager* sessionManager)
 	// label
 	LabelBox(0, 0, 320, 240, "Touch screen to wake up", rgb(0, 0, 0), rgb(125, 125, 125));
 
+	ProfileLoad(sessionManager);
 	DrawFPS(sessionManager);
 
 	return 0;
@@ -349,11 +351,16 @@ int PPUI::DrawIdleBottomScreen(PPSessionManager* sessionManager)
 void PPUI::DrawFPS(PPSessionManager* sessionManager)
 {
 	// render video FPS
-	const float fps = sessionManager->GetFPS();
-	const float videoFps = sessionManager->GetVideoFPS();
 	char videoFpsBuffer[100];
-	snprintf(videoFpsBuffer, sizeof videoFpsBuffer, "FPS: %.1f/%.1f", fps, videoFps);
-	LabelBoxLeft(5, 220, 100, 20, videoFpsBuffer, ppColor{ 0, 0, 0, 0 }, rgb(150, 150, 150));
+	snprintf(videoFpsBuffer, sizeof videoFpsBuffer, "FPS:%.1f|VPS:%.1f", sessionManager->GetFPS(), sessionManager->GetVideoFPS());
+	LabelBoxLeft(5, 220, 100, 20, videoFpsBuffer, ppColor{ 0, 0, 0, 0 }, rgb(150, 150, 150), 0.4f);
+}
+
+void PPUI::ProfileLoad(PPSessionManager* sessionManager)
+{
+	char videoFpsBuffer[100];
+	snprintf(videoFpsBuffer, sizeof videoFpsBuffer, "CPU:%.1f|GPU:%.1f|CmdBuf:%.1f", C3D_GetProcessingTime()*6.0f, C3D_GetDrawingTime()*6.0f, C3D_GetCmdBufUsage()*100.0f);
+	LabelBoxLeft(5, 200, 100, 20, videoFpsBuffer, ppColor{ 0, 0, 0, 0 }, rgb(150, 150, 150), 0.4f);
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -492,32 +499,32 @@ bool PPUI::RepeatButton(float x, float y, float w, float h, const char* label, p
  * \param defaultValue 
  * \param placeHolder 
  */
-void PPUI::LabelBox(float x, float y, float w, float h, const char* label, ppColor bgColor, ppColor txtColor)
+void PPUI::LabelBox(float x, float y, float w, float h, const char* label, ppColor bgColor, ppColor txtColor, float scale = 0.5f)
 {
 	PPGraphics::Get()->DrawRectangle(x, y, w, h, bgColor);
-	ppVector2 tSize = PPGraphics::Get()->GetTextSize(label, 0.5f, 0.5f);
+	ppVector2 tSize = PPGraphics::Get()->GetTextSize(label, scale, scale);
 	float startX = (w - tSize.x) / 2.0f;
 	float startY = (h - tSize.y) / 2.0f;
-	PPGraphics::Get()->DrawText(label, x + startX, y + startY, 0.5f, 0.5f, txtColor, false);
+	PPGraphics::Get()->DrawText(label, x + startX, y + startY, scale, scale, txtColor, false);
 
 #ifdef UI_DEBUG
 	char buffer[100];
 	snprintf(buffer, sizeof buffer, "%f  %f", tSize.x, tSize.y);
-	PPGraphics::Get()->DrawText(buffer, x , y - 10, 0.3f, 0.3f, txtColor, false);
+	PPGraphics::Get()->DrawText(buffer, x , y - 10, 0.8f * scale, 0.8f * scale, txtColor, false);
 #endif
 }
 
-void PPUI::LabelBoxLeft(float x, float y, float w, float h, const char* label, ppColor bgColor, ppColor txtColor)
+void PPUI::LabelBoxLeft(float x, float y, float w, float h, const char* label, ppColor bgColor, ppColor txtColor, float scale = 0.5f)
 {
 	PPGraphics::Get()->DrawRectangle(x, y, w, h, bgColor);
-	ppVector2 tSize = PPGraphics::Get()->GetTextSize(label, 0.5f, 0.5f);
+	ppVector2 tSize = PPGraphics::Get()->GetTextSize(label, scale, scale);
 	float startY = (h - tSize.y) / 2.0f;
-	PPGraphics::Get()->DrawText(label, x, y + startY, 0.5f, 0.5f, txtColor, false);
+	PPGraphics::Get()->DrawText(label, x, y + startY, scale, scale, txtColor, false);
 
 #ifdef UI_DEBUG
 	char buffer[100];
 	snprintf(buffer, sizeof buffer, "%f  %f", tSize.x, tSize.y);
-	PPGraphics::Get()->DrawText(buffer, x, y - 10, 0.3f, 0.3f, txtColor, false);
+	PPGraphics::Get()->DrawText(buffer, x, y - 10, 0.8f * scale, 0.8f * scale, txtColor, false);
 #endif
 }
 
