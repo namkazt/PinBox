@@ -25,9 +25,9 @@ static u32 g_continuosCursor = 0;
 
 // Frameskip config
 static volatile bool g_autoSkipFrame = true;
-static volatile int g_frameSkip = 1;
+static volatile int g_frameSkip = 4;
 static volatile int g_currentFrame = 0;
-static volatile int g_frameRate = 30;
+static volatile int g_frameRate = 60;
 static volatile int g_frameSkipAtStep = static_cast<int>(g_frameRate / g_frameSkip); // should be calculated
 
 void PPSessionManager::NewSession()
@@ -122,13 +122,13 @@ void PPSessionManager::UpdateVideoFrame()
 		if (rgbBuffer != nullptr)
 		{
 			// convert to correct format in 3DS
-			int nw3 = _decoder->iFrameWidth * 3;
-			for (int i = 0; i < _decoder->iFrameHeight; i++) {
-				// i * 512 * 3
-				memcpy(g_currentFrameBuffer + (i * 1536), rgbBuffer + (i*nw3), nw3);
-			}
-#ifndef CONSOLE_DEBUG
-			PPGraphics::Get()->UpdateTopScreenSprite(g_currentFrameBuffer, 393216, 400, 240);
+			//int nw3 = _decoder->iFrameWidth * 3;
+			//for (int i = 0; i < _decoder->iFrameHeight; i++) {
+			//	// i * 512 * 3
+			//	memcpy(g_currentFrameBuffer + (i * 1536), rgbBuffer + (i*nw3), nw3);
+			//}
+#ifndef CONSOLE_DEBUG 
+			PPGraphics::Get()->UpdateTopScreenSprite(rgbBuffer, 393216, 400, 240);
 #endif
 		}
 

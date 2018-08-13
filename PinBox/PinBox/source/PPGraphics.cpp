@@ -36,11 +36,11 @@ void PPGraphics::GraphicsInit()
 	// Setup render target
 	//---------------------------------------------------------------------
 	mRenderTargetTop = C3D_RenderTargetCreate(240, 400, GPU_RB_RGBA8, GPU_RB_DEPTH24_STENCIL8);
-	C3D_RenderTargetSetClear(mRenderTargetTop, C3D_CLEAR_ALL, CLEAR_COLOR, 0);
+	C3D_RenderTargetClear(mRenderTargetTop, C3D_CLEAR_ALL, CLEAR_COLOR, 0);
 	C3D_RenderTargetSetOutput(mRenderTargetTop, GFX_TOP, GFX_LEFT, DISPLAY_TRANSFER_FLAGS);
 	
 	mRenderTargetBtm = C3D_RenderTargetCreate(240, 320, GPU_RB_RGBA8, GPU_RB_DEPTH24_STENCIL8);
-	C3D_RenderTargetSetClear(mRenderTargetBtm, C3D_CLEAR_ALL, CLEAR_COLOR, 0);
+	C3D_RenderTargetClear(mRenderTargetBtm, C3D_CLEAR_ALL, CLEAR_COLOR, 0);
 	C3D_RenderTargetSetOutput(mRenderTargetBtm, GFX_BOTTOM, GFX_LEFT, DISPLAY_TRANSFER_FLAGS);
 
 	//---------------------------------------------------------------------
@@ -75,7 +75,7 @@ void PPGraphics::GraphicsInit()
 	// Init top screen sprite
 	//---------------------------------------------------------------------
 	mTopScreenSprite->initialized = true;
-	C3D_TexInitVRAM(&mTopScreenSprite->spriteTexture, 512, 256, GPU_RGB8);
+	C3D_TexInit(&mTopScreenSprite->spriteTexture, 512, 256, GPU_RGB8);
 	C3D_TexSetFilter(&mTopScreenSprite->spriteTexture, GPU_LINEAR, GPU_NEAREST);
 	C3D_TexSetWrap(&mTopScreenSprite->spriteTexture, GPU_CLAMP_TO_BORDER, GPU_CLAMP_TO_BORDER);
 	//---------------------------------------------------------------------
@@ -179,7 +179,7 @@ void PPGraphics::UpdateTopScreenSprite(u8* data, u32 size, u32 width, u32 height
 	if(mTopScreenSprite->initialized)
 	{
 		GSPGPU_FlushDataCache(data, size);
-		C3D_SyncDisplayTransfer((u32*)data, GX_BUFFER_DIM(width, height), (u32*)mTopScreenSprite->spriteTexture.data, GX_BUFFER_DIM(512, 256), TEXTURE_TRANSFER_FLAGS);
+		memcpy(mTopScreenSprite->spriteTexture.data, data, size);
 	}
 
 }
@@ -191,8 +191,9 @@ void PPGraphics::DrawTopScreenSprite()
 	}
 
 	float x = 0, y = 0, w = mTopScreenSprite->width, h = mTopScreenSprite->height;
-	float u = w / 512.0f;
-	float v = h / 256.0f;
+	float ow = 512.0f, oh = 256.0f;
+	float u = 1;
+	float v = 1;
 
 	ppVertexPosTex *vertices = (ppVertexPosTex*)allocMemoryPoolAligned(sizeof(ppVertexPosTex) * 4, 8);
 	
@@ -200,13 +201,13 @@ void PPGraphics::DrawTopScreenSprite()
 	vertices[0].position = (ppVector3) { x, y, 0.5f };
 	vertices[0].textcoord = (ppVector2) { 0.0f, 0.0f };
 
-	vertices[1].position = (ppVector3) { x + w, y, 0.5f };
+	vertices[1].position = (ppVector3) { x + ow, y, 0.5f };
 	vertices[1].textcoord = (ppVector2) { u, 0.0f };
 
-	vertices[2].position = (ppVector3) { x, y + h, 0.5f };
+	vertices[2].position = (ppVector3) { x, y + oh, 0.5f };
 	vertices[2].textcoord = (ppVector2) { 0.0f, v };
 
-	vertices[3].position = (ppVector3) { x + w, y + h, 0.5f };
+	vertices[3].position = (ppVector3) { x + ow, y + oh, 0.5f };
 	vertices[3].textcoord = (ppVector2) { u, v };
 	
 	// setup env

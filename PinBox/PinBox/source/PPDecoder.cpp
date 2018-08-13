@@ -112,13 +112,13 @@ void PPDecoder::initY2RImageConverter()
 	pDecodeState->y2rParams.input_format = INPUT_YUV420_INDIV_8;
 	pDecodeState->y2rParams.output_format = OUTPUT_RGB_24;
 	pDecodeState->y2rParams.rotation = ROTATION_NONE;
-	pDecodeState->y2rParams.block_alignment = BLOCK_LINE;
-	//pDecodeState->y2rParams.block_alignment = BLOCK_8_BY_8;
+	//pDecodeState->y2rParams.block_alignment = BLOCK_LINE;
+	pDecodeState->y2rParams.block_alignment = BLOCK_8_BY_8;
 	pDecodeState->y2rParams.input_line_width = 400;
 	pDecodeState->y2rParams.input_lines = 240;
-	/*if (pDecodeState->y2rParams.input_lines % 8) {
+	if (pDecodeState->y2rParams.input_lines % 8) {
 		pDecodeState->y2rParams.input_lines += 8 - (pDecodeState->y2rParams.input_lines % 8);
-	}*/
+	}
 	pDecodeState->y2rParams.standard_coefficient = COEFFICIENT_ITU_R_BT_601;
 	pDecodeState->y2rParams.unused = 0;
 	pDecodeState->y2rParams.alpha = 0xFF;
@@ -184,9 +184,9 @@ void PPDecoder::convertColor()
 		printf("Error on Y2RU_SetSendingV\n");
 
 	const u16 pixSize = 3;
-	size_t rgb_size = img_size * pixSize;
+	size_t rgb_size = (512*256) * pixSize;
 	s16 transfer_unit = 8;
-	s16 gap = (iFrameWidth - img_w) * transfer_unit * pixSize;
+	s16 gap = (512 - img_w) * transfer_unit * pixSize;
 	//TODO: try this with get frame buffer
 	res = Y2RU_SetReceiving(pRGBBuffer, rgb_size, img_w * transfer_unit * pixSize, gap);
 	if (res != 0) 
@@ -213,7 +213,7 @@ u8* PPDecoder::decodeVideoStream()
 	//----------------------------------------------
 	iFrameWidth = pVideoFrame->width;
 	iFrameHeight =pVideoFrame->height;
-	if (pRGBBuffer == nullptr) pRGBBuffer = (u8*)linearMemAlign(3 * iFrameWidth * iFrameHeight, 0x8);
+	if (pRGBBuffer == nullptr) pRGBBuffer = (u8*)linearMemAlign(3 * 512 * 256, 0x80);
 	convertColor();
 
 	av_packet_unref(pVideoPacket);

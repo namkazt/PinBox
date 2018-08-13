@@ -28,50 +28,6 @@ void initDbgConsole()
 
 static u32 *SOC_buffer = NULL;
 
-void _ded()
-{
-	gfxSetScreenFormat(GFX_TOP, GSP_RGB565_OES);
-	gfxSetDoubleBuffering(GFX_TOP, false);
-	gfxSwapBuffers();
-	gfxSwapBuffers();
-	gfxFlushBuffers();
-
-	puts("\e[0m\n\n- The application has crashed\n\n");
-
-	try
-	{
-		throw;
-	}
-	catch (std::exception &e)
-	{
-		printf("std::exception: %s\n", e.what());
-	}
-	catch (Result res)
-	{
-		printf("Result: %08X\n", res);
-		//NNERR(res);
-	}
-	catch (int e)
-	{
-		printf("(int) %i\n", e);
-	}
-	catch (...)
-	{
-		puts("<unknown exception>");
-	}
-
-	puts("\nPress a key to exit...");
-	while (aptMainLoop())
-	{
-		hidScanInput();
-		if (hidKeysDown())
-		{
-			break;
-		}
-		gspWaitForVBlank();
-	}
-}
-
 int main()
 {
 	//---------------------------------------------
@@ -87,9 +43,6 @@ int main()
 	PPGraphics::Get()->GraphicsInit();
 	PPAudio::Get()->AudioInit();
 	initDbgConsole();
-
-	std::set_unexpected(_ded);
-	std::set_terminate(_ded);
 
 	//---------------------------------------------
 	// Init SOCKET
