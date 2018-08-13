@@ -299,8 +299,7 @@ int PPUI::DrawBottomScreenUI(PPSessionManager* sessionManager)
 	}
 
 
-	ProfileLoad(sessionManager);
-	DrawFPS(sessionManager);
+	InfoBox(sessionManager);
 
 	return 0;
 }
@@ -341,26 +340,21 @@ int PPUI::DrawIdleBottomScreen(PPSessionManager* sessionManager)
 	// label
 	LabelBox(0, 0, 320, 240, "Touch screen to wake up", rgb(0, 0, 0), rgb(125, 125, 125));
 
-	ProfileLoad(sessionManager);
-	DrawFPS(sessionManager);
+	InfoBox(sessionManager);
 
 	return 0;
 }
 
-void PPUI::DrawFPS(PPSessionManager* sessionManager)
+void PPUI::InfoBox(PPSessionManager* sessionManager)
 {
 	// render video FPS
 	char videoFpsBuffer[100];
 	snprintf(videoFpsBuffer, sizeof videoFpsBuffer, "FPS:%.1f|VPS:%.1f", sessionManager->GetFPS(), sessionManager->GetVideoFPS());
 	LabelBoxLeft(5, 220, 100, 20, videoFpsBuffer, ppColor{ 0, 0, 0, 0 }, rgb(150, 150, 150), 0.4f);
+	snprintf(videoFpsBuffer, sizeof videoFpsBuffer, "CPU:%.1f|GPU:%.1f|CMD:%.1f", C3D_GetProcessingTime()*6.0f, C3D_GetDrawingTime()*6.0f, C3D_GetCmdBufUsage()*100.0f);
+	LabelBoxLeft(5, 210, 100, 20, videoFpsBuffer, ppColor{ 0, 0, 0, 0 }, rgb(150, 150, 150), 0.4f);
 }
 
-void PPUI::ProfileLoad(PPSessionManager* sessionManager)
-{
-	char videoFpsBuffer[100];
-	snprintf(videoFpsBuffer, sizeof videoFpsBuffer, "CPU:%.1f|GPU:%.1f|CMD:%.1f", C3D_GetProcessingTime()*6.0f, C3D_GetDrawingTime()*6.0f, C3D_GetCmdBufUsage()*100.0f);
-	LabelBoxLeft(5, 200, 100, 20, videoFpsBuffer, ppColor{ 0, 0, 0, 0 }, rgb(150, 150, 150), 0.4f);
-}
 
 ///////////////////////////////////////////////////////////////////////////
 // SLIDE

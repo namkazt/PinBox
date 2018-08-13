@@ -37,8 +37,7 @@ public:
 	static int DrawStreamConfigUI(PPSessionManager *sessionManager, ResultCallback cancel, ResultCallback ok);
 	static int DrawIdleBottomScreen(PPSessionManager *sessionManager);
 
-	static void DrawFPS(PPSessionManager *sessionManager);
-	static void ProfileLoad(PPSessionManager *sessionManager);
+	static void InfoBox(PPSessionManager *sessionManager);
 
 	// SLIDE
 	static float Slide(float x, float y, float w, float h, float val, float min, float max, const char* label);
