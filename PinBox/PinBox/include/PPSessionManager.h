@@ -45,8 +45,6 @@ public:
 	bool											mReceivedFirstFrame = false;
 
 	Mutex*											_videoFrameMutex;
-	std::queue<VideoFrame*>							_videoQueue;
-
 	Mutex*											g_AudioFrameMutex;
 
 
@@ -75,7 +73,6 @@ public:
 
 	void StartDecodeThread();
 	void ReleaseDecodeThead();
-	void UpdateVideoFrame();
 	void DrawVideoFrame();
 
 	int GetManagerState() const { return managerState; };
