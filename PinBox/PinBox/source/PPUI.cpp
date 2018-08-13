@@ -270,7 +270,7 @@ int PPUI::DrawBottomScreenUI(PPSessionManager* sessionManager)
 
 
 	// Config mode
-	if (FlatColorButton(10, 90, 120, 30, "> Stream Config", rgb(39, 174, 96), rgb(46, 204, 113), rgb(255, 255, 255)))
+	if (FlatColorButton(10, 90, 120, 30, "> Adv. Config", rgb(39, 174, 96), rgb(46, 204, 113), rgb(255, 255, 255)))
 	{
 		AddPopup([=]()
 		{
@@ -307,13 +307,15 @@ int PPUI::DrawBottomScreenUI(PPSessionManager* sessionManager)
 int PPUI::DrawStreamConfigUI(PPSessionManager* sessionManager, ResultCallback cancel, ResultCallback ok)
 {
 	PPGraphics::Get()->DrawRectangle(0, 0, 320, 240, rgb(236, 240, 241));
-	LabelBox(0, 0, 320, 30, "Stream Config", rgb(26, 188, 156), rgb(255, 255, 255));
+	LabelBox(0, 0, 320, 30, "Advance Config", rgb(26, 188, 156), rgb(255, 255, 255));
 
 
 	
 	ConfigManager::Get()->_cfg_video_quality = Slide(5, 40, 300, 30, ConfigManager::Get()->_cfg_video_quality, 10, 100, "Quality");
 	ConfigManager::Get()->_cfg_video_scale = Slide(5, 70, 300, 30, ConfigManager::Get()->_cfg_video_scale, 10, 100, "Scale");
 	ConfigManager::Get()->_cfg_skip_frame = Slide(5, 100, 300, 30, ConfigManager::Get()->_cfg_skip_frame, 0, 60, "Skip Frame");
+	ConfigManager::Get()->_cfg_wait_for_received = ToggleBox(5, 130, 300, 30, ConfigManager::Get()->_cfg_wait_for_received, "Wait Received");
+
 
 	// Cancel button
 	if (FlatColorButton(200, 200, 50, 30, "Cancel", rgb(192, 57, 43), rgb(231, 76, 60), rgb(255, 255, 255)))
@@ -409,9 +411,46 @@ float PPUI::Slide(float x, float y, float w, float h, float val, float min, floa
 ///////////////////////////////////////////////////////////////////////////
 // CHECKBOX
 ///////////////////////////////////////////////////////////////////////////
-bool PPUI::CheckBox(float x, float y, bool value, const char* label)
+bool PPUI::ToggleBox(float x, float y, float w, float h, bool value, const char* label)
 {
+	ppVector2 tSize = PPGraphics::Get()->GetTextSize(label, 0.5f, 0.5f);
+	float labelY = (h - tSize.y) / 2.0f;
+	float labelX = x + 5.f;
+	float boxSize = (w / 100.f * 35.f);
+	float marginX = w - boxSize;
+	float marginY = 2;
 
+	// draw label
+	PPGraphics::Get()->DrawText(label, x + labelX, y + labelY, 0.5f, 0.5f, rgb(26, 26, 26), false);
+
+	// draw bg
+	float startX = x + marginX;
+	float startY = y + marginY;
+	w = w - marginX;
+	h = h - 2 * marginY;
+	PPGraphics::Get()->DrawRectangle(startX, startY, w, h, PPGraphics::Get()->PrimaryDarkColor);
+
+	bool result = value;
+	if(value)
+	{
+		// on button
+		FlatColorButton(startX + 1, startY + 1, (boxSize / 2) - 2, h - 2, "On", rgb(236, 240, 241), rgb(189, 195, 199), rgb(44, 62, 80));
+		// off button
+		if (FlatColorButton(startX + 1 + (boxSize / 2), startY + 1, (boxSize / 2) - 2, h - 2, "Off", PPGraphics::Get()->PrimaryDarkColor, PPGraphics::Get()->PrimaryColor, rgb(236, 240, 241)))
+		{
+			result = false;
+		}
+	}else
+	{
+		// on button
+		if (FlatColorButton(startX + 1, startY + 1, (boxSize / 2) - 2, h - 2, "On", PPGraphics::Get()->PrimaryDarkColor, PPGraphics::Get()->PrimaryColor, rgb(236, 240, 241)))
+		{
+			result = true;
+		}
+		// off button
+		FlatColorButton(startX + 1 + (boxSize / 2), startY + 1, (boxSize / 2) - 2, h - 2, "Off", rgb(236, 240, 241), rgb(189, 195, 199), rgb(44, 62, 80));
+	}
+	return result;
 }
 
 ///////////////////////////////////////////////////////////////////////////

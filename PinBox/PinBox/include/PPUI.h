@@ -43,7 +43,7 @@ public:
 	static float Slide(float x, float y, float w, float h, float val, float min, float max, const char* label);
 	
 	// CHECKBOX
-	static bool CheckBox(float x, float y, bool value, const char* label);
+	static bool ToggleBox(float x, float y, float w, float h, bool value, const char* label);
 
 	// BUTTON
 	static bool FlatButton(float x, float y, float w, float h, const char* label);
