@@ -437,20 +437,9 @@ void PPSession::SendMsgResetSession()
 //-----------------------------------------------------
 // Input
 //-----------------------------------------------------
-void PPSession::SendMsgStartInput()
-{
-	if (isInputStarted) return;
-	PPMessage *msg = new PPMessage();
-	msg->BuildMessageHeader(MSG_CODE_REQUEST_START_INPUT_CAPTURE);
-	u8* msgBuffer = msg->BuildMessageEmpty();
-	AddMessageToQueue(msgBuffer, msg->GetMessageSize());
-	delete msg;
-	isInputStarted = true;
-}
-
 bool PPSession::SendMsgSendInputData(u32 down, u32 up, short cx, short cy, short ctx, short cty)
 {
-	if (!isInputStarted) return false;
+	if (!isSessionStarted) return;
 	PPMessage *msg = new PPMessage();
 	msg->BuildMessageHeader(MSG_CODE_SEND_INPUT_CAPTURE);
 	//-----------------------------------------------
@@ -471,15 +460,4 @@ bool PPSession::SendMsgSendInputData(u32 down, u32 up, short cx, short cy, short
 	AddMessageToQueue(msgBuffer, msg->GetMessageSize());
 	delete msg;
 	return true;
-}
-
-
-void PPSession::SendMsgStoptInput()
-{
-	if (!isInputStarted) return;
-	PPMessage *msg = new PPMessage();
-	msg->BuildMessageHeader(MSG_CODE_REQUEST_STOP_INPUT_CAPTURE);
-	u8* msgBuffer = msg->BuildMessageEmpty();
-	AddMessageToQueue(msgBuffer, msg->GetMessageSize());
-	delete msg;
 }

@@ -175,17 +175,12 @@ void PPClientSession::preprocessMessageCode(u8 code)
 	case MSG_CODE_REQUEST_CHANGE_SETTING_SCREEN_CAPTURE: 
 		break;
 
-
-	case MSG_CODE_REQUEST_START_INPUT_CAPTURE:
-		break;
-	case MSG_CODE_REQUEST_STOP_INPUT_CAPTURE:
-		break;
 	case MSG_CODE_SEND_INPUT_CAPTURE_IDLE:
 		break;
 	
 
 	default: 
-		std::cout << "Client " << _connection->remote_addr() << " send UNKNOW COMMAND" << std::endl;
+		std::cout << "Client " << _connection->remote_addr() << " send Header UNKNOW COMMAND" << std::endl;
 		break;
 	
 	}
@@ -241,7 +236,7 @@ void PPClientSession::processMessageBody(u8* buffer, u8 code)
 	}
 
 	default: 
-		std::cout << "Client " << _connection->remote_addr() << " send UNKNOW COMMAND" << std::endl << std::flush;
+		std::cout << "Client " << _connection->remote_addr() << " send Body UNKNOW COMMAND" << std::endl << std::flush;
 		break;
 	}
 

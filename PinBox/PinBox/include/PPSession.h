@@ -57,8 +57,6 @@ enum PPSession_Type { PPSESSION_NONE, PPSESSION_MOVIE, PPSESSION_SCREEN_CAPTURE,
 
 
 // input
-#define MSG_CODE_REQUEST_START_INPUT_CAPTURE 40
-#define MSG_CODE_REQUEST_STOP_INPUT_CAPTURE 41
 #define MSG_CODE_SEND_INPUT_CAPTURE 42
 #define MSG_CODE_SEND_INPUT_CAPTURE_IDLE 44
 
@@ -150,9 +148,7 @@ public:
 
 	void								SendMsgResetSession();
 
-	void								SendMsgStartInput();
 	bool								SendMsgSendInputData(u32 down, u32 up, short cx, short cy, short ctx, short cty);
-	void								SendMsgStoptInput();
 };
 
 #endif

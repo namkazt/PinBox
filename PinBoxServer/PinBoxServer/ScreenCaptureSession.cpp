@@ -172,13 +172,13 @@ void ScreenCaptureSession::initEncoder()
 	const AVCodec* videoCodec = avcodec_find_encoder(AV_CODEC_ID_MPEG4);
 	pVideoContext = avcodec_alloc_context3(videoCodec);
 	// TODO: update by config here
-	pVideoContext->bit_rate = 640000;
+	pVideoContext->bit_rate = 720000;
 	pVideoContext->width = 400;
 	pVideoContext->height = 240;
 	pVideoContext->time_base = AVRational { 1, mFrameRate };
 	pVideoContext->framerate = AVRational { mFrameRate, 1 };
-	pVideoContext->gop_size = 15;
-	pVideoContext->max_b_frames = 4;
+	pVideoContext->gop_size = 20;
+	pVideoContext->max_b_frames = 2;
 	//pVideoContext->block_align = 4;
 	pVideoContext->pix_fmt = AV_PIX_FMT_YUV420P;
 	// Open
