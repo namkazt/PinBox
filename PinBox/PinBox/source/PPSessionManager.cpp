@@ -136,6 +136,11 @@ void PPSessionManager::UpdateVideoFrame()
 	} else _videoFrameMutex->Unlock();
 }
 
+void PPSessionManager::DrawVideoFrame()
+{
+	PPGraphics::Get()->DrawTopScreenSprite();
+}
+
 void PPSessionManager::ProcessAudioFrame(u8* buffer, u32 size)
 {
 	g_AudioFrameMutex->Lock();

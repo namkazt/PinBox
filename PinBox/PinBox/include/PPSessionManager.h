@@ -76,6 +76,7 @@ public:
 	void StartDecodeThread();
 	void ReleaseDecodeThead();
 	void UpdateVideoFrame();
+	void DrawVideoFrame();
 
 	int GetManagerState() const { return managerState; };
 	void SetManagerState(int v) { managerState = v; };

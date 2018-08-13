@@ -2,13 +2,13 @@
 #include <cstdio>
 #include "ConfigManager.h"
 
-static u32 kDown;
-static u32 kHeld;
-static u32 kUp;
+volatile u32 kDown;
+volatile u32 kHeld;
+volatile u32 kUp;
 
-static u32 last_kDown;
-static u32 last_kHeld;
-static u32 last_kUp;
+volatile u32 last_kDown;
+volatile u32 last_kHeld;
+volatile u32 last_kUp;
 
 static circlePosition cPos;
 static circlePosition cStick;
@@ -16,7 +16,7 @@ static touchPosition kTouch;
 static touchPosition last_kTouch;
 static touchPosition first_kTouchDown;
 static touchPosition last_kTouchDown;
-static u64 holdTime = 0;
+volatile u64 holdTime = 0;
 
 static u32 sleepModeState = 0;
 
@@ -333,7 +333,6 @@ int PPUI::DrawStreamConfigUI(PPSessionManager* sessionManager, ResultCallback ca
 
 int PPUI::DrawIdleBottomScreen(PPSessionManager* sessionManager)
 {
-
 	// touch screen to wake up
 	if(TouchUpOnArea(0,0, 320, 240))
 	{
@@ -437,9 +436,8 @@ bool PPUI::FlatDarkButton(float x, float y, float w, float h, const char* label)
 
 bool PPUI::FlatColorButton(float x, float y, float w, float h, const char* label, ppColor colNormal, ppColor colActive, ppColor txtCol)
 {
-	bool isTouchDown = TouchDownOnArea(x, y, w, h);
 	float tScale = 0.5f;
-	if (isTouchDown)
+	if (TouchDownOnArea(x, y, w, h))
 	{
 		PPGraphics::Get()->DrawRectangle(x, y, w, h, colActive);
 		tScale = 0.6f;
@@ -449,9 +447,7 @@ bool PPUI::FlatColorButton(float x, float y, float w, float h, const char* label
 		PPGraphics::Get()->DrawRectangle(x, y, w, h, colNormal);
 	}
 	ppVector2 tSize = PPGraphics::Get()->GetTextSize(label, tScale, tScale);
-	float startX = (w - tSize.x) / 2.0f;
-	float startY = (h - tSize.y) / 2.0f;
-	PPGraphics::Get()->DrawText(label, x + startX, y + startY, tScale, tScale, txtCol, false);
+	PPGraphics::Get()->DrawText(label, x + (w - tSize.x) / 2.0f, y + (h - tSize.y) / 2.0f, tScale, tScale, txtCol, false);
 	return TouchUpOnArea(x, y, w, h);
 }
 
