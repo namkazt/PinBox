@@ -80,8 +80,8 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>false</LinkIncremental>
-    <IncludePath>$(ProjectDir)\..\..\ThirdParty\screen_capture_lite\include;$(ProjectDir)\..\..\ThirdParty\opus-1.2.1\include;$(ProjectDir)\..\..\ThirdParty\libopusenc\include;$(ProjectDir)\..\..\ThirdParty\FakeInput\src;$(ProjectDir)\..\..\ThirdParty\ViGEm\Include;$(IncludePath)</IncludePath>
-    <LibraryPath>$(ProjectDir)\..\..\ThirdParty\screen_capture_lite\vs\$(Configuration)\;$(ProjectDir)\..\..\ThirdParty\opus-1.2.1\win32\VS2015\Win32\$(Configuration)\;$(ProjectDir)\..\..\ThirdParty\libopusenc\win32\opusenc\$(Configuration)\;$(ProjectDir)\..\..\ThirdParty\FakeInput\bin\lib\$(Configuration)\;$(ProjectDir)\..\..\ThirdParty\ViGEm\Release (dynamic);$(LibraryPath)</LibraryPath>
+    <IncludePath>$(ProjectDir)\..\..\ThirdParty\screen_capture_lite\include;$(ProjectDir)\..\..\ThirdParty\opus-1.2.1\include;$(ProjectDir)\..\..\ThirdParty\libopusenc\include;$(ProjectDir)\..\..\ThirdParty\FakeInput\src;$(ProjectDir)\..\..\ThirdParty\ViGEm\Include;$(ProjectDir)\..\..\ThirdParty\ffmpeg\include;$(IncludePath)</IncludePath>
+    <LibraryPath>$(ProjectDir)\..\..\ThirdParty\screen_capture_lite\lib\$(Configuration)\;$(ProjectDir)\..\..\ThirdParty\opus-1.2.1\win32\VS2015\Win32\$(Configuration)\;$(ProjectDir)\..\..\ThirdParty\libopusenc\win32\opusenc\$(Configuration)\;$(ProjectDir)\..\..\ThirdParty\FakeInput\bin\lib\$(Configuration)\;$(ProjectDir)\..\..\ThirdParty\ViGEm\Release (dynamic);$(ProjectDir)\..\..\ThirdParty\ffmpeg\lib;$(LibraryPath)</LibraryPath>
     <EnableManagedIncrementalBuild>true</EnableManagedIncrementalBuild>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -133,7 +133,8 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>screen_capture_lite.lib;fakeInput.lib;opus.lib;opusenc.lib;winmm.lib;ViGEmClient.lib;Dwmapi.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>screen_capture_lite.lib;fakeInput.lib;opus.lib;opusenc.lib;winmm.lib;ViGEmClient.lib;Dwmapi.lib;avcodec.lib;avformat.lib;avutil.lib;avdevice.lib;avfilter.lib;swresample.lib;swscale.lib;postproc.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <ImageHasSafeExceptionHandlers>false</ImageHasSafeExceptionHandlers>
     </Link>
     <PostBuildEvent>
       <Command>
