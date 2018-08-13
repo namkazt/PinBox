@@ -45,10 +45,7 @@ void PPServer::InitServer()
 	// Screen capture session
 	//===========================================================================
 	ScreenCapturer = new ScreenCaptureSession();
-	ScreenCapturer->initScreenCapture(this);
-	//===========================================================================
-	// Screen capture session
-	//===========================================================================
+	ScreenCapturer->setParent(this);
 	InputStreamer = new InputStreamSession();
 	//===========================================================================
 	// Socket server part

@@ -106,7 +106,7 @@ private:
 	PPClientSession*											m_clientSession = nullptr;
 
 	std::shared_ptr<SL::Screen_Capture::IScreenCaptureManager>	m_frameGrabber;
-	//AudioStreamSession*											m_audioGrabber;
+	AudioStreamSession*											m_audioGrabber;
 	bool														m_isStartStreaming = false;
 
 	u8															m_encodeType = ENCODE_TYPE_MPEG4;
@@ -131,18 +131,14 @@ private:
 	AVPacket*													pAudioPacket;
 	AVFrame*													pAudioFrame;
 	int64_t														iAudioPts = 0;
-	static void													audioThread(void* context);
-	std::thread													pAudiothread;
 	void														encodeAudioFrame();
 
-	// custom IO
-	MemoryBuffer*												pVideoIOBuffer;
-	u8*															pTransferBuffer;
 
 	bool														mInitializedCodec = false;
 	u32															mLastSentFrame = 0;
 	volatile bool												mIsStopEncode = false;
 	void														initEncoder();
+	void														releaseEncoder();
 public:
 	ScreenCaptureSession();
 	~ScreenCaptureSession();
@@ -152,11 +148,12 @@ public:
 	bool										mIsFirstFrame = true;
 	FrameData*									mLastFrameData = nullptr;
 
+	void										setParent(PPServer* parent);
 
 	void										startStream();
 	void										stopStream();
 	void										registerClientSession(PPClientSession* sesison);
-	void										initScreenCapture(PPServer* parent);
+	void										initScreenCapture();
 
 	u32											currentFrame() const { return iVideoFrameIndex; }
 	bool										isStreaming() const { return m_isStartStreaming; }
