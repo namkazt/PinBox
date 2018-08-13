@@ -121,15 +121,7 @@ void PPSessionManager::UpdateVideoFrame()
 		u8* rgbBuffer = _decoder->appendVideoBuffer(frame->buffer, frame->size);
 		if (rgbBuffer != nullptr)
 		{
-			// convert to correct format in 3DS
-			//int nw3 = _decoder->iFrameWidth * 3;
-			//for (int i = 0; i < _decoder->iFrameHeight; i++) {
-			//	// i * 512 * 3
-			//	memcpy(g_currentFrameBuffer + (i * 1536), rgbBuffer + (i*nw3), nw3);
-			//}
-#ifndef CONSOLE_DEBUG 
 			PPGraphics::Get()->UpdateTopScreenSprite(rgbBuffer, 393216, 400, 240);
-#endif
 		}
 
 		delete frame;

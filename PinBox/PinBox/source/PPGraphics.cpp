@@ -199,16 +199,15 @@ void PPGraphics::DrawTopScreenSprite()
 	
 	// set position
 	vertices[0].position = (ppVector3) { x, y, 0.5f };
-	vertices[0].textcoord = (ppVector2) { 0.0f, 0.0f };
-
 	vertices[1].position = (ppVector3) { x + ow, y, 0.5f };
-	vertices[1].textcoord = (ppVector2) { u, 0.0f };
-
 	vertices[2].position = (ppVector3) { x, y + oh, 0.5f };
-	vertices[2].textcoord = (ppVector2) { 0.0f, v };
-
 	vertices[3].position = (ppVector3) { x + ow, y + oh, 0.5f };
-	vertices[3].textcoord = (ppVector2) { u, v };
+
+
+	vertices[0].textcoord = (ppVector2) { 0.0f, 1.0f };
+	vertices[1].textcoord = (ppVector2) { 1.0f, 1.0f};
+	vertices[2].textcoord = (ppVector2) { 0.0f, 0.0f };
+	vertices[3].textcoord = (ppVector2) { 1.0f, 0.0f};
 	
 	// setup env
 	C3D_TexBind(getTextUnit(GPU_TEXUNIT0), &mTopScreenSprite->spriteTexture);
