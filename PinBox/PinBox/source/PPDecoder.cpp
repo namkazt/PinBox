@@ -112,7 +112,6 @@ void PPDecoder::initY2RImageConverter()
 	pDecodeState->y2rParams.input_format = INPUT_YUV420_INDIV_8;
 	pDecodeState->y2rParams.output_format = OUTPUT_RGB_24;
 	pDecodeState->y2rParams.rotation = ROTATION_NONE;
-	//pDecodeState->y2rParams.block_alignment = BLOCK_LINE;
 	pDecodeState->y2rParams.block_alignment = BLOCK_8_BY_8;
 	pDecodeState->y2rParams.input_line_width = 400;
 	pDecodeState->y2rParams.input_lines = 240;

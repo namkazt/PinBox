@@ -30,7 +30,7 @@ PPSession::PPSession()
 
 PPSession::~PPSession()
 {
-	closeConnect();
+	CloseSession();
 	// free static buffer
 	free(g_receivedBuffer);
 	free(&_ip);
@@ -50,14 +50,40 @@ void PPSession::InitSession(PPSessionManager* manager, const char* ip, const cha
 	_authenticated = false;
 	s32 priority = 0;
 	svcGetThreadPriority(&priority, CUR_THREAD_HANDLE);
-	s32 t = priority + 2;
+	s32 t = priority - 2;
 	if (t < 0x19) t = 0x19;
-	_thread = threadCreate(createNew, static_cast<void*>(this), 128 * 1024, t, -2, false);
+	_thread = threadCreate(createNew, static_cast<void*>(this), 4 * 1024, t, -2, false);
 }
 
 void PPSession::CloseSession()
 {
+	if (!_running || _kill) return;
 	_kill = true;
+
+	// join thread
+	threadJoin(_thread, U64_MAX);
+	threadFree(_thread);
+
+	// clean up
+	_running = false;
+	g_receivedSize = 0;
+	g_waitForSize = 0;
+	g_msgTag = 0;
+	_authenticated = false;
+	if (_tmpMessage)
+	{
+		delete _tmpMessage;
+	}
+	// clear all message in queue
+	while (!_sendingMessages.empty())
+	{
+		QueueMessage* queueMsg = (QueueMessage*)_sendingMessages.front();
+		_sendingMessages.pop();
+		free(queueMsg->msgBuffer);
+		delete queueMsg;
+	}
+	std::queue<QueueMessage*>().swap(_sendingMessages);
+	delete _queueMessageMutex;
 }
 
 void PPSession::connectToServer()
@@ -102,7 +128,6 @@ void PPSession::connectToServer()
 
 void PPSession::closeConnect()
 {
-	if (!_running) return;
 	// set kill again to make sure it set
 	printf("closing session...\n");
 
@@ -117,28 +142,6 @@ void PPSession::closeConnect()
 	}
 	_sock = -1;
 	_connect_state = IDLE;
-	g_receivedSize = 0;
-	g_waitForSize = 0;
-	g_msgTag = 0;
-	_authenticated = false;
-	if(_tmpMessage)
-	{
-		delete _tmpMessage;
-	}
-	// clear all message in queue
-	while (!_sendingMessages.empty())
-	{
-		QueueMessage* queueMsg = (QueueMessage*)_sendingMessages.front();
-		_sendingMessages.pop();
-		free(queueMsg->msgBuffer);
-		delete queueMsg;
-	}
-	std::queue<QueueMessage*>().swap(_sendingMessages);
-	delete _queueMessageMutex;
-	// join thread
-	threadJoin(_thread, U64_MAX);
-	threadFree(_thread);
-	_running = false;
 }
 
 void PPSession::recvSocketData()
@@ -228,9 +231,9 @@ void PPSession::threadMain()
 	_running = true;
 	u64 sleepDuration = ONE_MILLISECOND * 2;
 	// thread loop
-	while(!_kill)
+	while (!_kill)
 	{
-		if(_connect_state == IDLE)
+		if (_connect_state == IDLE)
 		{
 			connectToServer();
 		}
@@ -252,8 +255,6 @@ void PPSession::threadMain()
 
 		svcSleepThread(sleepDuration);
 	}
-
-
 	closeConnect();
 }
 

@@ -358,7 +358,7 @@ void PPUI::DrawFPS(PPSessionManager* sessionManager)
 void PPUI::ProfileLoad(PPSessionManager* sessionManager)
 {
 	char videoFpsBuffer[100];
-	snprintf(videoFpsBuffer, sizeof videoFpsBuffer, "CPU:%.1f|GPU:%.1f|CmdBuf:%.1f", C3D_GetProcessingTime()*6.0f, C3D_GetDrawingTime()*6.0f, C3D_GetCmdBufUsage()*100.0f);
+	snprintf(videoFpsBuffer, sizeof videoFpsBuffer, "CPU:%.1f|GPU:%.1f|CMD:%.1f", C3D_GetProcessingTime()*6.0f, C3D_GetDrawingTime()*6.0f, C3D_GetCmdBufUsage()*100.0f);
 	LabelBoxLeft(5, 200, 100, 20, videoFpsBuffer, ppColor{ 0, 0, 0, 0 }, rgb(150, 150, 150), 0.4f);
 }
 

@@ -2,18 +2,13 @@
 #include "PPGraphics.h"
 #include "ConfigManager.h"
 
-#define STATIC_FRAMES_POOL_SIZE 0x100000
-#define STATIC_FRAME_SIZE 0x60000
-
 PPSessionManager::PPSessionManager()
 {
-	_videoFrameMutex = new Mutex();
 	g_AudioFrameMutex = new Mutex();
 }
 
 PPSessionManager::~PPSessionManager()
 {
-	delete _videoFrameMutex;
 	delete g_AudioFrameMutex;
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -30,13 +25,14 @@ void PPSessionManager::StartStreaming(const char* ip)
 {
 	if (!strcmp(ip, "")) return;
 	managerState = 1;
-	StartDecodeThread();
+	initDecoder();
 	_session->InitSession(this, ip, "1234");
 }
 
 void PPSessionManager::StopStreaming()
 {
 	_session->SendMsgStopSession();
+	releaseDecoder();
 }
 
 void PPSessionManager::ProcessVideoFrame(u8* buffer, u32 size)
@@ -84,17 +80,16 @@ void PPSessionManager::UpdateStreamSetting()
 	//_session->SendMsgChangeSetting();
 }
 
-void PPSessionManager::StartDecodeThread()
+void PPSessionManager::initDecoder()
 {
 	_decoder = new PPDecoder();
 	_decoder->initDecoder();
 }
 
-void PPSessionManager::ReleaseDecodeThead()
+void PPSessionManager::releaseDecoder()
 {
 	_decoder->releaseDecoder();
 }
-
 
 
 void PPSessionManager::UpdateInputStream(u32 down, u32 up, short cx, short cy, short ctx, short cty)

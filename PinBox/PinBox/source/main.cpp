@@ -36,7 +36,7 @@ int main()
 	acInit();
 	aptInit();
 	irrstInit();
-	//APT_SetAppCpuTimeLimit(80);
+	APT_SetAppCpuTimeLimit(80);
 	//---------------------------------------------
 	// Init Graphics
 	//---------------------------------------------

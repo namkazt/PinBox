@@ -175,7 +175,7 @@ void PPClientSession::preprocessMessageCode(u8 code)
 	case MSG_CODE_REQUEST_CHANGE_SETTING_SCREEN_CAPTURE: 
 		break;
 
-	case MSG_CODE_SEND_INPUT_CAPTURE_IDLE:
+	case MSG_CODE_SEND_INPUT_CAPTURE:
 		break;
 	
 

@@ -44,7 +44,6 @@ public:
 	u32												mVideoFrame = 0;
 	bool											mReceivedFirstFrame = false;
 
-	Mutex*											_videoFrameMutex;
 	Mutex*											g_AudioFrameMutex;
 
 
@@ -71,8 +70,9 @@ public:
 	void ProcessVideoFrame(u8* buffer, u32 size);
 	void ProcessAudioFrame(u8* buffer, u32 size);
 
-	void StartDecodeThread();
-	void ReleaseDecodeThead();
+	void initDecoder();
+	void releaseDecoder();
+
 	void DrawVideoFrame();
 
 	int GetManagerState() const { return managerState; };
