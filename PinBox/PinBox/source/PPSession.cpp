@@ -74,16 +74,6 @@ void PPSession::CloseSession()
 	{
 		delete _tmpMessage;
 	}
-	// clear all message in queue
-	while (!_sendingMessages.empty())
-	{
-		QueueMessage* queueMsg = (QueueMessage*)_sendingMessages.front();
-		_sendingMessages.pop();
-		free(queueMsg->msgBuffer);
-		delete queueMsg;
-	}
-	std::queue<QueueMessage*>().swap(_sendingMessages);
-	delete _queueMessageMutex;
 
 	_manager->releaseDecoder();
 }
@@ -257,6 +247,13 @@ void PPSession::threadMain()
 
 		svcSleepThread(sleepDuration);
 	}
+
+	// send all message left
+	sendMessageData();
+	std::queue<QueueMessage*>().swap(_sendingMessages);
+	delete _queueMessageMutex;
+
+	// close connection
 	closeConnect();
 }
 
@@ -268,7 +265,7 @@ void PPSession::RequestForData(u32 size, u32 tag)
 
 void PPSession::AddMessageToQueue(u8* msgBuffer, int32_t msgSize)
 {
-	if (_running && _connect_state == CONNECTED) {
+	if (_running && _connect_state == CONNECTED && !_kill) {
 		_queueMessageMutex->Lock();
 		QueueMessage *msg = new QueueMessage();
 		msg->msgBuffer = msgBuffer;
