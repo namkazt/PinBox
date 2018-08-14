@@ -3,17 +3,22 @@
 
 static u8* pRGBBuffer = nullptr;
 
+volatile bool initialized = false;
+
 PPDecoder::PPDecoder()
 {
 }
 
 PPDecoder::~PPDecoder()
 {
-	linearFree(pRGBBuffer);
+	
 }
 
 void PPDecoder::initDecoder()
 {
+	if (initialized) return;
+	initialized = true;
+
 	av_register_all();
 
 	//-----------------------------------------------------------------
@@ -63,6 +68,8 @@ void PPDecoder::initDecoder()
 
 void PPDecoder::releaseDecoder()
 {
+	if (!initialized) return;
+	initialized = false;
 	// free video
 	avcodec_free_context(&pVideoContext);
 	av_frame_free(&pVideoFrame);
@@ -76,10 +83,13 @@ void PPDecoder::releaseDecoder()
 	Y2RU_StopConversion();
 	Y2RU_IsBusyConversion(&is_busy);
 	y2rExit();
+
+	linearFree(pRGBBuffer);
 }
 
 u8* PPDecoder::appendVideoBuffer(u8* buffer, u32 size)
 {
+	if (!initialized) return nullptr;
 	if (size <= 0) return nullptr;
 	pVideoPacket->data = buffer;
 	pVideoPacket->size = size;
@@ -222,6 +232,7 @@ u8* PPDecoder::decodeVideoStream()
 
 void PPDecoder::decodeAudioStream(u8* buffer, u32 size)
 {
+	if (!initialized) return;
 	if (size == 0) return;
 
 	int ret = 0;

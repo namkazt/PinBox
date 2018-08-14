@@ -84,6 +84,8 @@ void PPSession::CloseSession()
 	}
 	std::queue<QueueMessage*>().swap(_sendingMessages);
 	delete _queueMessageMutex;
+
+	_manager->releaseDecoder();
 }
 
 void PPSession::connectToServer()

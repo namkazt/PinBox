@@ -32,7 +32,6 @@ void PPSessionManager::StartStreaming(const char* ip)
 void PPSessionManager::StopStreaming()
 {
 	_session->SendMsgStopSession();
-	releaseDecoder();
 }
 
 void PPSessionManager::ProcessVideoFrame(u8* buffer, u32 size)
