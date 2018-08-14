@@ -53,9 +53,9 @@ struct KeyMappingProfile
 class InputStreamSession
 {
 private:
-	const int									c_cpadDeadZone = 15;
-	const int									c_cpadMin = 0;
-	const int									c_cpadMax = 156;
+	const short									c_cpadDeadZone = 15;
+	const short									c_cpadMin = 0;
+	const short									c_cpadMax = 156;
 
 	uint32_t											m_OldDown;
 	uint32_t											m_OldUp;

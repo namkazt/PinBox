@@ -260,22 +260,25 @@ void InputStreamSession::ProcessInput()
 		}
 
 		const short MAX_STICK_RANGE = 30000;
+		const float ADDITION_CSTICK = 0.2f;
 
 		// Left stick
-		if (m_OldCX > 0 && m_OldCX < c_cpadDeadZone) m_OldCX = 0;
-		if (m_OldCY > 0 && m_OldCY < c_cpadDeadZone) m_OldCY = 0;
-		if (m_OldCX < 0 && m_OldCX > -c_cpadDeadZone) m_OldCX = 0;
-		if (m_OldCY < 0 && m_OldCY > -c_cpadDeadZone) m_OldCY = 0;
+		if (m_OldCX > 0 && m_OldCX <= c_cpadDeadZone) m_OldCX = 0;
+		if (m_OldCX < 0 && m_OldCX >= -c_cpadDeadZone) m_OldCX = 0;
 
-		float pCx = (float)m_OldCX / (float)c_cpadMax;
-		float pCy = (float)m_OldCY / (float)c_cpadMax;
+		if (m_OldCY > 0 && m_OldCY <= c_cpadDeadZone) m_OldCY = 0;
+		if (m_OldCY < 0 && m_OldCY >= -c_cpadDeadZone) m_OldCY = 0;
+
+		float pCx = static_cast<float>(m_OldCX) / static_cast<float>(c_cpadMax);
+		float pCy = static_cast<float>(m_OldCY) / static_cast<float>(c_cpadMax);
 		
+		if (pCx > 1.0f) pCx = 1.0f;
+		if (pCx < -1.0f) pCx = -1.0f;
+		if (pCy > 1.0f) pCy = 1.0f;
+		if (pCy < -1.0f) pCy = -1.0f;
+
 		m_x360Report.sThumbLX = (short)(pCx * MAX_STICK_RANGE);
-		if (m_x360Report.sThumbLX > MAX_STICK_RANGE) m_x360Report.sThumbLX = MAX_STICK_RANGE;
-		if (m_x360Report.sThumbLX < -MAX_STICK_RANGE) m_x360Report.sThumbLX = -MAX_STICK_RANGE;
 		m_x360Report.sThumbLY = (short)(pCy * MAX_STICK_RANGE);
-		if (m_x360Report.sThumbLY > MAX_STICK_RANGE) m_x360Report.sThumbLY = MAX_STICK_RANGE;
-		if (m_x360Report.sThumbLY < -MAX_STICK_RANGE) m_x360Report.sThumbLY = -MAX_STICK_RANGE;
 
 		// Right stick
 		if (m_OldCTX > 0 && m_OldCTX < c_cpadDeadZone) m_OldCTX = 0;
@@ -283,8 +286,8 @@ void InputStreamSession::ProcessInput()
 		if (m_OldCTX < 0 && m_OldCTX > -c_cpadDeadZone) m_OldCTX = 0;
 		if (m_OldCTY < 0 && m_OldCTY > -c_cpadDeadZone) m_OldCTY = 0;
 
-		float pCtx = ((float)m_OldCTX / (float)c_cpadMax) + 0.3f;
-		float pCty = ((float)m_OldCTY / (float)c_cpadMax) + 0.3f;
+		float pCtx = (static_cast<float>(m_OldCTX) / static_cast<float>(c_cpadMax)) + ADDITION_CSTICK;
+		float pCty = (static_cast<float>(m_OldCTY) / static_cast<float>(c_cpadMax)) + ADDITION_CSTICK;
 		
 		int newCTX = (int)(pCtx * MAX_STICK_RANGE);
 		int newCTY = (int)(pCty * MAX_STICK_RANGE);
@@ -301,11 +304,6 @@ void InputStreamSession::ProcessInput()
 		{
 			std::cout << "[Error] Error when submit report update to X360." << std::endl << std::flush;
 		}
-
-		//std::cout << "[DEBUG] LStick: " << m_x360Report.sThumbLX << " : " << m_x360Report.sThumbLY << " RStick: " << m_x360Report.sThumbRX << " : " << m_x360Report.sThumbRX  << std::endl << std::flush;
-
-		// reset
-		//m_OldDown = 0;
 		m_OldUp = 0;
 	}
 	
