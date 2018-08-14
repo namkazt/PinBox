@@ -90,9 +90,9 @@ void ScreenCaptureSession::initScreenCapture()
 
 	//-----------------------------------------------------
 	// decoder
-	//m_audioGrabber = new AudioStreamSession();
-	//m_audioGrabber->StartAudioStream();
-	//m_audioGrabber->Pause();
+	/*m_audioGrabber = new AudioStreamSession();
+	m_audioGrabber->StartAudioStream();
+	m_audioGrabber->Pause();*/
 
 	//-----------------------------------------------------
 	// decoder
@@ -134,38 +134,38 @@ void ScreenCaptureSession::encodeVideoFrame(u8* buf)
 
 void ScreenCaptureSession::encodeAudioFrame()
 {
-	m_audioGrabber->BeginReadAudioBuffer();
-	u32 size = m_audioGrabber->GetAudioBufferSize();
-	const u32 frameSize = pAudioContext->frame_size;
+	//m_audioGrabber->BeginReadAudioBuffer();
+	//u32 size = m_audioGrabber->GetAudioBufferSize();
+	//const u32 frameSize = pAudioContext->frame_size;
 
-	while (size >= frameSize * 4)
-	{
-		int ret = av_frame_make_writable(pAudioFrame);
-		if (ret < 0) ERROR_PRINT(ret);
-		memcpy(pAudioFrame->data[0], m_audioGrabber->GetAudioBuffer(), frameSize * 4);
+	//while (size >= frameSize * 4)
+	//{
+	//	int ret = av_frame_make_writable(pAudioFrame);
+	//	if (ret < 0) ERROR_PRINT(ret);
+	//	memcpy(pAudioFrame->data[0], m_audioGrabber->GetAudioBuffer(), frameSize * 4);
 
-		pAudioFrame->pts = iAudioPts;
-		iAudioPts += pAudioFrame->nb_samples;
-		
-		ret = avcodec_send_frame(pAudioContext, pAudioFrame);
-		while (ret >= 0)
-		{
-			ret = avcodec_receive_packet(pAudioContext, pAudioPacket);
-			if (ret == AVERROR(EAGAIN) || ret == AVERROR_EOF)
-				break;
-			if (ret < 0) break;
+	//	pAudioFrame->pts = iAudioPts;
+	//	iAudioPts += pAudioFrame->nb_samples;
+	//	
+	//	ret = avcodec_send_frame(pAudioContext, pAudioFrame);
+	//	while (ret >= 0)
+	//	{
+	//		ret = avcodec_receive_packet(pAudioContext, pAudioPacket);
+	//		if (ret == AVERROR(EAGAIN) || ret == AVERROR_EOF)
+	//			break;
+	//		if (ret < 0) break;
 
-			//TODO: do something with packet data
-			if (m_clientSession != nullptr) m_clientSession->PrepareAudioPacketAndSend(pAudioPacket->data, pAudioPacket->size, pAudioFrame->pts);
-			//fwrite(pAudioPacket->data, 1, pAudioPacket->size, testAudioOutFLAC);
+	//		//TODO: do something with packet data
+	//		if (m_clientSession != nullptr) m_clientSession->PrepareAudioPacketAndSend(pAudioPacket->data, pAudioPacket->size, pAudioFrame->pts);
+	//		//fwrite(pAudioPacket->data, 1, pAudioPacket->size, testAudioOutFLAC);
 
-			av_packet_unref(pAudioPacket);
-		}
-		m_audioGrabber->Cutoff(frameSize * 4, frameSize);
-		size = m_audioGrabber->GetAudioBufferSize();
-	}
+	//		av_packet_unref(pAudioPacket);
+	//	}
+	//	m_audioGrabber->Cutoff(frameSize * 4, frameSize);
+	//	size = m_audioGrabber->GetAudioBufferSize();
+	//}
 
-	m_audioGrabber->FinishReadAudioBuffer();
+	//m_audioGrabber->FinishReadAudioBuffer();
 }
 
 void ScreenCaptureSession::initEncoder()
@@ -178,14 +178,14 @@ void ScreenCaptureSession::initEncoder()
 	const AVCodec* videoCodec = avcodec_find_encoder(AV_CODEC_ID_MPEG4);
 	pVideoContext = avcodec_alloc_context3(videoCodec);
 	// TODO: update by config here
-	pVideoContext->bit_rate = 720000;
+	pVideoContext->bit_rate = 1000000;
 	pVideoContext->width = 400;
 	pVideoContext->height = 240;
 	pVideoContext->time_base = AVRational { 1, mFrameRate };
 	pVideoContext->framerate = AVRational { mFrameRate, 1 };
 	pVideoContext->gop_size = 20;
 	pVideoContext->max_b_frames = 2;
-	//pVideoContext->block_align = 4;
+	pVideoContext->block_align = 8;
 	pVideoContext->pix_fmt = AV_PIX_FMT_YUV420P;
 	// Open
 	ERROR_PRINT(avcodec_open2(pVideoContext, videoCodec, NULL));
@@ -198,7 +198,7 @@ void ScreenCaptureSession::initEncoder()
 	pVideoScaler = sws_getContext(
 			iSourceWidth, iSourceHeight, AV_PIX_FMT_BGRA,
 			pVideoContext->width, pVideoContext->height, AV_PIX_FMT_YUV420P,
-			SWS_FAST_BILINEAR, 0, 0, 0);
+				SWS_BICUBIC, 0, 0, 0);
 
 	//-----------------------------------------------------------------
 	// init audio encoder
