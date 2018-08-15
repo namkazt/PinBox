@@ -77,18 +77,31 @@ void ConfigManager::Save()
 {
 	config_setting_t *root, *setting;
 	root = config_root_setting(&_config);
+
 	setting = config_setting_get_member(root, "ip");
+	if(!setting) setting = config_setting_add(root, "ip", CONFIG_TYPE_STRING);
 	config_setting_set_string(setting, _cfg_ip);
+
 	setting = config_setting_get_member(root, "port");
+	if (!setting) setting = config_setting_add(root, "port", CONFIG_TYPE_STRING);
 	config_setting_set_string(setting, _cfg_port);
+
 	setting = config_setting_get_member(root, "video_quality");
+	if (!setting) setting = config_setting_add(root, "video_quality", CONFIG_TYPE_INT);
 	config_setting_set_int(setting, _cfg_video_quality);
+
 	setting = config_setting_get_member(root, "video_scale");
+	if (!setting) setting = config_setting_add(root, "video_scale", CONFIG_TYPE_INT);
 	config_setting_set_int(setting, _cfg_video_scale);
+
 	setting = config_setting_get_member(root, "skip_frame");
+	if (!setting) setting = config_setting_add(root, "skip_frame", CONFIG_TYPE_INT);
 	config_setting_set_int(setting, _cfg_skip_frame);
+
 	setting = config_setting_get_member(root, "wait_for_received");
+	if (!setting) setting = config_setting_add(root, "wait_for_received", CONFIG_TYPE_BOOL);
 	config_setting_set_bool(setting, _cfg_wait_for_received);
+
 	config_write_file(&_config, CONFIG_FILE_NAME);
 }
 
