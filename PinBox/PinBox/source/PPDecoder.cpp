@@ -19,7 +19,10 @@ void PPDecoder::initDecoder()
 	if (initialized) return;
 	initialized = true;
 
+	av_log_set_level(AV_LOG_INFO);
+
 	av_register_all();
+
 
 	//-----------------------------------------------------------------
 	// init video encoder
@@ -29,7 +32,6 @@ void PPDecoder::initDecoder()
 	pVideoContext = avcodec_alloc_context3(videoCodec);
 	pVideoContext->width = 400;
 	pVideoContext->height = 240;
-	pVideoContext->gop_size = 13;
 	pVideoContext->pix_fmt = AV_PIX_FMT_YUV420P;
 	pVideoContext->thread_count = 4;
 	pVideoContext->thread_type = FF_THREAD_FRAME;
@@ -53,8 +55,10 @@ void PPDecoder::initDecoder()
 	}
 	pAudioContext = avcodec_alloc_context3(audioCodec);
 	pAudioContext->bit_rate = 64000;
-	pAudioContext->sample_fmt = audioCodec->sample_fmts[0];
-	pAudioContext->sample_rate = 44100;
+	pAudioContext->sample_fmt = AV_SAMPLE_FMT_S16;
+	pAudioContext->request_sample_fmt = AV_SAMPLE_FMT_S16;
+	pAudioContext->request_channel_layout = AV_CH_LAYOUT_STEREO;
+	pAudioContext->sample_rate = 22050;
 	pAudioContext->channels = av_get_channel_layout_nb_channels(AV_CH_LAYOUT_STEREO);;
 	pAudioContext->channel_layout = AV_CH_LAYOUT_STEREO;
 	ret = avcodec_open2(pAudioContext, audioCodec, NULL);
@@ -64,6 +68,7 @@ void PPDecoder::initDecoder()
 	}
 	pAudioPacket = av_packet_alloc();
 	pAudioFrame = av_frame_alloc();
+
 }
 
 void PPDecoder::releaseDecoder()
@@ -232,10 +237,13 @@ u8* PPDecoder::decodeVideoStream()
 
 void PPDecoder::decodeAudioStream(u8* buffer, u32 size)
 {
+
 	if (!initialized) return;
 	if (size == 0) return;
 
-	int ret = 0;
+	PPAudio::Get()->FillBuffer(buffer, size);
+
+	/*int ret = 0;
 	av_packet_unref(pVideoPacket);
 	pAudioPacket->data = buffer;
 	pAudioPacket->size = size;
@@ -253,10 +261,8 @@ void PPDecoder::decodeAudioStream(u8* buffer, u32 size)
 				printf("[Audio] get frame failed: %d\n", ret);
 				return;
 			}
-
-			//printf("[Audio] frame format: %d - sample rate: %d\n", pAudioFrame->format, pAudioFrame->linesize[0]);
-			PPAudio::Get()->FillBuffer((s16*)pAudioFrame->data[0], (s16*)pAudioFrame->data[1], pAudioFrame->linesize[0]);
+			PPAudio::Get()->FillBuffer(pAudioFrame);
 		}
-	}
+	}*/
 	
 }

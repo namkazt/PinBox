@@ -3,16 +3,19 @@
 #define _PP_AUDIO_H_
 
 #include <3ds.h>
+#include <libavutil/frame.h>
+#include "Mutex.h"
+
+#define MAX_AUDIO_BUF 2
 
 
 class PPAudio
 {
 private:
-	uint64_t					pIdx;
-	s16*						pAudioBuffer1;
-	s16*						pAudioBuffer2;
-	ndspWaveBuf				waveBuf[2];
-	bool					startDecode = false;
+
+	ndspWaveBuf					waveBuf[MAX_AUDIO_BUF];
+	int							_nextBuf = 0;
+
 public:
 	~PPAudio();
 	static PPAudio* Get();
@@ -20,7 +23,11 @@ public:
 	void AudioInit();
 	void AudioExit();
 
-	void FillBuffer(s16* buffer1, s16* buffer2, u32 size);
+	void FillBuffer(AVFrame* pFrame);
+	void FillBuffer(u8* buffer, u32 size);
+
+
+	void PlayAudio();
 };
 
 #endif

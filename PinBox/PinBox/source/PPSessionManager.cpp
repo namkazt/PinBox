@@ -69,9 +69,7 @@ void PPSessionManager::DrawVideoFrame()
 
 void PPSessionManager::ProcessAudioFrame(u8* buffer, u32 size)
 {
-	g_AudioFrameMutex->Lock();
 	_decoder->decodeAudioStream(buffer, size);
-	g_AudioFrameMutex->Unlock();
 }
 
 void PPSessionManager::UpdateStreamSetting()

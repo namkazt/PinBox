@@ -3,8 +3,9 @@
 #include <cstdio>
 
 #define SAMPLERATE 22050
-#define SAMPLESPERBUF 576
+#define SAMPLESPERBUF 1024
 #define BYTESPERSAMPLE 4
+#define BUFFERING_FRAME_COUNT 200
 /* Channel to play audio on */
 #define CHANNEL 0x00
 
@@ -21,69 +22,72 @@ PPAudio* PPAudio::Get()
 
 void PPAudio::AudioInit()
 {
+	
 	ndspInit();
 
-	pAudioBuffer1 = (s16*)linearAlloc(SAMPLESPERBUF * BYTESPERSAMPLE);
-	pAudioBuffer2 = (s16*)linearAlloc(SAMPLESPERBUF * BYTESPERSAMPLE);
 
-	ndspChnReset(CHANNEL);
+	// buf temporary
+	u8 * temp = (u8 *)linearAlloc(SAMPLESPERBUF * BYTESPERSAMPLE * MAX_AUDIO_BUF);
+	memset(temp, 0, SAMPLESPERBUF * BYTESPERSAMPLE * MAX_AUDIO_BUF);
+	DSP_FlushDataCache(temp, SAMPLESPERBUF * BYTESPERSAMPLE * MAX_AUDIO_BUF);
+
+
 	ndspChnWaveBufClear(CHANNEL);
+	ndspChnReset(CHANNEL);
+
 	ndspSetOutputMode(NDSP_OUTPUT_STEREO);
-	ndspChnSetInterp(CHANNEL, NDSP_INTERP_POLYPHASE);
+	ndspChnSetInterp(CHANNEL, NDSP_INTERP_LINEAR);
 	ndspChnSetRate(CHANNEL, SAMPLERATE);
 	ndspChnSetFormat(CHANNEL, NDSP_FORMAT_STEREO_PCM16);
+
+	// set mix
+	float mix[12];
+	memset(mix, 0, sizeof(mix));
+	mix[0] = 1.0;
+	mix[1] = 1.0;
+	ndspChnSetMix(0, mix);
+
+
+	memset(waveBuf, 0, sizeof(waveBuf));
+
+	waveBuf[0].data_vaddr = temp;
+	waveBuf[0].nsamples = SAMPLESPERBUF;
+	waveBuf[0].status = NDSP_WBUF_DONE;
+
+	waveBuf[1].data_vaddr = temp + (SAMPLESPERBUF * BYTESPERSAMPLE);
+	waveBuf[1].nsamples = SAMPLESPERBUF;
+	waveBuf[1].status = NDSP_WBUF_DONE;
 }
 
 void PPAudio::AudioExit()
 {
 	ndspChnWaveBufClear(CHANNEL);
 	ndspExit();
-
-	linearFree(pAudioBuffer1);
-	linearFree(pAudioBuffer2);
 }
 
-void PPAudio::FillBuffer(s16* buffer1, s16* buffer2, u32 size)
+void PPAudio::FillBuffer(u8* buffer, u32 size)
 {
-	pIdx++;
-	if(!startDecode)
+	size_t nextBuf = _nextBuf;
+	while (waveBuf[nextBuf].status != NDSP_WBUF_DONE)
 	{
-		startDecode = true;
-		
-		// decode audio buffer
-		memset(waveBuf, 0, sizeof(waveBuf));
-
-		memcpy(pAudioBuffer1, (s16*)buffer1, size);
-		waveBuf[0].data_vaddr = &pAudioBuffer1[0];
-		waveBuf[0].nsamples = size / 4;
-		ndspChnWaveBufAdd(CHANNEL, &waveBuf[0]);
-
-		memcpy(pAudioBuffer2, (s16*)buffer2, size);
-		waveBuf[1].data_vaddr = &pAudioBuffer2[0];
-		waveBuf[1].nsamples = size / 4;
-		ndspChnWaveBufAdd(CHANNEL, &waveBuf[1]);
-
-		while (ndspChnIsPlaying(CHANNEL) == false);
-	}else
-	{
-		printf("[Audio] frame size:%d - idx:%d\n", size, pIdx);
-		svcSleepThread(10ULL);
-		
-		if (waveBuf[0].status == NDSP_WBUF_DONE)
-		{
-			memcpy(pAudioBuffer1, (s16*)buffer1, size);
-			waveBuf[0].nsamples = size / 4;
-			ndspChnWaveBufAdd(CHANNEL, &waveBuf[0]);		
-		}
-
-		if (waveBuf[1].status == NDSP_WBUF_DONE)
-		{
-			memcpy(pAudioBuffer2, (s16*)buffer2, size);
-			waveBuf[1].nsamples = size / 4;
-			ndspChnWaveBufAdd(CHANNEL, &waveBuf[1]);
-		}
-
-		DSP_FlushDataCache(pAudioBuffer1, size);
-		DSP_FlushDataCache(pAudioBuffer2, size);
+		svcSleepThread(100 * 1000ULL);
 	}
+
+	printf("Got new audio buffer: %d - queue on buf:%d\n", size, nextBuf);
+
+	memcpy(waveBuf[nextBuf].data_pcm16, buffer, size);
+	DSP_FlushDataCache(waveBuf[nextBuf].data_pcm16, size);
+
+	waveBuf[nextBuf].offset = 0;
+	waveBuf[nextBuf].status = NDSP_WBUF_QUEUED;
+	ndspChnWaveBufAdd(CHANNEL, &waveBuf[nextBuf]);
+
+	_nextBuf = (nextBuf + 1) % MAX_AUDIO_BUF;
+}
+
+void PPAudio::PlayAudio()
+{
+	// wait until it is playing
+	if (!ndspChnIsPlaying(CHANNEL)) return;
+
 }
