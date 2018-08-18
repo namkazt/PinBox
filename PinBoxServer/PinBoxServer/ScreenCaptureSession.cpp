@@ -183,7 +183,6 @@ void ScreenCaptureSession::encodeAudioFrame()
 
 			//TODO: do something with packet data
 			if (m_clientSession != nullptr) m_clientSession->PrepareAudioPacketAndSend(pAudioPacket->data, pAudioPacket->size, pAudioFrame->pts);
-			//fwrite(pAudioPacket->data, 1, pAudioPacket->size, testAudioOutFLAC);
 
 			av_packet_unref(pAudioPacket);
 		}
@@ -202,12 +201,12 @@ void ScreenCaptureSession::initEncoder()
 	const AVCodec* videoCodec = avcodec_find_encoder(AV_CODEC_ID_MPEG4);
 	pVideoContext = avcodec_alloc_context3(videoCodec);
 	// TODO: update by config here
-	pVideoContext->bit_rate = 1000000;
+	pVideoContext->bit_rate = 980000;
 	pVideoContext->width = 400;
 	pVideoContext->height = 240;
 	pVideoContext->time_base = AVRational { 1, mFrameRate };
 	pVideoContext->framerate = AVRational { mFrameRate, 1 };
-	pVideoContext->gop_size = 20;
+	pVideoContext->gop_size = 18;
 	pVideoContext->max_b_frames = 2;
 	pVideoContext->block_align = 8;
 	pVideoContext->pix_fmt = AV_PIX_FMT_YUV420P;
@@ -230,7 +229,7 @@ void ScreenCaptureSession::initEncoder()
 	const AVCodec* audioCodec = avcodec_find_encoder(AV_CODEC_ID_MP2);
 	pAudioContext = avcodec_alloc_context3(audioCodec);
 	//pAudioContext->time_base = AVRational{ 1 , 30 };
-	pAudioContext->bit_rate = 64000;
+	pAudioContext->bit_rate = 48000;
 	pAudioContext->sample_fmt = audioCodec->sample_fmts[0];
 	pAudioContext->sample_rate = dst_rate;
 	pAudioContext->channels = av_get_channel_layout_nb_channels(AV_CH_LAYOUT_STEREO);;

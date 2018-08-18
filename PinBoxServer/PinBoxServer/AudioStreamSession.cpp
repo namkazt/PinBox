@@ -4,16 +4,13 @@
 #include <cassert>
 #include "const.h"
 
+#define AUDIO_BUFFER_SIZE 0x500000 // 5 Mb
+
 namespace
 {
 	void createNew(void* arg) {
 		static_cast<AudioStreamSession*>(arg)->loopbackThread();
 	}
-}
-
-AudioStreamSession::~AudioStreamSession()
-{
-	if (m_pMMDevice != NULL) m_pMMDevice->Release();
 }
 
 void AudioStreamSession::useDefaultDevice()
@@ -33,7 +30,7 @@ void AudioStreamSession::useDefaultDevice()
 	}
 	//------------------------------------------------
 	// get the default render endpoint
-	hr = pMMDeviceEnumerator->GetDefaultAudioEndpoint(eRender, eConsole, &m_pMMDevice);
+	hr = pMMDeviceEnumerator->GetDefaultAudioEndpoint(eRender, eConsole, &_pMMDevice);
 	if (FAILED(hr)) {
 		printf("IMMDeviceEnumerator::GetDefaultAudioEndpoint failed: hr = 0x%08x", hr);
 	}
@@ -46,54 +43,57 @@ void AudioStreamSession::StartAudioStream()
 	this->useDefaultDevice();
 	//-----------------------------------------------------
 	// create a "stop capturing now" event
-	g_StopEvent = CreateEvent(NULL, FALSE, FALSE, NULL);
-	if (NULL == g_StopEvent) {
+	_stopEvent = CreateEvent(NULL, FALSE, FALSE, NULL);
+	if (NULL == _stopEvent) {
 		printf("CreateEvent failed: last error is %u", GetLastError());
 		return;
 	}
 	//-----------------------------------------------------
 	// init tmp buffer
-	audioBuffer = (u8*)malloc(5242880);
+	audioBuffer = (u8*)malloc(AUDIO_BUFFER_SIZE);
 	audioBufferSize = 0;
 	audioFrames = 0;
-	mutex = new std::mutex();
+	_mutex = new std::mutex();
 	//-----------------------------------------------------
 	// start loopback record thread
-	g_thread = std::thread(createNew, static_cast<AudioStreamSession*>(this));
+	_thread = std::thread(createNew, static_cast<AudioStreamSession*>(this));
 }
 
 
 void AudioStreamSession::StopStreaming()
 {
-	SetEvent(g_StopEvent);
-
-	if (m_pMMDevice != NULL) m_pMMDevice->Release();
-	m_pMMDevice = NULL;
-	if (audioBuffer) free(audioBuffer);
+	SetEvent(_stopEvent);
 }
 
-void AudioStreamSession::ReadFromBuffer(u8* outBuf, u32 size)
+void AudioStreamSession::ReadFromBuffer(u8* outBuf, u32 readSize)
 {
 	if (!outBuf) return;
-	if (size > audioBufferSize) return;
-	mutex->lock();
+	if (readSize > audioBufferSize) return;
+	_mutex->lock();
 	// read memory to buf
-	memcpy(outBuf, audioBuffer, size);
+	memcpy(outBuf, audioBuffer, readSize);
 
 	// update pointer cursor
-	audioBufferSize -= size;
+	audioBufferSize -= readSize;
 	// shift memory back to place
-	memcpy(audioBuffer, audioBuffer + size, audioBufferSize);
-	mutex->unlock();
+	memcpy(audioBuffer, audioBuffer + readSize, audioBufferSize);
+	_mutex->unlock();
+}
+
+void AudioStreamSession::ResetStorageBuffer()
+{
+	_mutex->lock();
+	audioBufferSize = 0;
+	_mutex->unlock();
 }
 
 
 void AudioStreamSession::Pause()
 {
-	if (g_isPaused) return;
-	g_isPaused = true;
+	if (_isPaused) return;
+	_isPaused = true;
 	HRESULT hr = S_OK;
-	hr = pAudioClient->Stop();
+	hr = _pAudioClient->Stop();
 	if (FAILED(hr)) {
 		printf("IAudioClient::Stop failed: hr = 0x%08x\n", hr);
 		return;
@@ -102,10 +102,10 @@ void AudioStreamSession::Pause()
 
 void AudioStreamSession::Resume()
 {
-	if (!g_isPaused) return;
-	g_isPaused = false;
+	if (!_isPaused) return;
+	_isPaused = false;
 	HRESULT hr = S_OK;
-	hr = pAudioClient->Start();
+	hr = _pAudioClient->Start();
 	if (FAILED(hr)) {
 		printf("IAudioClient::Start failed: hr = 0x%08x\n", hr);
 		return;
@@ -115,7 +115,7 @@ void AudioStreamSession::Resume()
 void AudioStreamSession::loopbackThread()
 {
 	HRESULT hr = S_OK;
-	hr = m_pMMDevice->Activate(__uuidof(IAudioClient), CLSCTX_ALL, NULL, (void**)&pAudioClient);
+	hr = _pMMDevice->Activate(__uuidof(IAudioClient), CLSCTX_ALL, NULL, (void**)&_pAudioClient);
 	if (FAILED(hr)) {
 		printf("IMMDevice::Activate(IAudioClient) failed: hr = 0x%08x\n", hr);
 		return;
@@ -123,7 +123,7 @@ void AudioStreamSession::loopbackThread()
 
 	// get the default device periodicity
 	REFERENCE_TIME hnsDefaultDevicePeriod;
-	hr = pAudioClient->GetDevicePeriod(&hnsDefaultDevicePeriod, NULL);
+	hr = _pAudioClient->GetDevicePeriod(&hnsDefaultDevicePeriod, NULL);
 	if (FAILED(hr)) {
 		printf("IAudioClient::GetDevicePeriod failed: hr = 0x%08x\n", hr);
 		return;
@@ -131,7 +131,7 @@ void AudioStreamSession::loopbackThread()
 
 	// get the default device format
 	WAVEFORMATEX *pwfx;
-	hr = pAudioClient->GetMixFormat(&pwfx);
+	hr = _pAudioClient->GetMixFormat(&pwfx);
 	if (FAILED(hr)) {
 		printf("IAudioClient::GetMixFormat failed: hr = 0x%08x\n", hr);
 		return;
@@ -177,7 +177,7 @@ void AudioStreamSession::loopbackThread()
 	// do not work together...
 	// the "data ready" event never gets set
 	// so we're going to do a timer-driven loop
-	hr = pAudioClient->Initialize(
+	hr = _pAudioClient->Initialize(
 		AUDCLNT_SHAREMODE_SHARED,  // try this ? AUDCLNT_SHAREMODE_EXCLUSIVE
 		AUDCLNT_STREAMFLAGS_LOOPBACK,
 		0, 0, pwfx, 0
@@ -191,7 +191,7 @@ void AudioStreamSession::loopbackThread()
 
 	// activate an IAudioCaptureClient
 	IAudioCaptureClient *pAudioCaptureClient;
-	hr = pAudioClient->GetService( __uuidof(IAudioCaptureClient), (void**)&pAudioCaptureClient );
+	hr = _pAudioClient->GetService( __uuidof(IAudioCaptureClient), (void**)&pAudioCaptureClient );
 
 	// set the waitable timer
 	LARGE_INTEGER liFirstFire;
@@ -205,7 +205,7 @@ void AudioStreamSession::loopbackThread()
 	);
 
 	// call IAudioClient::Start
-	hr = pAudioClient->Start();
+	hr = _pAudioClient->Start();
 	
 	if (FAILED(hr)) {
 		printf("IAudioClient::Start failed: hr = 0x%08x\n", hr);
@@ -213,7 +213,7 @@ void AudioStreamSession::loopbackThread()
 	}
 
 	// loopback capture loop
-	HANDLE waitArray[2] = { g_StopEvent, hWakeUp };
+	HANDLE waitArray[2] = { _stopEvent, hWakeUp };
 	DWORD dwWaitResult;
 
 
@@ -247,14 +247,14 @@ void AudioStreamSession::loopbackThread()
 
 			LONG lBytesToWrite = nNumFramesToRead * nBlockAlign;
 			// write audio wave data into tmp buffer to wait for encode
-			mutex->lock();
+			_mutex->lock();
 			audioFrames += nNumFramesToRead;
 			if(audioBufferSize + lBytesToWrite < 5242880)
 			{
 				memcpy(audioBuffer + audioBufferSize, pData, lBytesToWrite);
 				audioBufferSize += lBytesToWrite;
 			}
-			mutex->unlock();
+			_mutex->unlock();
 
 
 			hr = pAudioCaptureClient->ReleaseBuffer(nNumFramesToRead);
@@ -278,18 +278,23 @@ void AudioStreamSession::loopbackThread()
 		}
 	}
 
+	printf("Closing audio capture session.\n");
+
 	//---------------------------------------
 	// finish record data 
 	// need send something here to end that stream
 	//---------------------------------------
-	pAudioClient->Stop();
+	_pAudioClient->Stop();
 	CancelWaitableTimer(hWakeUp);
 	pAudioCaptureClient->Release();
 	CloseHandle(hWakeUp);
 	CoTaskMemFree(pwfx);
-	pAudioClient->Release();
-	CloseHandle(g_StopEvent);
+	_pAudioClient->Release();
+	CloseHandle(_stopEvent);
 	CoUninitialize();
 
-
+	_pAudioClient = NULL;
+	free(audioBuffer);
+	if (_pMMDevice != NULL) _pMMDevice->Release();
+	_pMMDevice = NULL;
 }

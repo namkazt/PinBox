@@ -41,12 +41,8 @@ void PPServer::InitServer()
 	//===========================================================================
 	int cfgPort = ServerConfig::Get()->ServerPort;
 	int cfgThreadNum = ServerConfig::Get()->NetworkThread;
-	//===========================================================================
-	// Screen capture session
-	//===========================================================================
 	ScreenCapturer = new ScreenCaptureSession();
 	ScreenCapturer->setParent(this);
-	//ScreenCapturer->initScreenCapture();
 	InputStreamer = new InputStreamSession();
 	//===========================================================================
 	// Socket server part
@@ -58,16 +54,8 @@ void PPServer::InitServer()
 	//===========================================================================
 	server.SetMessageCallback([&](const evpp::TCPConnPtr& conn, evpp::Buffer* msg)
 	{
-		evpp::Any sessionAny = conn->context();
-		PPClientSession* session = evpp::any_cast<PPClientSession*>(sessionAny);
-		if (session != nullptr)
-		{
-			//TODO: this sesison is disconnected then do what ?
-			session->ProcessMessage(msg);
-		}else
-		{
-			std::cout << "Connection do not have paired session!" << std::endl << std::flush;
-		}
+		PPClientSession* session = evpp::any_cast<PPClientSession*>(conn->context());
+		if (session != nullptr) session->ProcessMessage(msg);
 		msg->Reset();
 	});
 	//===========================================================================
@@ -83,8 +71,7 @@ void PPServer::InitServer()
 			evpp::Any context(session);
 			conn->set_context(context);
 
-		}else if(conn->IsDisconnected())
-		{
+		}else {
 			// client is disconnected
 			evpp::Any sessionAny = conn->context();
 			PPClientSession* session = evpp::any_cast<PPClientSession*>(sessionAny);

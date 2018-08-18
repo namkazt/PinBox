@@ -12,15 +12,15 @@
 class AudioStreamSession
 {
 private:
-	IAudioClient				*pAudioClient;
-	IMMDevice					*m_pMMDevice;
-	HANDLE						g_StopEvent;
-	std::thread					g_thread;
-	bool						g_isPaused = false;
+	IAudioClient				*_pAudioClient;
+	IMMDevice					*_pMMDevice;
+	HANDLE						_stopEvent;
+	std::thread					_thread;
+	bool						_isPaused = false;
 
 
 	
-	std::mutex					*mutex;
+	std::mutex					*_mutex;
 
 
 
@@ -35,14 +35,18 @@ public:
 	int							audioFrames = 0;
 	u32							sampleRate = 0;
 public:
-	~AudioStreamSession();
 
+	// Start audio stream session ( init every thing relate )
 	void						StartAudioStream();
 	void						Pause();
 	void						Resume();
+	// Stop audio stream session ( release every thing relate )
 	void						StopStreaming();
 
-	void						ReadFromBuffer(u8* buf, u32 size);
+	// Read input amount of stored audio buffer if available 
+	void						ReadFromBuffer(u8* outBuf, u32 readSize);
+	// Reset storage buffer to zero ( in case of user want to avoid read old data to avoid laggy )
+	void						ResetStorageBuffer();
 
 	void						loopbackThread();
 };
