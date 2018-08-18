@@ -7,12 +7,12 @@ https://discord.gg/9Qae7fT
 
 # Current Support
 - Streaming from Windows PC to a 3DS ( or over internet from VPS windows server )
+- Audio support (MP2 encode/decode)
 - Hardware acceleration Y2R
 - Emulation Xbox 360 Controller for awesome game support ( by ViGEm )
 - Support for Keyboard mapping with profile select from 3DS side
 - Realtime config from 3DS side
-# WIP
-- Implement streaming audio to 3DS
+
 #### Plans
 -  Implement Qt UI for basic use
 -  add Hub UI for fast access to game or app
