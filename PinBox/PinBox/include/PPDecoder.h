@@ -63,7 +63,6 @@ private:
 	AVCodecContext*				pVideoContext;
 	AVPacket*					pVideoPacket;
 	AVFrame*					pVideoFrame;
-	u32							iVideoFrameIndex = 0;
 	DecodeState*				pDecodeState;
 	u8*							decodeVideoStream();
 	void						initY2RImageConverter();

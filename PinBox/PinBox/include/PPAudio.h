@@ -12,8 +12,8 @@
 class PPAudio
 {
 private:
-
-	ndspWaveBuf					waveBuf[MAX_AUDIO_BUF];
+	bool						_initialized = false;
+	ndspWaveBuf					_waveBuf[MAX_AUDIO_BUF];
 	int							_nextBuf = 0;
 
 public:

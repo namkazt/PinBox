@@ -20,16 +20,12 @@ void PPDecoder::initDecoder()
 	if (initialized) return;
 	initialized = true;
 
-	av_log_set_level(AV_LOG_INFO);
-
+	av_log_set_level(AV_LOG_QUIET);
 	av_register_all();
-
-
 	//-----------------------------------------------------------------
 	// init video encoder
 	//-----------------------------------------------------------------
 	const AVCodec* videoCodec = avcodec_find_decoder(AV_CODEC_ID_MPEG4);
-	//pVideoParser = av_parser_init(videoCodec->id);
 	pVideoContext = avcodec_alloc_context3(videoCodec);
 	pVideoContext->width = 400;
 	pVideoContext->height = 240;
@@ -69,9 +65,6 @@ void PPDecoder::initDecoder()
 	}
 	pAudioPacket = av_packet_alloc();
 	pAudioFrame = av_frame_alloc();
-
-
-
 }
 
 void PPDecoder::releaseDecoder()
@@ -120,7 +113,7 @@ void PPDecoder::initY2RImageConverter()
 	int tries = 0;
 	do
 	{
-		svcSleepThread(100000ull);
+		svcSleepThread(25 * 1000ull);
 		res = Y2RU_StopConversion();
 		if (res != 0) printf("Error on Y2RU_StopConversion\n");
 		res = Y2RU_IsBusyConversion(&is_busy);

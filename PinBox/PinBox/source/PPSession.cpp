@@ -52,7 +52,7 @@ void PPSession::InitSession(PPSessionManager* manager, const char* ip, const cha
 	svcGetThreadPriority(&priority, CUR_THREAD_HANDLE);
 	s32 t = priority - 2;
 	if (t < 0x19) t = 0x19;
-	_thread = threadCreate(createNew, static_cast<void*>(this), 4 * 1024, t, -2, false);
+	_thread = threadCreate(createNew, static_cast<void*>(this), 32 * 1024, t, -2, false);
 }
 
 void PPSession::CloseSession()

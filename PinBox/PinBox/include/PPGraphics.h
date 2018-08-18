@@ -136,7 +136,7 @@ public:
 	void RenderOn(gfxScreen_t screen);
 	void EndRender();
 
-	void UpdateTopScreenSprite(u8* data, u32 size, u32 width, u32 height);
+	void UpdateTopScreenSprite(u8* data, u32 size);
 	void DrawTopScreenSprite();
 
 	void DrawRectangle(float x, float y, float w, float h, ppColor color);
