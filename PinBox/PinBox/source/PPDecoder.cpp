@@ -5,6 +5,7 @@ static u8* pRGBBuffer = nullptr;
 
 volatile bool initialized = false;
 
+
 PPDecoder::PPDecoder()
 {
 }
@@ -68,6 +69,8 @@ void PPDecoder::initDecoder()
 	}
 	pAudioPacket = av_packet_alloc();
 	pAudioFrame = av_frame_alloc();
+
+
 
 }
 
@@ -241,9 +244,7 @@ void PPDecoder::decodeAudioStream(u8* buffer, u32 size)
 	if (!initialized) return;
 	if (size == 0) return;
 
-	PPAudio::Get()->FillBuffer(buffer, size);
-
-	/*int ret = 0;
+	int ret = 0;
 	av_packet_unref(pVideoPacket);
 	pAudioPacket->data = buffer;
 	pAudioPacket->size = size;
@@ -261,8 +262,8 @@ void PPDecoder::decodeAudioStream(u8* buffer, u32 size)
 				printf("[Audio] get frame failed: %d\n", ret);
 				return;
 			}
-			PPAudio::Get()->FillBuffer(pAudioFrame);
+			PPAudio::Get()->FillBuffer(pAudioFrame->extended_data[0], pAudioFrame->linesize[0]);
 		}
-	}*/
+	}
 	
 }

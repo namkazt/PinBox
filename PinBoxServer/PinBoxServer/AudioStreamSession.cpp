@@ -1,6 +1,8 @@
 #include "stdafx.h"
 #include "AudioStreamSession.h"
 #include <iostream>
+#include <cassert>
+#include "const.h"
 
 namespace
 {
@@ -51,8 +53,9 @@ void AudioStreamSession::StartAudioStream()
 	}
 	//-----------------------------------------------------
 	// init tmp buffer
-	mTmpAudioBuffer = (u8*)malloc(1024 * 1024);
-	mTmpAudioBufferSize = 0;
+	audioBuffer = (u8*)malloc(5242880);
+	audioBufferSize = 0;
+	audioFrames = 0;
 	mutex = new std::mutex();
 	//-----------------------------------------------------
 	// start loopback record thread
@@ -62,10 +65,26 @@ void AudioStreamSession::StartAudioStream()
 
 void AudioStreamSession::StopStreaming()
 {
+	SetEvent(g_StopEvent);
 
 	if (m_pMMDevice != NULL) m_pMMDevice->Release();
 	m_pMMDevice = NULL;
-	if (mTmpAudioBuffer) free(mTmpAudioBuffer);
+	if (audioBuffer) free(audioBuffer);
+}
+
+void AudioStreamSession::ReadFromBuffer(u8* outBuf, u32 size)
+{
+	if (!outBuf) return;
+	if (size > audioBufferSize) return;
+	mutex->lock();
+	// read memory to buf
+	memcpy(outBuf, audioBuffer, size);
+
+	// update pointer cursor
+	audioBufferSize -= size;
+	// shift memory back to place
+	memcpy(audioBuffer, audioBuffer + size, audioBufferSize);
+	mutex->unlock();
 }
 
 
@@ -118,6 +137,8 @@ void AudioStreamSession::loopbackThread()
 		return;
 	}
 
+	//pwfx->nSamplesPerSec = 22050;
+
 	switch (pwfx->wFormatTag) {
 	case WAVE_FORMAT_IEEE_FLOAT:
 		pwfx->wFormatTag = WAVE_FORMAT_PCM;
@@ -132,7 +153,7 @@ void AudioStreamSession::loopbackThread()
 		if (IsEqualGUID(KSDATAFORMAT_SUBTYPE_IEEE_FLOAT, pEx->SubFormat)) {
 			pEx->SubFormat = KSDATAFORMAT_SUBTYPE_PCM;
 			pEx->Samples.wValidBitsPerSample = 16;
-			pwfx->wBitsPerSample = 16;
+			pwfx->wBitsPerSample = 16; // 2 bytes per sample
 			pwfx->nBlockAlign = pwfx->nChannels * pwfx->wBitsPerSample / 8;
 			pwfx->nAvgBytesPerSec = pwfx->nBlockAlign * pwfx->nSamplesPerSec;
 		}
@@ -142,11 +163,11 @@ void AudioStreamSession::loopbackThread()
 		}
 		break;
 
-	default:
-		printf("Don't know how to coerce WAVEFORMATEX with wFormatTag = 0x%08x to int-16\n", pwfx->wFormatTag);
-		return;
 	}
 
+	pwfx->cbSize = sizeof(WAVEFORMATEXTENSIBLE) - sizeof(WAVEFORMATEX);
+
+	//pwfx->cbSize = 0;
 	// create a periodic waitable timer
 	HANDLE hWakeUp = CreateWaitableTimer(NULL, FALSE, NULL);
 	UINT32 nBlockAlign = pwfx->nBlockAlign;
@@ -161,8 +182,12 @@ void AudioStreamSession::loopbackThread()
 		AUDCLNT_STREAMFLAGS_LOOPBACK,
 		0, 0, pwfx, 0
 	);
+	if (FAILED(hr)) {
+		printf(">>>>> Error: IAudioClient::Initialize failed: hr = 0x%08x\n", hr);
+		return;
+	}
 
-	mSampleRate = (u32)pwfx->nSamplesPerSec;
+	sampleRate = (u32)pwfx->nSamplesPerSec;
 
 	// activate an IAudioCaptureClient
 	IAudioCaptureClient *pAudioCaptureClient;
@@ -193,7 +218,6 @@ void AudioStreamSession::loopbackThread()
 
 
 	bool bDone = false;
-	bool bFirstPacket = true;
 	for (UINT32 nPasses = 0; !bDone; nPasses++) {
 
 		// drain data while it is available
@@ -213,16 +237,27 @@ void AudioStreamSession::loopbackThread()
 				NULL
 			);
 
-			LONG lBytesToWrite = nNumFramesToRead * nBlockAlign;
 
+			if(dwFlags & AUDCLNT_BUFFERFLAGS_SILENT)
+			{
+				pData = NULL;
+				//TODO: send data to write as silent ?
+				continue;
+			}
+
+			LONG lBytesToWrite = nNumFramesToRead * nBlockAlign;
 			// write audio wave data into tmp buffer to wait for encode
 			mutex->lock();
-			memmove(mTmpAudioBuffer + mTmpAudioBufferSize, pData, lBytesToWrite);
-			mTmpAudioBufferSize += lBytesToWrite;
-			//std::cout << "Add: " << lBytesToWrite << " frames: " << nNumFramesToRead << " --- memory new: " << self->mTmpAudioBufferSize << std::endl << std::flush;
+			audioFrames += nNumFramesToRead;
+			if(audioBufferSize + lBytesToWrite < 5242880)
+			{
+				memcpy(audioBuffer + audioBufferSize, pData, lBytesToWrite);
+				audioBufferSize += lBytesToWrite;
+			}
 			mutex->unlock();
+
+
 			hr = pAudioCaptureClient->ReleaseBuffer(nNumFramesToRead);
-			bFirstPacket = false;
 		}
 
 		//-------------------------------------------------------------------------
@@ -255,4 +290,6 @@ void AudioStreamSession::loopbackThread()
 	pAudioClient->Release();
 	CloseHandle(g_StopEvent);
 	CoUninitialize();
+
+
 }

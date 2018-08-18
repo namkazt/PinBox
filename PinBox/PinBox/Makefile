@@ -57,7 +57,7 @@ CFLAGS	:=	-ggdb -Wall -Og -mword-relocations -DDEBUG=1 \
 	CXXFLAGS	:= $(CFLAGS) -fno-rtti -fno-exceptions -std=gnu++11 -fpermissive -fexceptions -ffast-math
 	ASFLAGS	:=	-g $(ARCH)
 	LDFLAGS	=	-specs=3dsx.specs -g $(ARCH) -Wl,-Map,$(notdir $*.map)
-	LIBS	:= -lavformat -lavcodec -lavutil -lswscale -lswresample -lconfig -lturbojpeg -lwebp -lcitro3dd -lctrud -lz -lm
+	LIBS	:= -lavformat -lavcodec -lavutil -lswscale -lswresample -lconfig -lcitro3dd -lctrud -lz -lm
 #---------------------------------------------------------------------------------
 # list of directories containing libraries, this must be the top level containing
 # include and lib
@@ -195,12 +195,6 @@ $(OUTPUT).elf	:	$(OFILES)
 	@$(bin2o)
 #---------------------------------------------------------------------------------
 %.ttf.o	:	%.ttf
-#---------------------------------------------------------------------------------
-	@echo $(notdir $<)
-	@$(bin2o)
-
-#---------------------------------------------------------------------------------
-%.webp.o: %.webp
 #---------------------------------------------------------------------------------
 	@echo $(notdir $<)
 	@$(bin2o)

@@ -161,12 +161,6 @@ int main()
 
 			sm->CollectFPSData();
 
-			if (sm->GetManagerState() == 2)
-			{
-				PPAudio::Get()->PlayAudio();
-			}
-
-
 			if (r == -1) break;
 		}
 		//---------------------------------------------

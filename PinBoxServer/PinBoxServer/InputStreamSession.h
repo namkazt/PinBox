@@ -57,8 +57,8 @@ private:
 	const short									c_cpadMin = 0;
 	const short									c_cpadMax = 156;
 
-	uint32_t											m_OldDown;
-	uint32_t											m_OldUp;
+	uint32_t									m_OldDown;
+	uint32_t									m_OldUp;
 	short										m_OldCX;
 	short										m_OldCY;
 	short										m_OldCTX;

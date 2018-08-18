@@ -23,11 +23,10 @@ public:
 	void AudioInit();
 	void AudioExit();
 
-	void FillBuffer(AVFrame* pFrame);
+
 	void FillBuffer(u8* buffer, u32 size);
 
 
-	void PlayAudio();
 };
 
 #endif

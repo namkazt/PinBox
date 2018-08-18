@@ -22,6 +22,19 @@ FPSCounter captureFPS;
 
 //static FILE* testAudioOutFLAC;
 
+
+
+// test
+int64_t src_ch_layout = AV_CH_LAYOUT_STEREO, dst_ch_layout = AV_CH_LAYOUT_STEREO;
+int src_rate = 48000, dst_rate = 22050;
+uint8_t **src_data = NULL;
+int src_nb_channels = 2, dst_nb_channels = 2;
+int src_linesize, dst_linesize;
+enum AVSampleFormat src_sample_fmt = AV_SAMPLE_FMT_S16, dst_sample_fmt = AV_SAMPLE_FMT_S16;
+struct SwrContext *swr_ctx;
+
+
+
 ScreenCaptureSession::ScreenCaptureSession()
 {
 }
@@ -61,7 +74,7 @@ void ScreenCaptureSession::initScreenCapture()
 	})->onNewFrame([&](const SL::Screen_Capture::Image& img, const SL::Screen_Capture::Monitor& monitor)
 	{
 		if (!mInitializedCodec) return;
-		if (!m_isStartStreaming || m_clientSession == nullptr) return;
+		//if (!m_isStartStreaming || m_clientSession == nullptr) return;
 
 		auto size = Width(img) * Height(img) * sizeof(SL::Screen_Capture::ImageBGRA);
 		auto imgbuffer(std::make_unique<unsigned char[]>(size));
@@ -79,7 +92,7 @@ void ScreenCaptureSession::initScreenCapture()
 			totalSize = mLastFrameData->StrideWidth * mLastFrameData->Height;
 		}
 
-		//encodeAudioFrame();
+		encodeAudioFrame();
 
 		// encode video
 		encodeVideoFrame((u8*)imgbuffer.get());
@@ -90,9 +103,8 @@ void ScreenCaptureSession::initScreenCapture()
 
 	//-----------------------------------------------------
 	// decoder
-	/*m_audioGrabber = new AudioStreamSession();
+	m_audioGrabber = new AudioStreamSession();
 	m_audioGrabber->StartAudioStream();
-	m_audioGrabber->Pause();*/
 
 	//-----------------------------------------------------
 	// decoder
@@ -134,38 +146,50 @@ void ScreenCaptureSession::encodeVideoFrame(u8* buf)
 
 void ScreenCaptureSession::encodeAudioFrame()
 {
-	//m_audioGrabber->BeginReadAudioBuffer();
-	//u32 size = m_audioGrabber->GetAudioBufferSize();
-	//const u32 frameSize = pAudioContext->frame_size;
+	float factor = (float)src_rate / (float)dst_rate;
 
-	//while (size >= frameSize * 4)
-	//{
-	//	int ret = av_frame_make_writable(pAudioFrame);
-	//	if (ret < 0) ERROR_PRINT(ret);
-	//	memcpy(pAudioFrame->data[0], m_audioGrabber->GetAudioBuffer(), frameSize * 4);
+	u32 size = m_audioGrabber->audioBufferSize;
 
-	//	pAudioFrame->pts = iAudioPts;
-	//	iAudioPts += pAudioFrame->nb_samples;
-	//	
-	//	ret = avcodec_send_frame(pAudioContext, pAudioFrame);
-	//	while (ret >= 0)
-	//	{
-	//		ret = avcodec_receive_packet(pAudioContext, pAudioPacket);
-	//		if (ret == AVERROR(EAGAIN) || ret == AVERROR_EOF)
-	//			break;
-	//		if (ret < 0) break;
+	const u32 frameSize = pAudioFrame->nb_samples * factor;
+	const u32 readSize = frameSize * 4;
 
-	//		//TODO: do something with packet data
-	//		if (m_clientSession != nullptr) m_clientSession->PrepareAudioPacketAndSend(pAudioPacket->data, pAudioPacket->size, pAudioFrame->pts);
-	//		//fwrite(pAudioPacket->data, 1, pAudioPacket->size, testAudioOutFLAC);
+	while (size >= readSize)
+	{
+		int ret = av_frame_make_writable(pAudioFrame);
+		if (ret < 0)
+		{
+			fprintf(stderr, "Fail to init Audio frame\n");
+			break;
+		}
 
-	//		av_packet_unref(pAudioPacket);
-	//	}
-	//	m_audioGrabber->Cutoff(frameSize * 4, frameSize);
-	//	size = m_audioGrabber->GetAudioBufferSize();
-	//}
+		m_audioGrabber->ReadFromBuffer(src_data[0], readSize);
 
-	//m_audioGrabber->FinishReadAudioBuffer();
+		/* convert to destination format */
+		ret = swr_convert(swr_ctx, pAudioFrame->data, pAudioFrame->nb_samples, (const uint8_t **)src_data, frameSize);
+		if (ret < 0) {
+			fprintf(stderr, "Error while converting\n");
+			break;
+		}
+		pAudioFrame->pts = iAudioPts;
+		iAudioPts += pAudioFrame->nb_samples;
+		
+		ret = avcodec_send_frame(pAudioContext, pAudioFrame);
+		while (ret >= 0)
+		{
+			ret = avcodec_receive_packet(pAudioContext, pAudioPacket);
+			if (ret == AVERROR(EAGAIN) || ret == AVERROR_EOF)
+				break;
+			if (ret < 0) break;
+
+			//TODO: do something with packet data
+			if (m_clientSession != nullptr) m_clientSession->PrepareAudioPacketAndSend(pAudioPacket->data, pAudioPacket->size, pAudioFrame->pts);
+			//fwrite(pAudioPacket->data, 1, pAudioPacket->size, testAudioOutFLAC);
+
+			av_packet_unref(pAudioPacket);
+		}
+
+		size = m_audioGrabber->audioBufferSize;
+	}
 }
 
 void ScreenCaptureSession::initEncoder()
@@ -205,16 +229,13 @@ void ScreenCaptureSession::initEncoder()
 	//-----------------------------------------------------------------
 	const AVCodec* audioCodec = avcodec_find_encoder(AV_CODEC_ID_MP2);
 	pAudioContext = avcodec_alloc_context3(audioCodec);
+	//pAudioContext->time_base = AVRational{ 1 , 30 };
 	pAudioContext->bit_rate = 64000;
 	pAudioContext->sample_fmt = audioCodec->sample_fmts[0];
-	pAudioContext->sample_rate = 44100;
+	pAudioContext->sample_rate = dst_rate;
 	pAudioContext->channels = av_get_channel_layout_nb_channels(AV_CH_LAYOUT_STEREO);;
 	pAudioContext->channel_layout = AV_CH_LAYOUT_STEREO;
-	/* Allow the use of the experimental AAC encoder. */
-	//pAudioContext->strict_std_compliance = FF_COMPLIANCE_EXPERIMENTAL;
-	//pAudioContext->block_align = 4;
-
-	// Open
+	pAudioContext->strict_std_compliance = FF_COMPLIANCE_EXPERIMENTAL;
 	int ret = avcodec_open2(pAudioContext, audioCodec, NULL);
 
 	pAudioPacket = av_packet_alloc();
@@ -224,8 +245,44 @@ void ScreenCaptureSession::initEncoder()
 	pAudioFrame->channel_layout = pAudioContext->channel_layout;
 	ERROR_PRINT(av_frame_get_buffer(pAudioFrame, 0));
 
+
+
+	/* create resampler context */
+	swr_ctx = swr_alloc();
+	if (!swr_ctx) {
+		fprintf(stderr, "Could not allocate resampler context\n");
+		ret = AVERROR(ENOMEM);
+		return;
+	}
+
+	/* set options */
+	av_opt_set_int(swr_ctx, "in_channel_layout", src_ch_layout, 0);
+	av_opt_set_int(swr_ctx, "in_sample_rate", src_rate, 0);
+	av_opt_set_sample_fmt(swr_ctx, "in_sample_fmt", src_sample_fmt, 0);
+
+	av_opt_set_int(swr_ctx, "out_channel_layout", dst_ch_layout, 0);
+	av_opt_set_int(swr_ctx, "out_sample_rate", dst_rate, 0);
+	av_opt_set_sample_fmt(swr_ctx, "out_sample_fmt", dst_sample_fmt, 0);
+
+	/* initialize the resampling context */
+	if ((ret = swr_init(swr_ctx)) < 0) {
+		fprintf(stderr, "Failed to initialize the resampling context\n");
+		return;
+	}
+
+	float factor = (float)src_rate / (float)dst_rate;
+
+	/* allocate source and destination samples buffers */
+	src_nb_channels = av_get_channel_layout_nb_channels(src_ch_layout);
+	ret = av_samples_alloc_array_and_samples(&src_data, &src_linesize, src_nb_channels, factor * pAudioFrame->nb_samples, src_sample_fmt, 0);
+	if (ret < 0) {
+		fprintf(stderr, "Could not allocate source samples\n");
+		return;
+	}
+
+
 	// test
-	//testAudioOutFLAC = fopen("test_audio.wav", "wb");
+	//testAudioOutFLAC = fopen("test_audio.bin", "wb");
 
 	mInitializedCodec = true;
 }
@@ -241,7 +298,7 @@ void ScreenCaptureSession::releaseEncoder()
 	av_frame_free(&pAudioFrame);
 	av_packet_free(&pAudioPacket);
 
-	if(mLastFrameData) delete mLastFrameData;
+	delete mLastFrameData;
 }
 
 
@@ -268,6 +325,7 @@ void ScreenCaptureSession::stopStream()
 	m_frameGrabber->pause();
 	m_frameGrabber = nullptr;
 	// release audio
+	m_audioGrabber->Pause();
 
 	// release encoder
 	releaseEncoder();

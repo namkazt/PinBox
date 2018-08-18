@@ -18,16 +18,22 @@ private:
 	std::thread					g_thread;
 	bool						g_isPaused = false;
 
-	u8*							mTmpAudioBuffer = nullptr;
-	u32							mTmpAudioBufferSize = 0;
 
-	u32							mSampleRate = 0;
-	std::mutex					*mutex;
 	
+	std::mutex					*mutex;
 
-private:
+
+
 	void						useDefaultDevice();
 
+
+public:
+
+	u32							audioBufferSize = 0;
+	u8*							audioBuffer = nullptr;
+
+	int							audioFrames = 0;
+	u32							sampleRate = 0;
 public:
 	~AudioStreamSession();
 
@@ -35,6 +41,8 @@ public:
 	void						Pause();
 	void						Resume();
 	void						StopStreaming();
+
+	void						ReadFromBuffer(u8* buf, u32 size);
 
 	void						loopbackThread();
 };

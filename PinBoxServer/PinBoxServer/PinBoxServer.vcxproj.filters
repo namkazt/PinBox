@@ -50,6 +50,9 @@
     <ClInclude Include="AudioStreamSession.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="const.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="stdafx.cpp">

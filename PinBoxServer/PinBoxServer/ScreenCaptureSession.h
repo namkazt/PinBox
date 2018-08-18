@@ -32,6 +32,7 @@ extern "C" {
 #include <libswscale/swscale.h>
 #include <libswresample/swresample.h>
 #include "libavutil/audio_fifo.h"
+#include <libavutil/channel_layout.h>
 }
 
 typedef struct
@@ -132,6 +133,9 @@ private:
 	AVFrame*													pAudioFrame;
 	int64_t														iAudioPts = 0;
 	void														encodeAudioFrame();
+
+
+
 
 
 	bool														mInitializedCodec = false;
