@@ -4,32 +4,28 @@
 
 Mutex::Mutex()
 {
-	g_isLocked = false;
-	svcCreateMutex(&g_mutexHandle, g_isLocked);
+	_isLocked = false;
+	LightLock_Init(&_handler);
 }
 
 
 Mutex::~Mutex()
 {
-	svcReleaseMutex(g_mutexHandle);
+	if(_isLocked) LightLock_Unlock(&_handler);
 }
 
 void Mutex::Lock()
 {
-	if(g_isLocked)
-	{
-		svcWaitSynchronization(g_mutexHandle, U64_MAX);
-	}else
-	{
-		g_isLocked = true;
-	}
+	LightLock_Lock(&_handler);
+}
+
+void Mutex::TryLock()
+{
+	if(!LightLock_TryLock(&_handler)) _isLocked = true;
 }
 
 void Mutex::Unlock()
 {
-	if (g_isLocked)
-	{
-		svcSignalEvent(g_mutexHandle);
-		g_isLocked = false;
-	}
+	LightLock_Unlock(&_handler);
+	_isLocked = false;
 }

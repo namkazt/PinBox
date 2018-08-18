@@ -5,14 +5,15 @@
 class Mutex
 {
 private:
-	Handle								g_mutexHandle = 0;
-	bool								g_isLocked = false;
+	LightLock							_handler;
+	bool								_isLocked = false;
 
 public:
 	Mutex();
 	~Mutex();
 
 	void Lock();
+	void TryLock();
 	void Unlock();
 };
 
