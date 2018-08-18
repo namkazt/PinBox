@@ -361,3 +361,5 @@ PinBoxServer/Release/
 *.cia
 *.smdh
 PinBox/PinBox/Pre-Built/PinBox.smdh
+ThirdParty/xinput1_3.dll
+ThirdParty/x360ce.ini
