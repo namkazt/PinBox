@@ -37,7 +37,7 @@ void PPSessionManager::StopStreaming()
 void PPSessionManager::ProcessVideoFrame(u8* buffer, u32 size)
 {
 	u8* rgbBuffer = _decoder->appendVideoBuffer(buffer, size);
-	if (rgbBuffer != nullptr) PPGraphics::Get()->UpdateTopScreenSprite(rgbBuffer, 393216, 400, 240);
+	if (rgbBuffer != nullptr) PPGraphics::Get()->UpdateTopScreenSprite(rgbBuffer, 393216);
 
 	//---------------------------------------------------------
 	// update frame video FPS

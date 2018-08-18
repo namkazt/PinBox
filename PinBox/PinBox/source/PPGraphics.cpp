@@ -172,25 +172,18 @@ unsigned int next_pow2(unsigned int v)
 }
 
 
-void PPGraphics::UpdateTopScreenSprite(u8* data, u32 size, u32 width, u32 height)
+void PPGraphics::UpdateTopScreenSprite(u8* data, u32 size)
 {
-	mTopScreenSprite->width = width;
-	mTopScreenSprite->height = height;
-	if(mTopScreenSprite->initialized)
-	{
-		GSPGPU_FlushDataCache(data, size);
-		memcpy(mTopScreenSprite->spriteTexture.data, data, size);
-	}
-
+	if (!mTopScreenSprite->initialized) return;
+	memcpy(mTopScreenSprite->spriteTexture.data, data, size);
+	GSPGPU_FlushDataCache(mTopScreenSprite->spriteTexture.data, size);
 }
 
 void PPGraphics::DrawTopScreenSprite()
 {
-	if (!mTopScreenSprite->initialized) {
-		return;
-	}
+	if (!mTopScreenSprite->initialized) return;
 
-	float x = 0, y = 0, w = mTopScreenSprite->width, h = mTopScreenSprite->height;
+	float x = 0, y = 0, w = 400.0f, h = 240.0f;
 	float ow = 512.0f, oh = 256.0f;
 	float u = 1;
 	float v = 1;
@@ -198,12 +191,10 @@ void PPGraphics::DrawTopScreenSprite()
 	ppVertexPosTex *vertices = (ppVertexPosTex*)allocMemoryPoolAligned(sizeof(ppVertexPosTex) * 4, 8);
 	
 	// set position
-	vertices[0].position = (ppVector3) { x, y, 0.5f };
-	vertices[1].position = (ppVector3) { x + ow, y, 0.5f };
-	vertices[2].position = (ppVector3) { x, y + oh, 0.5f };
-	vertices[3].position = (ppVector3) { x + ow, y + oh, 0.5f };
-
-
+	vertices[0].position = (ppVector3) { 0, 0, 0.5f };
+	vertices[1].position = (ppVector3) { 512.0f, 0, 0.5f };
+	vertices[2].position = (ppVector3) { 0, 256.0f, 0.5f };
+	vertices[3].position = (ppVector3) { 512.0f, 256.0f, 0.5f };
 	vertices[0].textcoord = (ppVector2) { 0.0f, 1.0f };
 	vertices[1].textcoord = (ppVector2) { 1.0f, 1.0f};
 	vertices[2].textcoord = (ppVector2) { 0.0f, 0.0f };
