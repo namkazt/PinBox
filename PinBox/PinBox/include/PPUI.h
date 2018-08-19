@@ -2,6 +2,7 @@
 #ifndef _PP_UI_H_
 #define _PP_UI_H_
 #include <3ds.h>
+#include <string>
 #include <citro3d.h>
 #include "PPGraphics.h"
 #include "PPSessionManager.h"
@@ -33,14 +34,30 @@ public:
 	// SCREEN
 	static int DrawIdleTopScreen(PPSessionManager *sessionManager);
 	static int DrawNumberInputScreen( const char* label, ResultCallback cancel, ResultCallback ok);
+
+
+	static int DrawBtmServerSelectScreen(PPSessionManager *sessionManager);
+	static int DrawBtmAddNewServerProfileScreen(PPSessionManager *sessionManager, ResultCallback cancel, ResultCallback ok);
+
+
 	static int DrawBottomScreenUI(PPSessionManager *sessionManager);
+
+	static int DrawDialogKeyboard( ResultCallback cancelCallback, ResultCallback okCallback);
+	static int DrawDialogNumberInput( ResultCallback cancelCallback, ResultCallback okCallback);
+
+	static int DrawDialogMessage(PPSessionManager *sessionManager, const char* title, const char* body);
+	static int DrawDialogMessage(PPSessionManager *sessionManager, const char* title, const char* body, ResultCallback closeCallback);
+	static int DrawDialogMessage(PPSessionManager *sessionManager, const char* title, const char* body, ResultCallback cancelCallback, ResultCallback okCallback);
+
 	static int DrawStreamConfigUI(PPSessionManager *sessionManager, ResultCallback cancel, ResultCallback ok);
 	static int DrawIdleBottomScreen(PPSessionManager *sessionManager);
 
 	static void InfoBox(PPSessionManager *sessionManager);
+	static void DrawDialogBox(PPSessionManager *sessionManager);
+
 
 	// SLIDE
-	static float Slide(float x, float y, float w, float h, float val, float min, float max, const char* label);
+	static float Slide(float x, float y, float w, float h, float val, float min, float max, float step, const char* label);
 	
 	// CHECKBOX
 	static bool ToggleBox(float x, float y, float w, float h, bool value, const char* label);
@@ -53,9 +70,9 @@ public:
 	static bool RepeatButton(float x, float y, float w, float h, const char* label, ppColor colNormal, ppColor colActive, ppColor txtCol);
 
 	// TEXT
-	static void InputField(float x, float y, float w, float h, const char* defaultValue, const char* placeHolder);
-	static void LabelBox(float x, float y, float w, float h, const char* label, ppColor bgColor, ppColor txtColor, float scale = 0.5f);
-	static void LabelBoxLeft(float x, float y, float w, float h, const char* label, ppColor bgColor, ppColor txtColor, float scale = 0.5f);
+	static int LabelBox(float x, float y, float w, float h, const char* label, ppColor bgColor, ppColor txtColor, float scale = 0.5f);
+	static int LabelBoxAutoWrap(float x, float y, float w, float h, const char* label, ppColor bgColor, ppColor txtColor, float scale = 0.5f);
+	static int LabelBoxLeft(float x, float y, float w, float h, const char* label, ppColor bgColor, ppColor txtColor, float scale = 0.5f);
 
 	// POPUP
 	static bool HasPopup();
@@ -63,8 +80,6 @@ public:
 	static void ClosePopup();
 	static void AddPopup(PopupCallback callback);
 
-	// LOG
-	static int LogWindow(float x, float y, float w, float h);
 };
 
 #endif

@@ -354,7 +354,7 @@ void PPSession::processMessageData(u8* buffer, size_t size)
 		_manager->ProcessVideoFrame(buffer, size);
 		break;
 	case MSG_CODE_REQUEST_NEW_AUDIO_FRAME:
-		_manager->ProcessAudioFrame(buffer, size);
+		//_manager->ProcessAudioFrame(buffer, size);
 		break;
 	default: 
 		break;
@@ -412,14 +412,14 @@ void PPSession::SendMsgChangeSetting()
 	u8* pointer = contentBuffer;
 	//----------------------------------------------
 	// setting: wait for received frame
-	u8 _setting_waitToReceivedFrame = ConfigManager::Get()->_cfg_wait_for_received ? 1 : 0;
-	WRITE_U8(pointer, _setting_waitToReceivedFrame);
-	// setting: smooth frame number ( only activate if waitForReceivedFrame = true)
-	WRITE_U32(pointer, ConfigManager::Get()->_cfg_skip_frame);
-	// setting: frame quality [0 ... 100]
-	WRITE_U32(pointer, ConfigManager::Get()->_cfg_video_quality);
-	// setting: frame scale [0 ... 100]
-	WRITE_U32(pointer, ConfigManager::Get()->_cfg_video_scale);
+	//u8 _setting_waitToReceivedFrame = ConfigManager::Get()->_cfg_wait_for_received ? 1 : 0;
+	//WRITE_U8(pointer, _setting_waitToReceivedFrame);
+	//// setting: smooth frame number ( only activate if waitForReceivedFrame = true)
+	//WRITE_U32(pointer, ConfigManager::Get()->_cfg_skip_frame);
+	//// setting: frame quality [0 ... 100]
+	//WRITE_U32(pointer, ConfigManager::Get()->_cfg_video_quality);
+	//// setting: frame scale [0 ... 100]
+	//WRITE_U32(pointer, ConfigManager::Get()->_cfg_video_scale);
 	//-----------------------------------------------
 	// build message
 	u8* msgBuffer = authenMsg->BuildMessage(contentBuffer, contentSize);

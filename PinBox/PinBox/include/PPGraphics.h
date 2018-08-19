@@ -55,6 +55,7 @@ typedef struct
 	u32 toU32() const { return (((a) & 0xFF) << 24) | (((b) & 0xFF) << 16) | (((g) & 0xFF) << 8) | (((r) & 0xFF) << 0); }
 }ppColor;
 #define rgb(r,g,b)(ppColor {r, g, b, 255})
+#define rgba(r,g,b,a)(ppColor {r, g, b, a})
 #define transparent ppColor {0, 0, 0, 0}
 typedef struct
 {
@@ -88,6 +89,8 @@ public:
 	ppColor AccentDarkColor = ppColor{ 211, 84, 0, 255 };
 	ppColor PrimaryTextColor = ppColor{ 38, 50, 56, 255 };
 	ppColor AccentTextColor = ppColor{ 255, 255, 255, 255 };
+
+	ppColor TransBackgroundDark = rgba(3, 3, 3, 180);
 
 private:
 	C3D_RenderTarget*				mRenderTargetTop = nullptr;
@@ -141,7 +144,9 @@ public:
 
 	void DrawRectangle(float x, float y, float w, float h, ppColor color);
 	void DrawText(const char* text, float x, float y, float scaleX, float scaleY, ppColor color, bool baseline);
+	void DrawTextAutoWrap(const char* text, float x, float y, float w, float scaleX, float scaleY, ppColor color, bool baseline);
 	ppVector2 GetTextSize(const char* text, float scaleX, float scaleY);
+	ppVector3 GetTextSizeAutoWrap(const char* text, float scaleX, float scaleY, float w);
 };
 
 

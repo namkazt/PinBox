@@ -359,12 +359,86 @@ void PPGraphics::DrawText(const char* text, float x, float y, float scaleX, floa
 	} while (code > 0);
 }
 
+void PPGraphics::DrawTextAutoWrap(const char* text, float x, float y, float w, float scaleX, float scaleY,
+	ppColor color, bool baseline)
+{
+	ssize_t  units;
+	u32 code;
+
+	const u8* p = (const u8*)text;
+	float firstX = x;
+	u32 flags = GLYPH_POS_CALC_VTXCOORD | (baseline ? GLYPH_POS_AT_BASELINE : 0);
+	int lastSheet = -1;
+	do
+	{
+		if (!*p) break;
+		units = decode_utf8(&code, p);
+		if (units == -1)
+			break;
+
+		p += units;
+
+		if (code == '\n')
+		{
+			x = firstX;
+			y += scaleY * fontGetInfo()->lineFeed;
+		}
+		else if (code > 0)
+		{
+			int glyphIdx = fontGlyphIndexFromCodePoint(code);
+			fontGlyphPos_s data;
+			fontCalcGlyphPos(&data, glyphIdx, flags, scaleX, scaleY);
+			
+			// Bind the correct texture sheet
+			if (data.sheetIndex != lastSheet)
+			{
+				lastSheet = data.sheetIndex;
+				C3D_TexBind(getTextUnit(GPU_TEXUNIT0), &mGlyphSheets[lastSheet]);
+			}
+
+			ppVertexPosTex* vertices = (ppVertexPosTex*)allocMemoryPoolAligned(sizeof(ppVertexPosTex) * 4, 8);
+			if (!vertices)
+				break; // out of memory in pool
+
+					   // set position
+			vertices[0].position = (ppVector3) { x + data.vtxcoord.left, y + data.vtxcoord.bottom, 0.5f };
+			vertices[1].position = (ppVector3) { x + data.vtxcoord.right, y + data.vtxcoord.bottom, 0.5f };
+			vertices[2].position = (ppVector3) { x + data.vtxcoord.left, y + data.vtxcoord.top, 0.5f };
+			vertices[3].position = (ppVector3) { x + data.vtxcoord.right, y + data.vtxcoord.top, 0.5f };
+
+			// set uv
+			vertices[0].textcoord = (ppVector2) { data.texcoord.left, data.texcoord.bottom };
+			vertices[1].textcoord = (ppVector2) { data.texcoord.right, data.texcoord.bottom };
+			vertices[2].textcoord = (ppVector2) { data.texcoord.left, data.texcoord.top };
+			vertices[3].textcoord = (ppVector2) { data.texcoord.right, data.texcoord.top };
+
+			setupForPosTexlEnv(vertices, color.toU32(), TEX_FONT_GRAPHIC);
+
+			C3D_DrawArrays(GPU_TRIANGLE_STRIP, 0, 4);
+
+			// this line is seem to over
+			if (x + data.width > w)
+			{
+				x = firstX;
+				y += scaleY * fontGetInfo()->lineFeed;
+			}
+			else
+			{
+				x += data.xAdvance;
+			}
+		}
+
+	} while (code > 0);
+}
+
+
 ppVector2 PPGraphics::GetTextSize(const char* text, float scaleX, float scaleY)
 {
 	ssize_t  units;
 	u32 code;
 
 	ppVector2 result;
+	float maxW = 0, cW = 0;
 
 	const u8* p = (const u8*)text;
 	u32 flags = GLYPH_POS_CALC_VTXCOORD | 0;
@@ -376,15 +450,71 @@ ppVector2 PPGraphics::GetTextSize(const char* text, float scaleX, float scaleY)
 		if (units == -1)
 			break;
 		p += units;
-		if (code > 0)
+		if (code == '\n')
+		{
+			if(cW < maxW) cW = maxW;
+			maxW = 0;
+			result.y += scaleY * fontGetInfo()->lineFeed;
+		}else if (code > 0)
 		{
 			int glyphIdx = fontGlyphIndexFromCodePoint(code);
 			fontGlyphPos_s data;
 			fontCalcGlyphPos(&data, glyphIdx, flags, scaleX, scaleY);
-			result.x += data.xAdvance;
+			maxW += data.xAdvance;
 		}
 
 	} while (code > 0);
+	if (cW < maxW) cW = maxW;
+	result.x = cW;
+
+	return result;
+}
+
+ppVector3 PPGraphics::GetTextSizeAutoWrap(const char* text, float scaleX, float scaleY, float w)
+{
+	ssize_t  units;
+	u32 code;
+
+	ppVector3 result;
+	float maxW = 0;
+	float padding = 2;
+
+	const u8* p = (const u8*)text;
+	u32 flags = GLYPH_POS_CALC_VTXCOORD | 0;
+	result.x = 0;
+	result.z = 1; // lines
+	result.y = scaleY * fontGetInfo()->lineFeed + padding; // height
+	do
+	{
+		if (!*p) break;
+		units = decode_utf8(&code, p);
+		if (units == -1)
+			break;
+		p += units;
+		if (code == '\n')
+		{
+			if (result.x < maxW) result.x = maxW;
+			maxW = 0;
+			result.y += scaleY * fontGetInfo()->lineFeed + padding;
+			result.z += 1;
+		}
+		else if (code > 0)
+		{
+			int glyphIdx = fontGlyphIndexFromCodePoint(code);
+			fontGlyphPos_s data;
+			fontCalcGlyphPos(&data, glyphIdx, flags, scaleX, scaleY);
+			if (maxW + data.width > w)
+			{
+				if (result.x < maxW) result.x = maxW;
+				maxW = 0;
+				result.y += scaleY * fontGetInfo()->lineFeed + padding;
+				result.z += 1;
+			}
+			else maxW += data.xAdvance;
+		}
+
+	} while (code > 0);
+	if (result.x < maxW) result.x = maxW;
 
 	return result;
 }

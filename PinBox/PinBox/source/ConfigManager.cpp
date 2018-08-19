@@ -1,6 +1,4 @@
 #include "ConfigManager.h"
-#include <string>
-#include "../include/ConfigManager.h"
 #define CONFIG_FILE_NAME "pinbox.cfg"
 
 static ConfigManager* ref;
@@ -84,12 +82,16 @@ void ConfigManager::loadConfigFile()
 		{
 			config_setting_t* serverCfg = config_setting_get_elem(setting, i);
 			ServerConfig server{};
-			if(!(config_setting_lookup_string(serverCfg, "ip", &server.ip)
-				&& config_setting_lookup_string(serverCfg, "port", &server.port)
-				&& config_setting_lookup_string(serverCfg, "name", &server.name)))
+			const char* ip, * port, *name;
+			if(!(config_setting_lookup_string(serverCfg, "ip", &ip)
+				&& config_setting_lookup_string(serverCfg, "port", &port)
+				&& config_setting_lookup_string(serverCfg, "name", &name)))
 			{
 				continue;
 			}
+			server.name = std::string(name);
+			server.ip = std::string(ip);
+			server.port = std::string(port);
 			servers.push_back(server);
 		}
 	}
@@ -146,11 +148,11 @@ void ConfigManager::Save()
 		config_setting_t* server = config_setting_add(setting, NULL, CONFIG_TYPE_GROUP);
 
 		setting = config_setting_add(server, "ip", CONFIG_TYPE_STRING);
-		config_setting_set_string(setting, servers[i].ip);
+		config_setting_set_string(setting, servers[i].ip.c_str());
 		setting = config_setting_add(server, "port", CONFIG_TYPE_STRING);
-		config_setting_set_string(setting, servers[i].port);
+		config_setting_set_string(setting, servers[i].port.c_str());
 		setting = config_setting_add(server, "name", CONFIG_TYPE_STRING);
-		config_setting_set_string(setting, servers[i].name);
+		config_setting_set_string(setting, servers[i].name.c_str());
 	}
 	setting = config_setting_get_member(root, "last_using_server");
 	if (!setting) setting = config_setting_add(root, "last_using_server", CONFIG_TYPE_INT);

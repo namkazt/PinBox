@@ -5,13 +5,14 @@
 #include <3ds.h>
 #include "libconfig.h"
 #include <vector>
+#include <string>
 
 #define FORCE_OVERRIDE_VERSION 1
 
 typedef struct ServerConfig {
-	const char* ip;
-	const char* port;
-	const char* name;
+	std::string ip;
+	std::string port;
+	std::string name;
 };
 
 class ConfigManager

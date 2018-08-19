@@ -28,6 +28,7 @@ void initDbgConsole()
 
 static u32 *SOC_buffer = NULL;
 
+
 int main()
 {
 	//---------------------------------------------
@@ -62,7 +63,7 @@ int main()
 	// Init session manager
 	//---------------------------------------------
 	PPSessionManager* sm = new PPSessionManager();
-	snprintf(sm->mIPAddress, sizeof sm->mIPAddress, "%s", ConfigManager::Get()->_cfg_ip);
+	//snprintf(sm->mIPAddress, sizeof sm->mIPAddress, "%s", ConfigManager::Get()->_cfg_ip);
 	//---------------------------------------------
 	// Wifi Check
 	//---------------------------------------------
@@ -139,6 +140,7 @@ int main()
 			//---------------------------------------------
 			PPGraphics::Get()->RenderOn(GFX_BOTTOM);
 			int r = 0;
+
 			if(sm->GetManagerState() == 2 && PPUI::getSleepModeState() == 0)
 			{
 				r = PPUI::DrawIdleBottomScreen(sm);
@@ -152,7 +154,7 @@ int main()
 				else
 				{
 					// if there is no popup then render main UI
-					r = PPUI::DrawBottomScreenUI(sm);
+					r = PPUI::DrawBtmServerSelectScreen(sm);
 				}
 			}
 			
