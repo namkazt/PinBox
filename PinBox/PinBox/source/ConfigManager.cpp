@@ -4,6 +4,7 @@
 #define CONFIG_FILE_NAME "pinbox.cfg"
 
 static ConfigManager* ref;
+
 ConfigManager* ConfigManager::Get()
 {
 	if (ref == nullptr) ref = new ConfigManager();
@@ -14,62 +15,117 @@ ConfigManager::ConfigManager()
 {
 }
 
+
+bool ConfigManager::shouldCreateNewConfigFile()
+{
+	if (!config_read_file(&_config, CONFIG_FILE_NAME)) return true;
+	config_setting_t *root, *setting;
+	root = config_root_setting(&_config);
+	int version = 0;
+	if (!config_lookup_int(&_config, "version", &version)) return true;
+	if (version < FORCE_OVERRIDE_VERSION) return true;
+	return false;
+}
+
+void ConfigManager::createNewConfigFile()
+{
+	config_setting_t *root, *setting;
+	config_destroy(&_config);
+	config_init(&_config);
+	root = config_root_setting(&_config);
+
+	// server config group
+	setting = config_setting_add(root, "servers", CONFIG_TYPE_GROUP);
+	setting = config_setting_add(root, "last_using_server", CONFIG_TYPE_INT);
+	config_setting_set_int(setting, -1);
+
+	// video config
+	setting = config_setting_add(root, "video_bit_rate", CONFIG_TYPE_INT);
+	config_setting_set_int(setting, 120000);
+	setting = config_setting_add(root, "video_gop", CONFIG_TYPE_INT);
+	config_setting_set_int(setting, 18);
+	setting = config_setting_add(root, "video_max_b_frames", CONFIG_TYPE_INT);
+	config_setting_set_int(setting, 2);
+
+	// audio
+	setting = config_setting_add(root, "audio_bit_rate", CONFIG_TYPE_INT);
+	config_setting_set_int(setting, 48000);
+
+	// mode
+	setting = config_setting_add(root, "wait_for_sync", CONFIG_TYPE_BOOL);
+	config_setting_set_bool(setting, true);
+
+	config_set_options(&_config,
+		(CONFIG_OPTION_SEMICOLON_SEPARATORS
+			| CONFIG_OPTION_COLON_ASSIGNMENT_FOR_GROUPS
+			| CONFIG_OPTION_OPEN_BRACE_ON_SEPARATE_LINE));
+	config_write_file(&_config, CONFIG_FILE_NAME);
+
+	// default values
+	videoBitRate = 120000;
+	videoGOP = 18;
+	videoMaxBFrames = 2;
+	audioBitRate = 48000;
+	waitForSync = true;
+	lastUsingServer = -1;
+}
+
+void ConfigManager::loadConfigFile()
+{
+	config_setting_t *root, *setting;
+	root = config_root_setting(&_config);
+
+	setting = config_setting_get_member(root, "servers");
+	if (!setting)
+	{
+		int count = config_setting_length(setting);
+		int i = 0;
+		for(i = 0; i < count; ++i)
+		{
+			config_setting_t* serverCfg = config_setting_get_elem(setting, i);
+			ServerConfig server{};
+			if(!(config_setting_lookup_string(serverCfg, "ip", &server.ip)
+				&& config_setting_lookup_string(serverCfg, "port", &server.port)
+				&& config_setting_lookup_string(serverCfg, "name", &server.name)))
+			{
+				continue;
+			}
+			servers.push_back(server);
+		}
+	}
+	if (!config_lookup_int(&_config, "last_using_server", &lastUsingServer)) lastUsingServer = -1;
+
+	// video
+	if (!config_lookup_int(&_config, "video_bit_rate", &videoBitRate)) videoBitRate = 120000;
+	if (!config_lookup_int(&_config, "video_gop", &videoGOP)) videoGOP = 18;
+	if (!config_lookup_int(&_config, "video_max_b_frames", &videoMaxBFrames)) videoMaxBFrames = 2;
+
+	// audio
+	if (!config_lookup_int(&_config, "audio_bit_rate", &audioBitRate)) audioBitRate = 48000;
+
+	// mode
+	int waitForReceived = 0;
+	if (!config_lookup_bool(&_config, "wait_for_sync", &waitForReceived)) {
+		waitForSync = true;
+	}
+	else waitForSync = waitForReceived;
+}
+
+
 void ConfigManager::InitConfig()
 {
 	config_init(&_config);
-	if (!config_read_file(&_config, CONFIG_FILE_NAME))
+	config_set_options(&_config,
+		(CONFIG_OPTION_SEMICOLON_SEPARATORS
+			| CONFIG_OPTION_COLON_ASSIGNMENT_FOR_GROUPS
+			| CONFIG_OPTION_OPEN_BRACE_ON_SEPARATE_LINE));
+
+	if(shouldCreateNewConfigFile())
 	{
-		config_setting_t *root, *setting;
-		root = config_root_setting(&_config);
-		setting = config_setting_add(root, "ip", CONFIG_TYPE_STRING);
-		config_setting_set_string(setting, "");
-		setting = config_setting_add(root, "port", CONFIG_TYPE_STRING);
-		config_setting_set_string(setting, "");
-		setting = config_setting_add(root, "video_quality", CONFIG_TYPE_INT);
-		config_setting_set_int(setting, 75);
-		setting = config_setting_add(root, "video_scale", CONFIG_TYPE_INT);
-		config_setting_set_int(setting, 100);
-		setting = config_setting_add(root, "skip_frame", CONFIG_TYPE_INT);
-		config_setting_set_int(setting, 1);
-		setting = config_setting_add(root, "wait_for_received", CONFIG_TYPE_BOOL);
-		config_setting_set_bool(setting, true);
-
-		config_set_options(&_config, 0);
-		config_write_file(&_config, CONFIG_FILE_NAME);
-
-		_cfg_ip = "";
-		_cfg_port = "";
-		_cfg_video_quality = 75;
-		_cfg_video_scale = 100;
-		_cfg_skip_frame = 1;
-		_cfg_wait_for_received = true;
+		createNewConfigFile();
 	}else
 	{
-		if (!config_lookup_string(&_config, "ip", &_cfg_ip))
-		{
-			_cfg_ip = "";
-		}
-		if (!config_lookup_string(&_config, "port", &_cfg_port))
-		{
-			_cfg_port = "";
-		}
-		if (!config_lookup_int(&_config, "video_quality", &_cfg_video_quality))
-		{
-			_cfg_video_quality = 75;
-		}
-		if (!config_lookup_int(&_config, "video_scale", &_cfg_video_scale))
-		{
-			_cfg_video_scale = 100;
-		}
-		if (!config_lookup_int(&_config, "skip_frame", &_cfg_skip_frame))
-		{
-			_cfg_skip_frame = 1;
-		}
-		int wait_for_received = 1;
-		if (!config_lookup_bool(&_config, "wait_for_received", &wait_for_received))
-		{
-			_cfg_wait_for_received = wait_for_received;
-		}
+		loadConfigFile();
 	}
 }
 
@@ -78,30 +134,53 @@ void ConfigManager::Save()
 	config_setting_t *root, *setting;
 	root = config_root_setting(&_config);
 
-	setting = config_setting_get_member(root, "ip");
-	if(!setting) setting = config_setting_add(root, "ip", CONFIG_TYPE_STRING);
-	config_setting_set_string(setting, _cfg_ip);
+	// reset server list
+	setting = config_setting_get_member(root, "servers");
+	if(!setting) setting = config_setting_add(root, "servers", CONFIG_TYPE_GROUP);
+	else {
+		config_setting_remove(root, "servers");
+		setting = config_setting_add(root, "servers", CONFIG_TYPE_GROUP);
+	}
+	for(int i = 0; i < servers.size(); ++i)
+	{
+		config_setting_t* server = config_setting_add(setting, NULL, CONFIG_TYPE_GROUP);
 
-	setting = config_setting_get_member(root, "port");
-	if (!setting) setting = config_setting_add(root, "port", CONFIG_TYPE_STRING);
-	config_setting_set_string(setting, _cfg_port);
+		setting = config_setting_add(server, "ip", CONFIG_TYPE_STRING);
+		config_setting_set_string(setting, servers[i].ip);
+		setting = config_setting_add(server, "port", CONFIG_TYPE_STRING);
+		config_setting_set_string(setting, servers[i].port);
+		setting = config_setting_add(server, "name", CONFIG_TYPE_STRING);
+		config_setting_set_string(setting, servers[i].name);
+	}
+	setting = config_setting_get_member(root, "last_using_server");
+	if (!setting) setting = config_setting_add(root, "last_using_server", CONFIG_TYPE_INT);
+	config_setting_set_int(setting, lastUsingServer);
 
-	setting = config_setting_get_member(root, "video_quality");
-	if (!setting) setting = config_setting_add(root, "video_quality", CONFIG_TYPE_INT);
-	config_setting_set_int(setting, _cfg_video_quality);
 
-	setting = config_setting_get_member(root, "video_scale");
-	if (!setting) setting = config_setting_add(root, "video_scale", CONFIG_TYPE_INT);
-	config_setting_set_int(setting, _cfg_video_scale);
+	// video
+	setting = config_setting_get_member(root, "video_bit_rate");
+	if (!setting) setting = config_setting_add(root, "video_bit_rate", CONFIG_TYPE_INT);
+	config_setting_set_int(setting, videoBitRate);
 
-	setting = config_setting_get_member(root, "skip_frame");
-	if (!setting) setting = config_setting_add(root, "skip_frame", CONFIG_TYPE_INT);
-	config_setting_set_int(setting, _cfg_skip_frame);
+	setting = config_setting_get_member(root, "video_gop");
+	if (!setting) setting = config_setting_add(root, "video_gop", CONFIG_TYPE_INT);
+	config_setting_set_int(setting, videoGOP);
 
-	setting = config_setting_get_member(root, "wait_for_received");
-	if (!setting) setting = config_setting_add(root, "wait_for_received", CONFIG_TYPE_BOOL);
-	config_setting_set_bool(setting, _cfg_wait_for_received);
+	setting = config_setting_get_member(root, "video_max_b_frames");
+	if (!setting) setting = config_setting_add(root, "video_max_b_frames", CONFIG_TYPE_INT);
+	config_setting_set_int(setting, videoMaxBFrames);
 
+	// audio
+	setting = config_setting_get_member(root, "audio_bit_rate");
+	if (!setting) setting = config_setting_add(root, "audio_bit_rate", CONFIG_TYPE_INT);
+	config_setting_set_int(setting, audioBitRate);
+
+	// mode
+	setting = config_setting_get_member(root, "wait_for_sync");
+	if (!setting) setting = config_setting_add(root, "wait_for_sync", CONFIG_TYPE_BOOL);
+	config_setting_set_bool(setting, waitForSync);
+
+	// write file
 	config_write_file(&_config, CONFIG_FILE_NAME);
 }
 

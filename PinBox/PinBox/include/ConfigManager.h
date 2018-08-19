@@ -4,19 +4,38 @@
 
 #include <3ds.h>
 #include "libconfig.h"
+#include <vector>
+
+#define FORCE_OVERRIDE_VERSION 1
+
+typedef struct ServerConfig {
+	const char* ip;
+	const char* port;
+	const char* name;
+};
 
 class ConfigManager
 {
 private:
 	config_t _config;
+	bool shouldCreateNewConfigFile();
+	void createNewConfigFile();
+	void loadConfigFile();
 
 public:
-	const char* _cfg_ip;
-	const char* _cfg_port;
-	int _cfg_video_quality;
-	int _cfg_video_scale;
-	int _cfg_skip_frame;
-	bool _cfg_wait_for_received;
+
+	ServerConfig* activateServer;
+
+	std::vector<ServerConfig> servers;
+	int lastUsingServer = -1;
+
+	int videoBitRate;
+	int videoGOP;
+	int videoMaxBFrames;
+
+	int audioBitRate;
+
+	bool waitForSync;
 public:
 	static ConfigManager* Get();
 	ConfigManager();
