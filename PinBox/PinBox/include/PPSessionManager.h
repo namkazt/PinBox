@@ -9,6 +9,7 @@
 #include "PPDecoder.h"
 
 #include "constant.h"
+#include "ConfigManager.h"
 
 
 typedef std::function<void(int code)> PPNotifyCallback;
@@ -24,6 +25,7 @@ class PPSessionManager
 {
 public:
 	PPSession*										_session = nullptr;
+	PPSession*										_testSession = nullptr;
 
 	// input store
 	u32												m_OldDown;
@@ -44,8 +46,6 @@ public:
 	u32												mVideoFrame = 0;
 	bool											mReceivedFirstFrame = false;
 
-	Mutex*											g_AudioFrameMutex;
-
 
 	PPDecoder*										_decoder = nullptr;
 	//------------------------------------------
@@ -57,6 +57,9 @@ public:
 	PPSessionManager();
 	~PPSessionManager();
 
+	// test connections
+	int TestConnection(ServerConfig *config);
+
 	void NewSession();
 
 	void StartStreaming(const char* ip);
@@ -65,7 +68,6 @@ public:
 	void StartFPSCounter();
 	void CollectFPSData();
 
-	
 	void UpdateInputStream(u32 down, u32 up, short cx, short cy, short ctx, short cty);
 	void ProcessVideoFrame(u8* buffer, u32 size);
 	void ProcessAudioFrame(u8* buffer, u32 size);

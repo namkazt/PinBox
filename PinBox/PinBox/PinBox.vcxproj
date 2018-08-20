@@ -32,6 +32,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="source\ConfigManager.cpp" />
+    <ClCompile Include="source\easing.cpp" />
     <ClCompile Include="source\main.cpp" />
     <ClCompile Include="source\Mutex.cpp" />
     <ClCompile Include="source\PPAudio.cpp" />
@@ -44,8 +45,11 @@
     <ClCompile Include="source\yuv_rgb.c" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="include\Anim.h" />
+    <ClInclude Include="include\Color.h" />
     <ClInclude Include="include\ConfigManager.h" />
     <ClInclude Include="include\constant.h" />
+    <ClInclude Include="include\easing.h" />
     <ClInclude Include="include\Mutex.h" />
     <ClInclude Include="include\PPAudio.h" />
     <ClInclude Include="include\PPDecoder.h" />

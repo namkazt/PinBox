@@ -97,6 +97,9 @@ private:
 	int								_sock = -1;
 	ppConectState					_connect_state = IDLE;
 
+	// test connection result
+	int	volatile					_testConnectionResult = 0;
+
 	void connectToServer();
 	void closeConnect();
 	void recvSocketData();
@@ -109,12 +112,15 @@ public:
 	PPSession();
 	~PPSession();
 
+	int GetTestConnectionResult() const { return _testConnectionResult; }
+	void InitTestSession(PPSessionManager* manager, const char* ip, const char* port);
+	void threadTest();
+
 	void InitSession(PPSessionManager* manager, const char* ip, const char* port);
+	void threadMain();
 
 	void StartSession(const char* ip, const char* port, s32 prio, PPNetworkCallback authenSuccessed);
 	void CloseSession();
-
-	void threadMain();
 
 	void RequestForData(u32 size, u32 tag = 0);
 	void AddMessageToQueue(u8 *msgBuffer, int32_t msgSize);

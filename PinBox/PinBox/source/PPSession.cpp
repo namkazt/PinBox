@@ -17,6 +17,9 @@ namespace { // helpers
 	void createNew(void* arg) {
 		static_cast<PPSession*>(arg)->threadMain();
 	}
+	void createTest(void* arg) {
+		static_cast<PPSession*>(arg)->threadTest();
+	}
 }
 
 PPSession::PPSession()
@@ -32,9 +35,22 @@ PPSession::~PPSession()
 {
 	CloseSession();
 	// free static buffer
-	free(g_receivedBuffer);
-	free(&_ip);
-	free(&_port);
+	if(g_receivedBuffer != nullptr) free(g_receivedBuffer);
+	if (_ip != nullptr) free(_ip);
+	if (_port != nullptr) free(_port);
+}
+
+void PPSession::InitTestSession(PPSessionManager* manager, const char* ip, const char* port)
+{
+	_manager = manager;
+	_ip = strdup(ip);
+	_port = strdup(port);
+	s32 priority = 0;
+	svcGetThreadPriority(&priority, CUR_THREAD_HANDLE);
+	s32 t = priority - 2;
+	if (t < 0x19) t = 0x19;
+	// detached thread right after it created
+	_thread = threadCreate(createTest, static_cast<void*>(this), 4 * 1024, t, -2, false);
 }
 
 
@@ -63,6 +79,7 @@ void PPSession::CloseSession()
 	// join thread
 	threadJoin(_thread, U64_MAX);
 	threadFree(_thread);
+	_thread = NULL;
 
 	// clean up
 	_running = false;
@@ -253,6 +270,34 @@ void PPSession::threadMain()
 	std::queue<QueueMessage*>().swap(_sendingMessages);
 	delete _queueMessageMutex;
 
+	// close connection
+	closeConnect();
+}
+
+void PPSession::threadTest()
+{
+	if (_running) return;
+	_running = true;
+	u64 sleepDuration = ONE_MILLISECOND * 2;
+	_testConnectionResult = 0;
+	// thread loop
+	while (!_kill)
+	{
+		if (_connect_state == IDLE)
+		{
+			connectToServer();
+		}
+		if (_connect_state == CONNECTED)
+		{
+			_testConnectionResult = 1;
+		}
+		if (_connect_state == FAIL)
+		{
+			_testConnectionResult = -1;
+		}
+
+		svcSleepThread(sleepDuration);
+	}
 	// close connection
 	closeConnect();
 }

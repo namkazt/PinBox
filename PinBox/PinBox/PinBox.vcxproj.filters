@@ -56,6 +56,9 @@
     <ClCompile Include="source\PPAudio.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="source\easing.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="include\PPGraphics.h">
@@ -89,6 +92,15 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="include\constant.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\easing.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\Color.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\Anim.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

@@ -142,7 +142,7 @@ void PPGraphics::RenderOn(gfxScreen_t screen)
 		C3D_FVUnifMtx4x4(GPU_VERTEX_SHADER, mULocProjection, &mProjectionTop);
 		// draw a transparent and small dot to avoid soft lock
 		// @ref : https://github.com/fincs/citro3d/issues/35
-		DrawRectangle(0, 0, 1, 1, ppColor{ 0,0,0,255 });
+		DrawRectangle(0, 0, 1, 1, Color{ 0,0,0,255 });
 	}
 	else {
 		C3D_FrameDrawOn(mRenderTargetBtm);
@@ -150,7 +150,7 @@ void PPGraphics::RenderOn(gfxScreen_t screen)
 		C3D_FVUnifMtx4x4(GPU_VERTEX_SHADER, mULocProjection, &mProjectionBtm);
 		// draw a transparent and small dot to avoid soft lock
 		// @ref : https://github.com/fincs/citro3d/issues/35
-		DrawRectangle(0, 0, 1, 1, ppColor{ 0,0,0,255 });
+		DrawRectangle(0, 0, 1, 1, Color{ 0,0,0,255 });
 	}
 }
 
@@ -277,7 +277,7 @@ void* PPGraphics::allocMemoryPoolAligned(u32 size, u32 alignment)
 	return NULL;
 }
 
-void PPGraphics::DrawRectangle(float x, float y, float w, float h, ppColor color)
+void PPGraphics::DrawRectangle(float x, float y, float w, float h, Color color)
 {
 	ppVertexPosCol* vertices = (ppVertexPosCol*)allocMemoryPoolAligned(sizeof(ppVertexPosCol) * 4, 8);
 	if (!vertices) return;
@@ -299,7 +299,7 @@ void PPGraphics::DrawRectangle(float x, float y, float w, float h, ppColor color
 	C3D_DrawArrays(GPU_TRIANGLE_STRIP, 0, 4);
 }
 
-void PPGraphics::DrawText(const char* text, float x, float y, float scaleX, float scaleY, ppColor color, bool baseline)
+void PPGraphics::DrawText(const char* text, float x, float y, float scaleX, float scaleY, Color color, bool baseline)
 {
 	ssize_t  units;
 	u32 code;
@@ -360,7 +360,7 @@ void PPGraphics::DrawText(const char* text, float x, float y, float scaleX, floa
 }
 
 void PPGraphics::DrawTextAutoWrap(const char* text, float x, float y, float w, float scaleX, float scaleY,
-	ppColor color, bool baseline)
+	Color color, bool baseline)
 {
 	ssize_t  units;
 	u32 code;

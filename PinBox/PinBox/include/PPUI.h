@@ -6,11 +6,21 @@
 #include <citro3d.h>
 #include "PPGraphics.h"
 #include "PPSessionManager.h"
+#include "easing.h"
+#include "Color.h"
 
 //#define UI_DEBUG 1
 
+
+
 typedef std::function<int()> PopupCallback;
 typedef std::function<void(void* arg1, void* arg2)> ResultCallback;
+
+typedef struct DialogBoxOverride {
+	bool isActivate = false;
+	Color TitleBgColor;
+	Color TitleTextColor;
+};
 
 class PPUI
 {
@@ -33,27 +43,34 @@ public:
 
 	// SCREEN
 	static int DrawIdleTopScreen(PPSessionManager *sessionManager);
-	static int DrawNumberInputScreen( const char* label, ResultCallback cancel, ResultCallback ok);
 
 
 	static int DrawBtmServerSelectScreen(PPSessionManager *sessionManager);
 	static int DrawBtmAddNewServerProfileScreen(PPSessionManager *sessionManager, ResultCallback cancel, ResultCallback ok);
 
-
+	static int DrawStreamConfigUI(PPSessionManager *sessionManager, ResultCallback cancel, ResultCallback ok);
+	static int DrawIdleBottomScreen(PPSessionManager *sessionManager);
 	static int DrawBottomScreenUI(PPSessionManager *sessionManager);
+
+	static void InfoBox(PPSessionManager *sessionManager);
+
+
+	// DIALOG
+	static void OverrideDialogTypeWarning();
+	static void OverrideDialogTypeInfo();
+	static void OverrideDialogTypeSuccess();
+	static void OverrideDialogTypeCritical();
 
 	static int DrawDialogKeyboard( ResultCallback cancelCallback, ResultCallback okCallback);
 	static int DrawDialogNumberInput( ResultCallback cancelCallback, ResultCallback okCallback);
-
+	static int DrawDialogLoading(const char* title, const char* body, PopupCallback callback);
 	static int DrawDialogMessage(PPSessionManager *sessionManager, const char* title, const char* body);
 	static int DrawDialogMessage(PPSessionManager *sessionManager, const char* title, const char* body, ResultCallback closeCallback);
 	static int DrawDialogMessage(PPSessionManager *sessionManager, const char* title, const char* body, ResultCallback cancelCallback, ResultCallback okCallback);
 
-	static int DrawStreamConfigUI(PPSessionManager *sessionManager, ResultCallback cancel, ResultCallback ok);
-	static int DrawIdleBottomScreen(PPSessionManager *sessionManager);
-
-	static void InfoBox(PPSessionManager *sessionManager);
 	static void DrawDialogBox(PPSessionManager *sessionManager);
+
+
 
 
 	// SLIDE
@@ -65,14 +82,14 @@ public:
 	// BUTTON
 	static bool FlatButton(float x, float y, float w, float h, const char* label);
 	static bool FlatDarkButton(float x, float y, float w, float h, const char* label);
-	static bool FlatColorButton(float x, float y, float w, float h, const char* label, ppColor colNormal, ppColor colActive, ppColor txtCol);
+	static bool FlatColorButton(float x, float y, float w, float h, const char* label, Color colNormal, Color colActive, Color txtCol);
 
-	static bool RepeatButton(float x, float y, float w, float h, const char* label, ppColor colNormal, ppColor colActive, ppColor txtCol);
+	static bool RepeatButton(float x, float y, float w, float h, const char* label, Color colNormal, Color colActive, Color txtCol);
 
 	// TEXT
-	static int LabelBox(float x, float y, float w, float h, const char* label, ppColor bgColor, ppColor txtColor, float scale = 0.5f);
-	static int LabelBoxAutoWrap(float x, float y, float w, float h, const char* label, ppColor bgColor, ppColor txtColor, float scale = 0.5f);
-	static int LabelBoxLeft(float x, float y, float w, float h, const char* label, ppColor bgColor, ppColor txtColor, float scale = 0.5f);
+	static int LabelBox(float x, float y, float w, float h, const char* label, Color bgColor, Color txtColor, float scale = 0.5f);
+	static int LabelBoxAutoWrap(float x, float y, float w, float h, const char* label, Color bgColor, Color txtColor, float scale = 0.5f);
+	static int LabelBoxLeft(float x, float y, float w, float h, const char* label, Color bgColor, Color txtColor, float scale = 0.5f);
 
 	// POPUP
 	static bool HasPopup();

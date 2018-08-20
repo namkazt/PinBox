@@ -71,6 +71,7 @@ void PPDecoder::releaseDecoder()
 {
 	if (!initialized) return;
 	initialized = false;
+	printf("Release audio/video decoder.\n");
 	// free video
 	avcodec_free_context(&pVideoContext);
 	av_frame_free(&pVideoFrame);

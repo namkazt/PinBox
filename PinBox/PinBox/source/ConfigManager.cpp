@@ -16,12 +16,21 @@ ConfigManager::ConfigManager()
 
 bool ConfigManager::shouldCreateNewConfigFile()
 {
-	if (!config_read_file(&_config, CONFIG_FILE_NAME)) return true;
+	if (!config_read_file(&_config, CONFIG_FILE_NAME)) {
+		printf("> Config file was not found.\n");
+		return true;
+	}
 	config_setting_t *root, *setting;
 	root = config_root_setting(&_config);
 	int version = 0;
-	if (!config_lookup_int(&_config, "version", &version)) return true;
-	if (version < FORCE_OVERRIDE_VERSION) return true;
+	if (!config_lookup_int(&_config, "version", &version)) {
+		printf("> Config do not have version.\n");
+		return true;
+	}
+	if (version < FORCE_OVERRIDE_VERSION) {
+		printf("Config file was outdate.\n");
+		return true;
+	}
 	return false;
 }
 
@@ -33,7 +42,7 @@ void ConfigManager::createNewConfigFile()
 	root = config_root_setting(&_config);
 
 	// server config group
-	setting = config_setting_add(root, "servers", CONFIG_TYPE_GROUP);
+	setting = config_setting_add(root, "servers", CONFIG_TYPE_ARRAY);
 	setting = config_setting_add(root, "last_using_server", CONFIG_TYPE_INT);
 	config_setting_set_int(setting, -1);
 
@@ -52,6 +61,9 @@ void ConfigManager::createNewConfigFile()
 	// mode
 	setting = config_setting_add(root, "wait_for_sync", CONFIG_TYPE_BOOL);
 	config_setting_set_bool(setting, true);
+
+	setting = config_setting_add(root, "version", CONFIG_TYPE_INT);
+	config_setting_set_int(setting, FORCE_OVERRIDE_VERSION);
 
 	config_set_options(&_config,
 		(CONFIG_OPTION_SEMICOLON_SEPARATORS
@@ -73,6 +85,7 @@ void ConfigManager::loadConfigFile()
 	config_setting_t *root, *setting;
 	root = config_root_setting(&_config);
 
+	
 	setting = config_setting_get_member(root, "servers");
 	if (!setting)
 	{
@@ -121,9 +134,10 @@ void ConfigManager::InitConfig()
 		(CONFIG_OPTION_SEMICOLON_SEPARATORS
 			| CONFIG_OPTION_COLON_ASSIGNMENT_FOR_GROUPS
 			| CONFIG_OPTION_OPEN_BRACE_ON_SEPARATE_LINE));
-
+	printf("Initialize Config...\n");
 	if(shouldCreateNewConfigFile())
 	{
+		printf("> Create new config file\n");
 		createNewConfigFile();
 	}else
 	{
@@ -133,32 +147,32 @@ void ConfigManager::InitConfig()
 
 void ConfigManager::Save()
 {
-	config_setting_t *root, *setting;
+	config_setting_t *root, *setting, *element;
 	root = config_root_setting(&_config);
 
 	// reset server list
 	setting = config_setting_get_member(root, "servers");
-	if(!setting) setting = config_setting_add(root, "servers", CONFIG_TYPE_GROUP);
-	else {
-		config_setting_remove(root, "servers");
-		setting = config_setting_add(root, "servers", CONFIG_TYPE_GROUP);
-	}
-	for(int i = 0; i < servers.size(); ++i)
+	if(!setting) setting = config_setting_add(root, "servers", CONFIG_TYPE_ARRAY);
+	for (auto& i : servers)
 	{
 		config_setting_t* server = config_setting_add(setting, NULL, CONFIG_TYPE_GROUP);
-
-		setting = config_setting_add(server, "ip", CONFIG_TYPE_STRING);
-		config_setting_set_string(setting, servers[i].ip.c_str());
-		setting = config_setting_add(server, "port", CONFIG_TYPE_STRING);
-		config_setting_set_string(setting, servers[i].port.c_str());
-		setting = config_setting_add(server, "name", CONFIG_TYPE_STRING);
-		config_setting_set_string(setting, servers[i].name.c_str());
+		if(server != nullptr)
+		{
+			printf("> Profile: %s %s:%s.\n", i.name.c_str(), i.ip.c_str(), i.port.c_str());
+			element = config_setting_add(server, "ip", CONFIG_TYPE_STRING);
+			config_setting_set_string(element, i.ip.c_str());
+			element = config_setting_add(server, "port", CONFIG_TYPE_STRING);
+			config_setting_set_string(element, i.port.c_str());
+			element = config_setting_add(server, "name", CONFIG_TYPE_STRING);
+			config_setting_set_string(element, i.name.c_str());
+			
+		}
 	}
 	setting = config_setting_get_member(root, "last_using_server");
 	if (!setting) setting = config_setting_add(root, "last_using_server", CONFIG_TYPE_INT);
 	config_setting_set_int(setting, lastUsingServer);
 
-
+	printf("> Write video config.\n");
 	// video
 	setting = config_setting_get_member(root, "video_bit_rate");
 	if (!setting) setting = config_setting_add(root, "video_bit_rate", CONFIG_TYPE_INT);
@@ -172,6 +186,7 @@ void ConfigManager::Save()
 	if (!setting) setting = config_setting_add(root, "video_max_b_frames", CONFIG_TYPE_INT);
 	config_setting_set_int(setting, videoMaxBFrames);
 
+	printf("> Write audio config.\n");
 	// audio
 	setting = config_setting_get_member(root, "audio_bit_rate");
 	if (!setting) setting = config_setting_add(root, "audio_bit_rate", CONFIG_TYPE_INT);
@@ -182,8 +197,13 @@ void ConfigManager::Save()
 	if (!setting) setting = config_setting_add(root, "wait_for_sync", CONFIG_TYPE_BOOL);
 	config_setting_set_bool(setting, waitForSync);
 
+	setting = config_setting_get_member(root, "version");
+	if (!setting) setting = config_setting_add(root, "version", CONFIG_TYPE_INT);
+	config_setting_set_int(setting, FORCE_OVERRIDE_VERSION);
+
 	// write file
-	config_write_file(&_config, CONFIG_FILE_NAME);
+	int ret = config_write_file(&_config, CONFIG_FILE_NAME);
+	printf("> Save result: %d\n", ret);
 }
 
 void ConfigManager::Destroy()

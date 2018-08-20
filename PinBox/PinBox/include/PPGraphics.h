@@ -5,6 +5,7 @@
 #include <3ds.h>
 #include <3ds/gfx.h>
 #include <citro3d.h>
+#include "Color.h"
 
 //=========================================================================================
 // Const
@@ -48,17 +49,6 @@ typedef struct
 
 typedef struct
 {
-	u8 r;
-	u8 g;
-	u8 b;
-	u8 a;
-	u32 toU32() const { return (((a) & 0xFF) << 24) | (((b) & 0xFF) << 16) | (((g) & 0xFF) << 8) | (((r) & 0xFF) << 0); }
-}ppColor;
-#define rgb(r,g,b)(ppColor {r, g, b, 255})
-#define rgba(r,g,b,a)(ppColor {r, g, b, a})
-#define transparent ppColor {0, 0, 0, 0}
-typedef struct
-{
 	ppVector3 position;
 	u32 color;
 }ppVertexPosCol;
@@ -83,14 +73,14 @@ typedef struct
 class PPGraphics
 {
 public:
-	ppColor PrimaryColor = ppColor{ 76, 175, 80, 255 };
-	ppColor PrimaryDarkColor = ppColor{ 0, 150, 136, 255 };
-	ppColor AccentColor = ppColor{ 230, 126, 34, 255 };
-	ppColor AccentDarkColor = ppColor{ 211, 84, 0, 255 };
-	ppColor PrimaryTextColor = ppColor{ 38, 50, 56, 255 };
-	ppColor AccentTextColor = ppColor{ 255, 255, 255, 255 };
+	Color PrimaryColor = Color{ 76, 175, 80, 255 };
+	Color PrimaryDarkColor = Color{ 0, 150, 136, 255 };
+	Color AccentColor = Color{ 230, 126, 34, 255 };
+	Color AccentDarkColor = Color{ 211, 84, 0, 255 };
+	Color PrimaryTextColor = Color{ 38, 50, 56, 255 };
+	Color AccentTextColor = Color{ 255, 255, 255, 255 };
 
-	ppColor TransBackgroundDark = rgba(3, 3, 3, 180);
+	Color TransBackgroundDark = Color{3, 3, 3, 180};
 
 private:
 	C3D_RenderTarget*				mRenderTargetTop = nullptr;
@@ -142,9 +132,9 @@ public:
 	void UpdateTopScreenSprite(u8* data, u32 size);
 	void DrawTopScreenSprite();
 
-	void DrawRectangle(float x, float y, float w, float h, ppColor color);
-	void DrawText(const char* text, float x, float y, float scaleX, float scaleY, ppColor color, bool baseline);
-	void DrawTextAutoWrap(const char* text, float x, float y, float w, float scaleX, float scaleY, ppColor color, bool baseline);
+	void DrawRectangle(float x, float y, float w, float h, Color color);
+	void DrawText(const char* text, float x, float y, float scaleX, float scaleY, Color color, bool baseline);
+	void DrawTextAutoWrap(const char* text, float x, float y, float w, float scaleX, float scaleY, Color color, bool baseline);
 	ppVector2 GetTextSize(const char* text, float scaleX, float scaleY);
 	ppVector3 GetTextSizeAutoWrap(const char* text, float scaleX, float scaleY, float w);
 };
