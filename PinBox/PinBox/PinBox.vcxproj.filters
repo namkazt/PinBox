@@ -103,5 +103,8 @@
     <ClInclude Include="include\Anim.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="include\Logger.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

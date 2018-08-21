@@ -28,7 +28,7 @@ bool ConfigManager::shouldCreateNewConfigFile()
 		return true;
 	}
 	if (version < FORCE_OVERRIDE_VERSION) {
-		printf("Config file was outdate.\n");
+		printf("> Config file was outdate.\n");
 		return true;
 	}
 	return false;
@@ -42,7 +42,7 @@ void ConfigManager::createNewConfigFile()
 	root = config_root_setting(&_config);
 
 	// server config group
-	setting = config_setting_add(root, "servers", CONFIG_TYPE_ARRAY);
+	setting = config_setting_add(root, "servers", CONFIG_TYPE_LIST);
 	setting = config_setting_add(root, "last_using_server", CONFIG_TYPE_INT);
 	config_setting_set_int(setting, -1);
 
@@ -84,13 +84,11 @@ void ConfigManager::loadConfigFile()
 {
 	config_setting_t *root, *setting;
 	root = config_root_setting(&_config);
-
-	
-	setting = config_setting_get_member(root, "servers");
-	if (!setting)
+	setting = config_lookup(&_config, "servers");
+	if (setting != NULL)
 	{
-		int count = config_setting_length(setting);
-		int i = 0;
+		printf("> Load server profiles\n");
+		int count = config_setting_length(setting), i = 0;
 		for(i = 0; i < count; ++i)
 		{
 			config_setting_t* serverCfg = config_setting_get_elem(setting, i);
@@ -134,13 +132,14 @@ void ConfigManager::InitConfig()
 		(CONFIG_OPTION_SEMICOLON_SEPARATORS
 			| CONFIG_OPTION_COLON_ASSIGNMENT_FOR_GROUPS
 			| CONFIG_OPTION_OPEN_BRACE_ON_SEPARATE_LINE));
-	printf("Initialize Config...\n");
+	printf("----------------------\nInitialize Config\n----------------------\n");
 	if(shouldCreateNewConfigFile())
 	{
 		printf("> Create new config file\n");
 		createNewConfigFile();
 	}else
 	{
+		printf("> Load config file\n");
 		loadConfigFile();
 	}
 }
@@ -151,8 +150,19 @@ void ConfigManager::Save()
 	root = config_root_setting(&_config);
 
 	// reset server list
-	setting = config_setting_get_member(root, "servers");
-	if(!setting) setting = config_setting_add(root, "servers", CONFIG_TYPE_ARRAY);
+	setting = config_lookup(&_config, "servers");
+	if (setting != NULL) {
+		int profileCount = config_setting_length(setting);
+		while (profileCount >= 0)
+		{
+			int ret = config_setting_remove_elem(setting, 0);
+			if (ret != CONFIG_TRUE)
+			{
+				printf("> Failed to detele profile at: %d\n", profileCount);
+			}
+			--profileCount;
+		}
+	}
 	for (auto& i : servers)
 	{
 		config_setting_t* server = config_setting_add(setting, NULL, CONFIG_TYPE_GROUP);
@@ -165,7 +175,6 @@ void ConfigManager::Save()
 			config_setting_set_string(element, i.port.c_str());
 			element = config_setting_add(server, "name", CONFIG_TYPE_STRING);
 			config_setting_set_string(element, i.name.c_str());
-			
 		}
 	}
 	setting = config_setting_get_member(root, "last_using_server");

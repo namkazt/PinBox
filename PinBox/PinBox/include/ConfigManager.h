@@ -7,7 +7,7 @@
 #include <vector>
 #include <string>
 
-#define FORCE_OVERRIDE_VERSION 1
+#define FORCE_OVERRIDE_VERSION 2
 
 typedef struct ServerConfig {
 	std::string ip;

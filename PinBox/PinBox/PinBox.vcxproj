@@ -50,6 +50,7 @@
     <ClInclude Include="include\ConfigManager.h" />
     <ClInclude Include="include\constant.h" />
     <ClInclude Include="include\easing.h" />
+    <ClInclude Include="include\Logger.h" />
     <ClInclude Include="include\Mutex.h" />
     <ClInclude Include="include\PPAudio.h" />
     <ClInclude Include="include\PPDecoder.h" />

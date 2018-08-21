@@ -5,7 +5,7 @@
 
 #define ONE_MILLISECOND 1000000ULL
 #define ONE_MICROSECOND 1000ULL
-#define BUFFERSIZE 4096
+#define BUFFERSIZE 0x1000
 #define BUFFER_POOL_SIZE (BUFFERSIZE * 12)
 // static buffer to store socket data
 static u8*						g_receivedBuffer;
@@ -33,15 +33,16 @@ PPSession::PPSession()
 
 PPSession::~PPSession()
 {
-	CloseSession();
+	ReleaseSession();
 	// free static buffer
-	if(g_receivedBuffer != nullptr) free(g_receivedBuffer);
-	if (_ip != nullptr) free(_ip);
-	if (_port != nullptr) free(_port);
+	free(g_receivedBuffer);
+	free(_ip);
+	free(_port);
 }
 
 void PPSession::InitTestSession(PPSessionManager* manager, const char* ip, const char* port)
 {
+	_testConnectionResult = 0;
 	_manager = manager;
 	_ip = strdup(ip);
 	_port = strdup(port);
@@ -68,10 +69,11 @@ void PPSession::InitSession(PPSessionManager* manager, const char* ip, const cha
 	svcGetThreadPriority(&priority, CUR_THREAD_HANDLE);
 	s32 t = priority - 2;
 	if (t < 0x19) t = 0x19;
-	_thread = threadCreate(createNew, static_cast<void*>(this), 32 * 1024, t, -2, false);
+	_thread = threadCreate(createNew, static_cast<void*>(this), 4 * 1024, t, -2, false);
 }
 
-void PPSession::CloseSession()
+
+void PPSession::ReleaseSession()
 {
 	if (!_running || _kill) return;
 	_kill = true;
@@ -91,9 +93,27 @@ void PPSession::CloseSession()
 	{
 		delete _tmpMessage;
 	}
-
-	_manager->releaseDecoder();
 }
+
+void PPSession::StartStream()
+{
+	_manager->InitDecoder();
+
+	// send message
+}
+
+
+
+void PPSession::StopStream()
+{
+	_manager->ReleaseDecoder();
+
+	//TODO: we should clean all stream relate message left behide
+
+	// send message
+
+}
+
 
 void PPSession::connectToServer()
 {
@@ -107,6 +127,7 @@ void PPSession::connectToServer()
 		gfxFlushBuffers();
 		// Error: can't create socket
 		_connect_state = FAIL;
+		_manager->SetSessionState(SS_NOT_CONNECTED);
 		return;
 	}
 
@@ -114,16 +135,30 @@ void PPSession::connectToServer()
 	addr.sin_family = AF_INET;
 	unsigned short nPort = (unsigned short)strtoul(_port, NULL, 0);
 	addr.sin_port = htons(nPort);
-	inet_pton(addr.sin_family, _ip, &addr.sin_addr);
+	if(inet_pton(addr.sin_family, _ip, &addr.sin_addr) < 0)
+	{
+		printf("IP and Port not supported.\n", _ip, _port);
+		gfxFlushBuffers();
+		_connect_state = FAIL;
+		_manager->SetSessionState(SS_NOT_CONNECTED);
+		return;
+	}
+
+	printf("Connect to: %s p:%s.\n", _ip, _port);
+	gfxFlushBuffers();
 
 	int ret = connect(_sock, (struct sockaddr *) &addr, sizeof(addr));
 	if (ret < 0)
 	{
 		printf("Could not connect to server.\n");
+		gfxFlushBuffers();
 		_connect_state = FAIL;
+		_manager->SetSessionState(SS_NOT_CONNECTED);
 		return;
 	}
+
 	_connect_state = CONNECTED;
+	_manager->SetSessionState(SS_CONNECTED);
 
 	// set socket to non blocking so we can easy control it
 	//fcntl(sockManager->sock, F_SETFL, O_NONBLOCK);
@@ -131,8 +166,7 @@ void PPSession::connectToServer()
 	printf("Connected to server.\n");
 	gfxFlushBuffers();
 
-	//TODO: on connected successfully here
-	SendMsgAuthentication();
+	//on connected successfully 
 }
 
 void PPSession::closeConnect()
@@ -158,7 +192,7 @@ void PPSession::recvSocketData()
 	//---------------------------------------------------------------------------------
 	// receive data
 	//---------------------------------------------------------------------------------
-	int recvAmount = recv(_sock, g_receivedBuffer + g_receivedSize, BUFFERSIZE, 0);
+	int recvAmount = recv(_sock, g_receivedBuffer + g_receivedSize, BUFFERSIZE, 0); //TODO: Citra seem like can't use this method and it crash immedately
 	if (recvAmount <= 0)
 	{
 		if (errno != EWOULDBLOCK) {
@@ -217,9 +251,9 @@ void PPSession::sendMessageData()
 				int sendAmount = send(_sock, queueMsg->msgBuffer, queueMsg->msgSize, 0);
 				if (sendAmount < 0)
 				{
-					// ERROR when send message
+					// SS_FAILED when send message
 					printf("Error when send message.\n");
-					CloseSession();
+					ReleaseSession();
 					return;
 				}
 				totalSent += sendAmount;
@@ -257,7 +291,6 @@ void PPSession::threadMain()
 		if (_connect_state == FAIL)
 		{
 			printf("Connection failed for some reason.\n");
-			gfxFlushBuffers();
 			_kill = true;
 			break;
 		}
@@ -273,6 +306,8 @@ void PPSession::threadMain()
 	// close connection
 	closeConnect();
 }
+
+
 
 void PPSession::threadTest()
 {
@@ -337,7 +372,9 @@ void PPSession::processReceivedMsg(u8* buffer, u32 size, u32 tag)
 				{
 					printf("Authenticated successfully.\n");
 					_authenticated = true;
-					SendMsgStartSession();
+
+					_manager->SetSessionState(SS_PAIRED);
+
 					RequestForData(MSG_COMMAND_SIZE, PPREQUEST_HEADER);
 					return;
 				}
@@ -428,7 +465,6 @@ void PPSession::SendMsgStartSession()
 	u8* msgBuffer = msg->BuildMessageEmpty();
 	AddMessageToQueue(msgBuffer, msg->GetMessageSize());
 	isSessionStarted = true;
-	_manager->SetManagerState(2);
 	delete msg;
 }
 
@@ -443,7 +479,7 @@ void PPSession::SendMsgStopSession()
 	isSessionStarted = false;
 	delete msg;
 	//--------------------------------------
-	CloseSession();
+	ReleaseSession();
 }
 
 void PPSession::SendMsgChangeSetting()

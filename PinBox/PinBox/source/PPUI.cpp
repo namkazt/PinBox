@@ -176,15 +176,30 @@ int PPUI::DrawBtmServerSelectScreen(PPSessionManager* sessionManager)
 	PPGraphics::Get()->DrawRectangle(0, 0, 320, 35, RGB(26, 188, 156));
 
 	// Screen title
-	switch (sessionManager->GetManagerState()) {
-	case -1: LabelBox(0, 5, 255, 25, "Status: No Wifi Connection", RGB(26, 188, 156), RGB(255, 255, 255)); break;
-	case 0: LabelBox(0, 5, 255, 25, "Status: Ready to Connect", RGB(26, 188, 156), RGB(255, 255, 255)); break;
-	case 1: LabelBox(0, 5, 255, 25, "Status: Connecting...", RGB(26, 188, 156), RGB(255, 255, 255)); break;
-	case 2: LabelBox(0, 5, 255, 25, "Status: Connected", RGB(26, 188, 156), RGB(255, 255, 255)); break;
+	switch (sessionManager->GetSessionState()) {
+	case -1: LabelBox(55, 5, 200, 25, "Status: No Wifi Connection", RGB(26, 188, 156), RGB(255, 255, 255)); break;
+	case 0: LabelBox(55, 5, 200, 25, "Status: Ready to Connect", RGB(26, 188, 156), RGB(255, 255, 255)); break;
+	case 1: LabelBox(55, 5, 200, 25, "Status: Connecting...", RGB(26, 188, 156), RGB(255, 255, 255)); break;
+	case 2: LabelBox(55, 5, 200, 25, "Status: Connected", RGB(26, 188, 156), RGB(255, 255, 255)); break;
+	}
+
+	// Quit
+	if (FlatColorButton(5, 5, 50, 25, "Quit", RGB(214, 48, 49), RGB(255, 118, 117), RGB(255, 255, 255)))
+	{
+		OverrideDialogTypeCritical();
+		DrawDialogMessage(sessionManager, "Warning", "Are you sure to quit?", [=]()
+		{
+			// on cancel
+			return -1;
+		}, [=]()
+		{
+			// on ok
+			return RET_CLOSE_APP;
+		});
 	}
 
 	// Add new Server
-	if (FlatColorButton(260, 5, 50, 25, "Add", RGB(192, 57, 43), RGB(231, 76, 60), RGB(255, 255, 255)))
+	if (FlatColorButton(260, 5, 50, 25, "Add", RGB(9, 132, 227), RGB(116, 185, 255), RGB(255, 255, 255)))
 	{
 		AddPopup([=]()
 		{
@@ -233,26 +248,32 @@ int PPUI::DrawBtmServerSelectScreen(PPSessionManager* sessionManager)
 			LabelBoxLeft(70, sx + 25, 150, 10, (ConfigManager::Get()->servers[i].ip + ":" + ConfigManager::Get()->servers[i].port).c_str(), TRANSPARENT, RGB(116, 125, 140), 0.45);
 
 			// Connect button
-			if (FlatColorButton(5, sx + 2, 60, 32, "Connect", RGB(46, 213, 115), RGB(123, 237, 159), RGB(47, 53, 66)))
+			if (FlatColorButton(5, sx + 2, 60, 32, "Connect", RGB(46, 213, 115), RGB(123, 237, 159), RGB(47, 53, 66)) 
+				&& sessionManager->GetSessionState() == SS_NOT_CONNECTED)
 			{
 				mTmpWaitTimer = osGetTime();
 				OverrideDialogTypeInfo();
 				DrawDialogLoading("Connecting", "Make sure start server on your PC\nPlease be patient while app working", [=]()
 				{
+					SessionState state = sessionManager->ConnectToServer(&ConfigManager::Get()->servers[i]);
+
 					if (osGetTime() - mTmpWaitTimer > (2 * TIME_SECOND))
 					{
-						// return -1 for finish loading
-						int ret = sessionManager->TestConnection(mTmpServerConfig);
-						if (ret == 1)
+						if (state == SS_CONNECTED)
 						{
+							//TODO: fuck it current session manager way really mess around. we should really not do that.
+							// maybe just 1 session 
 
-							
+							// Check when session was connected with server 
 							return -1;
 						}
-						else if (ret == -1)
+						else
 						{
 							mDialogBoxCallLater = new PopupCallback([=]()
 							{
+								// We need set session manager back to not connected state
+								// because of other state can't go there so it must be SS_FAILED
+								sessionManager->SetSessionState(SS_NOT_CONNECTED);
 								OverrideDialogTypeCritical();
 								DrawDialogMessage(sessionManager, "Error", "Can't Connect to server!");
 								return 0;
@@ -267,15 +288,16 @@ int PPUI::DrawBtmServerSelectScreen(PPSessionManager* sessionManager)
 			// Remove button
 			if (FlatColorButton(286, sx + 6, 26, 26, "X", RGB(255, 71, 87), RGB(255, 107, 129), RGB(47, 53, 66)))
 			{
-				DrawDialogMessage(sessionManager, "Warning", "Are you sure to remove this profile?", [=](void* a, void* b)
+				DrawDialogMessage(sessionManager, "Warning", "Are you sure to remove this profile?", [=]()
 				{
 					// on cancel
-				}, [=](void* a, void* b)
+					return -1;
+				}, [=]()
 				{
 					// on ok
 					ConfigManager::Get()->servers.erase(ConfigManager::Get()->servers.begin() + i);
 					ConfigManager::Get()->Save(); 
-					return 0;
+					return -1;
 				});
 			}
 		}
@@ -288,8 +310,7 @@ int PPUI::DrawBtmServerSelectScreen(PPSessionManager* sessionManager)
 
 
 	// Dialog box ( alway at bottom so it will draw on top )
-	DrawDialogBox(sessionManager);
-	return 0;
+	return DrawDialogBox(sessionManager);
 }
 
 int PPUI::DrawBtmAddNewServerProfileScreen(PPSessionManager* sessionManager, ResultCallback cancel, ResultCallback ok)
@@ -368,7 +389,6 @@ int PPUI::DrawBtmAddNewServerProfileScreen(PPSessionManager* sessionManager, Res
 				int ret = sessionManager->TestConnection(mTmpServerConfig);
 				if (ret == 1)
 				{
-
 					mDialogBoxCallLater = new PopupCallback([=]()
 					{
 						OverrideDialogTypeSuccess();
@@ -398,89 +418,87 @@ int PPUI::DrawBtmAddNewServerProfileScreen(PPSessionManager* sessionManager, Res
 	}
 
 	// Dialog box ( alway at bottom so it will draw on top )
-	DrawDialogBox(sessionManager);
-
-	return 0;
+	return DrawDialogBox(sessionManager);
 }
 
 
 int PPUI::DrawBottomScreenUI(PPSessionManager* sessionManager)
 {
-	PPGraphics::Get()->DrawRectangle(0, 0, 320, 240, RGB(236, 240, 241));
-	PPGraphics::Get()->DrawRectangle(0, 0, 320, 80, RGB(26, 188, 156));
-
-	// Screen title
-	switch (sessionManager->GetManagerState()) {
-	case -1: LabelBox(0, 0, 320, 20, "Status: No Wifi Connection", RGB(26, 188, 156), RGB(255, 255, 255)); break;
-	case 0: LabelBox(0, 0, 320, 20, "Status: Ready to Connect", RGB(26, 188, 156), RGB(255, 255, 255)); break;
-	case 1: LabelBox(0, 0, 320, 20, "Status: Connecting...", RGB(26, 188, 156), RGB(255, 255, 255)); break;
-	case 2: LabelBox(0, 0, 320, 20, "Status: Connected", RGB(26, 188, 156), RGB(255, 255, 255)); break;
-	}
-
-	// IP Port
-	LabelBox(20, 40, 230, 30, sessionManager->getIPAddress(), RGB(236, 240, 241), RGB(44, 62, 80));
-
-	// Edit Button
-	if (FlatColorButton(260, 40, 50, 30, "Edit", RGB(192, 57, 43), RGB(231, 76, 60), RGB(255, 255, 255)))
-	{
-		if (sessionManager->GetManagerState() == 2) return 0;
-
-		
-	}
-
-	// Tab Button
-
-	// Tab Content
-
-	if (FlatColorButton(260, 90, 50, 30, "Start", RGB(41, 128, 185), RGB(52, 152, 219), RGB(255, 255, 255)))
-	{
-		if (sessionManager->GetManagerState() == 2) return 0;
-		sessionManager->StartStreaming(sessionManager->getIPAddress());
-	}
-
-	// Sleep mode
-	if (FlatColorButton(200, 90, 50, 30, "Sleep", RGB(39, 174, 96), RGB(46, 204, 113), RGB(255, 255, 255)))
-	{
-		if (sleepModeState == 1) sleepModeState = 0;
-	}
-
-
-	// Config mode
-	if (FlatColorButton(10, 90, 120, 30, "> Adv. Config", RGB(39, 174, 96), RGB(46, 204, 113), RGB(255, 255, 255)))
-	{
-		AddPopup([=]()
-		{
-			return DrawStreamConfigUI(sessionManager,
-				[=](void* a, void* b)
-			{
-				// cancel
-			},
-				[=](void* a, void* b)
-			{
-				// ok
-				// save config
-				ConfigManager::Get()->Save();
-				// send new setting to server
-				sessionManager->UpdateStreamSetting();
-			}
-			);
-		});
-	}
-
-
-	// Exit Button
-	if (FlatColorButton(260, 200, 50, 30, "Exit", RGB(192, 57, 43), RGB(231, 76, 60), RGB(255, 255, 255)))
-	{
-		//DrawDialogMessage(sessionManager, "Warning!!!", "There is some shit in here There is some shit in here There is some shit in here There is some shit in here There is some shit in here ");
-		return -1;
-	}
-
-
-	InfoBox(sessionManager);
-
-
-	// Dialog box ( alway at bottom so it will draw on top )
-	DrawDialogBox(sessionManager);
+//	PPGraphics::Get()->DrawRectangle(0, 0, 320, 240, RGB(236, 240, 241));
+//	PPGraphics::Get()->DrawRectangle(0, 0, 320, 80, RGB(26, 188, 156));
+//
+//	// Screen title
+//	switch (sessionManager->GetSessionState()) {
+//	case -1: LabelBox(0, 0, 320, 20, "Status: No Wifi Connection", RGB(26, 188, 156), RGB(255, 255, 255)); break;
+//	case 0: LabelBox(0, 0, 320, 20, "Status: Ready to Connect", RGB(26, 188, 156), RGB(255, 255, 255)); break;
+//	case 1: LabelBox(0, 0, 320, 20, "Status: Connecting...", RGB(26, 188, 156), RGB(255, 255, 255)); break;
+//	case 2: LabelBox(0, 0, 320, 20, "Status: Connected", RGB(26, 188, 156), RGB(255, 255, 255)); break;
+//	}
+//
+//	// IP Port
+//	LabelBox(20, 40, 230, 30, sessionManager->getIPAddress(), RGB(236, 240, 241), RGB(44, 62, 80));
+//
+//	// Edit Button
+//	if (FlatColorButton(260, 40, 50, 30, "Edit", RGB(192, 57, 43), RGB(231, 76, 60), RGB(255, 255, 255)))
+//	{
+//		if (sessionManager->GetSessionState() == 2) return 0;
+//
+//		
+//	}
+//
+//	// Tab Button
+//
+//	// Tab Content
+//
+//	if (FlatColorButton(260, 90, 50, 30, "Start", RGB(41, 128, 185), RGB(52, 152, 219), RGB(255, 255, 255)))
+//	{
+//		if (sessionManager->GetSessionState() == 2) return 0;
+//		sessionManager->StartStreaming(sessionManager->getIPAddress());
+//	}
+//
+//	// Sleep mode
+//	if (FlatColorButton(200, 90, 50, 30, "Sleep", RGB(39, 174, 96), RGB(46, 204, 113), RGB(255, 255, 255)))
+//	{
+//		if (sleepModeState == 1) sleepModeState = 0;
+//	}
+//
+//
+//	// Config mode
+//	if (FlatColorButton(10, 90, 120, 30, "> Adv. Config", RGB(39, 174, 96), RGB(46, 204, 113), RGB(255, 255, 255)))
+//	{
+//		AddPopup([=]()
+//		{
+//			return DrawStreamConfigUI(sessionManager,
+//				[=](void* a, void* b)
+//			{
+//				// cancel
+//			},
+//				[=](void* a, void* b)
+//			{
+//				// ok
+//				// save config
+//				ConfigManager::Get()->Save();
+//				// send new setting to server
+//				sessionManager->UpdateStreamSetting();
+//			}
+//			);
+//		});
+//	}
+//
+//
+//	// Exit Button
+//	if (FlatColorButton(260, 200, 50, 30, "Exit", RGB(192, 57, 43), RGB(231, 76, 60), RGB(255, 255, 255)))
+//	{
+//		//DrawDialogMessage(sessionManager, "Warning!!!", "There is some shit in here There is some shit in here There is some shit in here There is some shit in here There is some shit in here ");
+//		return -1;
+//	}
+//
+//
+//	InfoBox(sessionManager);
+//
+//
+//	// Dialog box ( alway at bottom so it will draw on top )
+//	DrawDialogBox(sessionManager);
 	return 0;
 }
 
@@ -740,7 +758,7 @@ int PPUI::DrawDialogMessage(PPSessionManager* sessionManager, const char* title,
 }
 
 int PPUI::DrawDialogMessage(PPSessionManager* sessionManager, const char* title, const char* body,
-	ResultCallback closeCallback)
+	PopupCallback closeCallback)
 {
 	if (mDialogBox) return 0;
 	mDialogBox = new PopupCallback([=]()
@@ -766,7 +784,7 @@ int PPUI::DrawDialogMessage(PPSessionManager* sessionManager, const char* title,
 		if (FlatColorButton(135, spaceY + 40 + bodySize.y + 4, 50, 30, "Close",
 			PPGraphics::Get()->AccentColor, PPGraphics::Get()->AccentDarkColor, PPGraphics::Get()->AccentTextColor))
 		{
-			if (closeCallback != nullptr) closeCallback(nullptr, nullptr);
+			if (closeCallback != nullptr) return closeCallback();
 			return -1;
 		}
 		return 0;
@@ -775,7 +793,7 @@ int PPUI::DrawDialogMessage(PPSessionManager* sessionManager, const char* title,
 }
 
 int PPUI::DrawDialogMessage(PPSessionManager* sessionManager, const char* title, const char* body,
-	ResultCallback cancelCallback, ResultCallback okCallback)
+	PopupCallback cancelCallback, PopupCallback okCallback)
 {
 	if (mDialogBox) return 0;
 	mDialogBox = new PopupCallback([=]()
@@ -801,7 +819,7 @@ int PPUI::DrawDialogMessage(PPSessionManager* sessionManager, const char* title,
 		if (FlatColorButton(115, spaceY + 40 + bodySize.y + 4, 40, 30, "Close",
 			PPGraphics::Get()->AccentColor, PPGraphics::Get()->AccentDarkColor, PPGraphics::Get()->AccentTextColor))
 		{
-			if (cancelCallback != nullptr) cancelCallback(nullptr, nullptr);
+			if (cancelCallback != nullptr) return cancelCallback();
 			return -1;
 		}
 
@@ -809,7 +827,7 @@ int PPUI::DrawDialogMessage(PPSessionManager* sessionManager, const char* title,
 		if (FlatColorButton(165, spaceY + 40 + bodySize.y + 4, 40, 30, "OK",
 			PPGraphics::Get()->PrimaryColor, PPGraphics::Get()->PrimaryDarkColor, PPGraphics::Get()->PrimaryTextColor))
 		{
-			if (okCallback != nullptr) okCallback(nullptr, nullptr);
+			if (okCallback != nullptr) return okCallback();
 			return -1;
 		}
 		return 0;
@@ -870,13 +888,13 @@ void PPUI::InfoBox(PPSessionManager* sessionManager)
 	LabelBoxLeft(5, 210, 100, 20, videoFpsBuffer, TRANSPARENT, RGB(150, 150, 150), 0.4f);
 }
 
-void PPUI::DrawDialogBox(PPSessionManager* sessionManager)
+int PPUI::DrawDialogBox(PPSessionManager* sessionManager)
 {
 	if (mDialogBox != nullptr) {
 		mTmpLockTouch = false;
 		int ret = (*mDialogBox)();
 		mTmpLockTouch = true;
-		if(ret == -1)
+		if(ret < 0)
 		{
 			mTmpLockTouch = false;
 			delete mDialogBox;
@@ -890,8 +908,11 @@ void PPUI::DrawDialogBox(PPSessionManager* sessionManager)
 				delete mDialogBoxCallLater;
 				mDialogBoxCallLater = nullptr;
 			}
+
+			if (ret == RET_CLOSE_APP) return -1;
 		}
 	}
+	return 0;
 }
 
 

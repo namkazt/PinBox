@@ -63,7 +63,6 @@ int main()
 	// Init session manager
 	//---------------------------------------------
 	PPSessionManager* sm = new PPSessionManager();
-	//snprintf(sm->mIPAddress, sizeof sm->mIPAddress, "%s", ConfigManager::Get()->_cfg_ip);
 	//---------------------------------------------
 	// Wifi Check
 	//---------------------------------------------
@@ -101,8 +100,7 @@ int main()
 	if (wifiStatus) {
 		osSetSpeedupEnable(1);
 
-		sm->NewSession();
-		sm->StartFPSCounter();
+
 		//---------------------------------------------
 		// Main loop
 		//---------------------------------------------
@@ -127,7 +125,7 @@ int main()
 			//---------------------------------------------
 #ifndef CONSOLE_DEBUG
 			PPGraphics::Get()->RenderOn(GFX_TOP);
-			if(sm->GetManagerState() == 2)
+			if(sm->GetSessionState() == 2)
 			{
 				PPGraphics::Get()->DrawTopScreenSprite();
 			}else
@@ -140,37 +138,23 @@ int main()
 			//---------------------------------------------
 			PPGraphics::Get()->RenderOn(GFX_BOTTOM);
 			int r = 0;
-
-			if(sm->GetManagerState() == 2 && PPUI::getSleepModeState() == 0)
+			if (PPUI::HasPopup()) r = PPUI::GetPopup()();
+			else
 			{
-				r = PPUI::DrawIdleBottomScreen(sm);
-			}else
-			{
-				if (PPUI::HasPopup())
-				{
-					PopupCallback popupFunc = PPUI::GetPopup();
-					r = popupFunc();
-				}
-				else
-				{
-					// if there is no popup then render main UI
-					r = PPUI::DrawBtmServerSelectScreen(sm);
-				}
+				// if there is no popup then render main UI
+				r = PPUI::DrawBtmServerSelectScreen(sm);
 			}
-			
 			//---------------------------------------------
 			PPGraphics::Get()->EndRender();
 
-			sm->CollectFPSData();
+			if (r == -1) {
 
-			if (r == -1) break;
+				break;
+			}
 		}
-		//---------------------------------------------
-		// End
-		//---------------------------------------------
-		sm->StopStreaming();
 	}
 		
+	delete sm;
 	
 	PPGraphics::Get()->GraphicExit();
 	PPAudio::Get()->AudioExit();

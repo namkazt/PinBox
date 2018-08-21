@@ -1,6 +1,7 @@
 #include "PPSessionManager.h"
 #include "PPGraphics.h"
 #include "ConfigManager.h"
+#include "Logger.h"
 
 PPSessionManager::PPSessionManager()
 {
@@ -18,13 +19,18 @@ int PPSessionManager::TestConnection(ServerConfig* config)
 {
 	if (_testSession != nullptr) {
 		int ret = _testSession->GetTestConnectionResult();
+
+		printf("RET: %d.\n", ret);
 		if(ret != 0)
 		{
 			delete _testSession;
 			_testSession = NULL;
+			_sessionState = SS_NOT_CONNECTED;
 		}
 		return ret;
 	}
+
+	printf("Init TEST connection to server.\n");
 	_testSession = new PPSession();
 	_testSession->InitTestSession(this, config->ip.c_str(), config->port.c_str());
 	return 0;
@@ -32,25 +38,35 @@ int PPSessionManager::TestConnection(ServerConfig* config)
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 // For current displaying video frame
-///////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void PPSessionManager::NewSession()
+SessionState PPSessionManager::ConnectToServer(ServerConfig* config)
 {
-	_session = new PPSession();
-	managerState = 0;
+	if (_session == nullptr)
+	{
+		printf("Init connection to server.\n");
+		_sessionState = SS_CONNECTING;
+		_session = new PPSession();
+		_session->InitSession(this, config->ip.c_str(), config->port.c_str());
+	}
+	return _sessionState;
 }
 
-void PPSessionManager::StartStreaming(const char* ip)
+void PPSessionManager::DisconnectToServer()
 {
-	if (!strcmp(ip, "")) return;
-	managerState = 1;
-	initDecoder();
-	_session->InitSession(this, ip, "1234");
+	if (_sessionState == SS_NOT_CONNECTED) return;
+	//TODO: implement this
+}
+
+void PPSessionManager::StartStreaming()
+{
+	if (_sessionState != SS_PAIRED) return;
+	//TODO: implement this
 }
 
 void PPSessionManager::StopStreaming()
 {
-	_session->SendMsgStopSession();
+	if (_sessionState != SS_PAIRED) return;
+	//TODO: implement this
 }
 
 void PPSessionManager::ProcessVideoFrame(u8* buffer, u32 size)
@@ -61,22 +77,22 @@ void PPSessionManager::ProcessVideoFrame(u8* buffer, u32 size)
 	//---------------------------------------------------------
 	// update frame video FPS
 	//---------------------------------------------------------
-	if (!mReceivedFirstFrame)
+	if (!_receivedFirstVideoFrame)
 	{
-		mReceivedFirstFrame = true;
-		mLastTimeGetFrame = osGetTime();
-		mVideoFPS = 0.0f;
-		mVideoFrame = 0;
+		_receivedFirstVideoFrame = true;
+		_lastVideoTime = osGetTime();
+		_currentVideoFPS = 0.0f;
+		_videoFrame = 0;
 	}
 	else
 	{
-		mVideoFrame++;
-		u64 deltaTime = osGetTime() - mLastTimeGetFrame;
+		_videoFrame++;
+		u64 deltaTime = osGetTime() - _lastVideoTime;
 		if (deltaTime > 1000)
 		{
-			mVideoFPS = mVideoFrame / (deltaTime / 1000.0f);
-			mVideoFrame = 0;
-			mLastTimeGetFrame = osGetTime();
+			_currentVideoFPS = _videoFrame / (deltaTime / 1000.0f);
+			_videoFrame = 0;
+			_lastVideoTime = osGetTime();
 		}
 	}
 }
@@ -96,13 +112,17 @@ void PPSessionManager::UpdateStreamSetting()
 	//_session->SendMsgChangeSetting();
 }
 
-void PPSessionManager::initDecoder()
+void PPSessionManager::GetControllerProfiles()
+{
+}
+
+void PPSessionManager::InitDecoder()
 {
 	_decoder = new PPDecoder();
 	_decoder->initDecoder();
 }
 
-void PPSessionManager::releaseDecoder()
+void PPSessionManager::ReleaseDecoder()
 {
 	_decoder->releaseDecoder();
 }
@@ -111,17 +131,17 @@ void PPSessionManager::releaseDecoder()
 void PPSessionManager::UpdateInputStream(u32 down, u32 up, short cx, short cy, short ctx, short cty)
 {
 	if (_session == nullptr) return;
-	if(down != m_OldDown || up != m_OldUp || cx != m_OldCX || cy != m_OldCY || ctx != m_OldCTX || cty != m_OldCTY || !m_initInputFirstFrame)
+	if(down != _oldDown || up != _oldUp || cx != _oldCX || cy != _oldCY || ctx != _oldCTX || cty != _oldCTY || !_initInputFirstFrame)
 	{
 		if(_session->SendMsgSendInputData(down, up, cx, cy, ctx, cty))
 		{
-			m_initInputFirstFrame = true;
-			m_OldDown = down;
-			m_OldUp = up;
-			m_OldCX = cx;
-			m_OldCY = cy;
-			m_OldCTX = ctx;
-			m_OldCTY = cty;
+			_initInputFirstFrame = true;
+			_oldDown = down;
+			_oldUp = up;
+			_oldCX = cx;
+			_oldCY = cy;
+			_oldCTX = ctx;
+			_oldCTY = cty;
 		}
 	}
 }
@@ -129,19 +149,19 @@ void PPSessionManager::UpdateInputStream(u32 down, u32 up, short cx, short cy, s
 
 void PPSessionManager::StartFPSCounter()
 {
-	mLastTime = osGetTime();
-	mCurrentFPS = 0.0f;
-	mFrames = 0;
+	_lastRenderTime = osGetTime();
+	_currentRenderFPS = 0.0f;
+	_renderFrames = 0;
 }
 
-void PPSessionManager::CollectFPSData()
+void PPSessionManager::UpdateFPSCounter()
 {
-	mFrames++;
-	u64 deltaTime = osGetTime() - mLastTime;
+	_renderFrames++;
+	u64 deltaTime = osGetTime() - _lastRenderTime;
 	if(deltaTime > 1000)
 	{
-		mCurrentFPS = mFrames / (deltaTime / 1000.0f);
-		mFrames = 0;
-		mLastTime = osGetTime();
+		_currentRenderFPS = _renderFrames / (deltaTime / 1000.0f);
+		_renderFrames = 0;
+		_lastRenderTime = osGetTime();
 	}
 }

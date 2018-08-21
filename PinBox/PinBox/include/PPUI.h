@@ -10,7 +10,7 @@
 #include "Color.h"
 
 //#define UI_DEBUG 1
-
+#define RET_CLOSE_APP -1000
 
 
 typedef std::function<int()> PopupCallback;
@@ -65,10 +65,10 @@ public:
 	static int DrawDialogNumberInput( ResultCallback cancelCallback, ResultCallback okCallback);
 	static int DrawDialogLoading(const char* title, const char* body, PopupCallback callback);
 	static int DrawDialogMessage(PPSessionManager *sessionManager, const char* title, const char* body);
-	static int DrawDialogMessage(PPSessionManager *sessionManager, const char* title, const char* body, ResultCallback closeCallback);
-	static int DrawDialogMessage(PPSessionManager *sessionManager, const char* title, const char* body, ResultCallback cancelCallback, ResultCallback okCallback);
+	static int DrawDialogMessage(PPSessionManager *sessionManager, const char* title, const char* body, PopupCallback closeCallback);
+	static int DrawDialogMessage(PPSessionManager *sessionManager, const char* title, const char* body, PopupCallback cancelCallback, PopupCallback okCallback);
 
-	static void DrawDialogBox(PPSessionManager *sessionManager);
+	static int DrawDialogBox(PPSessionManager *sessionManager);
 
 
 

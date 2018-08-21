@@ -118,9 +118,10 @@ public:
 
 	void InitSession(PPSessionManager* manager, const char* ip, const char* port);
 	void threadMain();
+	void ReleaseSession();
 
-	void StartSession(const char* ip, const char* port, s32 prio, PPNetworkCallback authenSuccessed);
-	void CloseSession();
+	void StartStream();
+	void StopStream();
 
 	void RequestForData(u32 size, u32 tag = 0);
 	void AddMessageToQueue(u8 *msgBuffer, int32_t msgSize);
