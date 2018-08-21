@@ -132,11 +132,15 @@ public:
 	*/
 	void GetControllerProfiles();
 
+	void Authentication();
+
+
 	/**
 	 * \brief Tell server that client want to start streaming
 	 * 
 	 */
 	void StartStreaming();
+
 	void StopStreaming();
 
 	void StartFPSCounter();

@@ -20,6 +20,8 @@ typedef struct DialogBoxOverride {
 	bool isActivate = false;
 	Color TitleBgColor;
 	Color TitleTextColor;
+	const char* Title = nullptr;
+	const char* Body = nullptr;
 };
 
 class PPUI
@@ -47,6 +49,7 @@ public:
 
 	static int DrawBtmServerSelectScreen(PPSessionManager *sessionManager);
 	static int DrawBtmAddNewServerProfileScreen(PPSessionManager *sessionManager, ResultCallback cancel, ResultCallback ok);
+	static int DrawBtmPairedScreen(PPSessionManager *sessionManager);
 
 	static int DrawStreamConfigUI(PPSessionManager *sessionManager, ResultCallback cancel, ResultCallback ok);
 	static int DrawIdleBottomScreen(PPSessionManager *sessionManager);
@@ -54,12 +57,16 @@ public:
 
 	static void InfoBox(PPSessionManager *sessionManager);
 
+	// TAB
+	static int DrawTabs(const char* tabs[], u32 tabCount, int activeTab, float x, float y, float w, float h);
 
 	// DIALOG
 	static void OverrideDialogTypeWarning();
 	static void OverrideDialogTypeInfo();
 	static void OverrideDialogTypeSuccess();
 	static void OverrideDialogTypeCritical();
+
+	static void OverrideDialogContent(const char* title, const char* body);
 
 	static int DrawDialogKeyboard( ResultCallback cancelCallback, ResultCallback okCallback);
 	static int DrawDialogNumberInput( ResultCallback cancelCallback, ResultCallback okCallback);

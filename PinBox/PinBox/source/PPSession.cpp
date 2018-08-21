@@ -5,7 +5,7 @@
 
 #define ONE_MILLISECOND 1000000ULL
 #define ONE_MICROSECOND 1000ULL
-#define BUFFERSIZE 0x1000
+#define BUFFERSIZE 0x3000
 #define BUFFER_POOL_SIZE (BUFFERSIZE * 12)
 // static buffer to store socket data
 static u8*						g_receivedBuffer;
@@ -374,8 +374,6 @@ void PPSession::processReceivedMsg(u8* buffer, u32 size, u32 tag)
 					_authenticated = true;
 
 					_manager->SetSessionState(SS_PAIRED);
-
-					RequestForData(MSG_COMMAND_SIZE, PPREQUEST_HEADER);
 					return;
 				}
 				else printf("Authenticaiton failed.\n");

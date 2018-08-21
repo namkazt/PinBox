@@ -141,10 +141,23 @@ int main()
 			if (PPUI::HasPopup()) r = PPUI::GetPopup()();
 			else
 			{
-				// if there is no popup then render main UI
-				r = PPUI::DrawBtmServerSelectScreen(sm);
+				switch (sm->GetSessionState())
+				{
+				case SS_FAILED:
+				case SS_NOT_CONNECTED:
+				case SS_CONNECTING:
+				case SS_CONNECTED:
+					r = PPUI::DrawBtmServerSelectScreen(sm);
+					break;
+				case SS_PAIRED: 
+				case SS_STREAMING:
+					r = PPUI::DrawBtmPairedScreen(sm);
+					break;
+				default:
+					break;
+				}
+				
 			}
-			//---------------------------------------------
 			PPGraphics::Get()->EndRender();
 
 			if (r == -1) {

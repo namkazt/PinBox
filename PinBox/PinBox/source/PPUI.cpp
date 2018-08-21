@@ -20,7 +20,7 @@ static touchPosition last_kTouchDown;
 volatile u64 holdTime = 0;
 
 static u32 sleepModeState = 0;
-
+static int mPairedScreenTabIdx = 0;
 //----------------------------------------
 // Dialog
 //---------------------------------------
@@ -56,6 +56,12 @@ static const char* UI_KEYBOARD_VALUE[] = {
 	"q", "w", "e", "r", "t", "y", "u", "i", "o", "p",
 	"a", "s", "d", "f", "g", "h", "j", "k", "l", "'",
 	"z", "x", "c", "v", "b", "n", "m", ",", ".", " ",
+};
+
+static const char* UI_TABS_PAIRED_SCREEN[] = {
+	"Hub",
+	"Basic Setting",
+	"Advance Setting",
 };
 
 u32 PPUI::getKeyDown()
@@ -253,21 +259,27 @@ int PPUI::DrawBtmServerSelectScreen(PPSessionManager* sessionManager)
 			{
 				mTmpWaitTimer = osGetTime();
 				OverrideDialogTypeInfo();
-				DrawDialogLoading("Connecting", "Make sure start server on your PC\nPlease be patient while app working", [=]()
+				DrawDialogLoading("Connecting", "Make sure start server on your PC\nPlease be patient while app working.", [=]()
 				{
 					SessionState state = sessionManager->ConnectToServer(&ConfigManager::Get()->servers[i]);
-
-					if (osGetTime() - mTmpWaitTimer > (2 * TIME_SECOND))
+					switch (state)
 					{
-						if (state == SS_CONNECTED)
-						{
-							//TODO: fuck it current session manager way really mess around. we should really not do that.
-							// maybe just 1 session 
-
-							// Check when session was connected with server 
-							return -1;
+					case SS_CONNECTED:
+						if (osGetTime() - mTmpWaitTimer > (1 * TIME_SECOND)) {
+							OverrideDialogTypeSuccess();
+							OverrideDialogContent("Authentication", "Please wait for handshaking\nand verify client.");
+							//send authentication message
+							if (osGetTime() - mTmpWaitTimer > (2 * TIME_SECOND)) {
+								sessionManager->Authentication();
+							}
 						}
-						else
+						return 0;
+					case SS_PAIRED:
+						// reset variable of paired screen
+						mPairedScreenTabIdx = 0;
+						return -1;
+					default:
+						if (osGetTime() - mTmpWaitTimer > (1 * TIME_SECOND))
 						{
 							mDialogBoxCallLater = new PopupCallback([=]()
 							{
@@ -421,6 +433,80 @@ int PPUI::DrawBtmAddNewServerProfileScreen(PPSessionManager* sessionManager, Res
 	return DrawDialogBox(sessionManager);
 }
 
+int PPUI::DrawBtmPairedScreen(PPSessionManager* sm)
+{
+	PPGraphics::Get()->DrawRectangle(0, 0, 320, 240, RGB(236, 240, 241));
+	PPGraphics::Get()->DrawRectangle(0, 0, 320, 35, RGB(178, 190, 195));
+
+	//TODO: need loop check for wifi status
+	// if wifi was turn off we need close connection and return to Select Server Screen
+
+	// Disconnect to server
+	if (FlatColorButton(5, 5, 80, 25, "Disconnect", RGB(214, 48, 49), RGB(255, 118, 117), RGB(255, 255, 255)))
+	{
+		OverrideDialogTypeCritical();
+		DrawDialogMessage(sm, "Warning", "Are you sure to disconnect?", [=]()
+		{
+			// on cancel
+			return -1;
+		}, [=]()
+		{
+			// on ok
+			sm->DisconnectToServer();
+			return -1;
+		});
+	}
+
+	// LOGO
+	LabelBox(130, 0, 60, 35, "PinBox", TRANSPARENT, RGB(47, 53, 66), 0.9f);
+
+	// Start Stream / Stop Stream
+	if (FlatColorButton(235, 5, 80, 25, sm->GetSessionState() == SS_STREAMING ? "Stop Stream" : "Start Stream",
+		sm->GetSessionState() == SS_STREAMING ? RGB(214, 48, 49) : RGB(9, 132, 227), 
+		sm->GetSessionState() == SS_STREAMING ? RGB(255, 118, 117) : RGB(116, 185, 255), 
+		RGB(255, 255, 255)))
+	{
+		
+	}
+
+	// Case selection
+	if (sm ->GetSessionState() == SS_PAIRED)
+	{
+		// Draw config tabs
+
+		// Tab 1: Stream mode / Stream quality ( basic setting )
+		int ret = DrawTabs(UI_TABS_PAIRED_SCREEN, 3, mPairedScreenTabIdx, 0, 40, 320, 200);
+		switch (ret)
+		{
+		case 0: 
+			mPairedScreenTabIdx = ret;
+			break;
+		case 1:
+			mPairedScreenTabIdx = ret;
+			break;
+		case 2:
+			OverrideDialogTypeCritical();
+			DrawDialogMessage(sm, "Warning", "Modified setting in here maybe cause\ncrash or unexpected behaviour\nMake sure you know what you doing.", [=]()
+			{
+				// on cancel
+				return -1;
+			}, [=]()
+			{
+				// on ok
+				mPairedScreenTabIdx = ret;
+				return -1;
+			});
+			break;
+		}
+
+	} else if(sm->GetSessionState() == SS_STREAMING) {
+		
+	}
+
+	// Dialog box ( alway at bottom so it will draw on top )
+	return DrawDialogBox(sm);
+}
+
 
 int PPUI::DrawBottomScreenUI(PPSessionManager* sessionManager)
 {
@@ -528,6 +614,13 @@ void PPUI::OverrideDialogTypeCritical()
 	mDialogOverride.isActivate = true;
 	mDialogOverride.TitleBgColor = RGB(255, 71, 87);
 	mDialogOverride.TitleTextColor = RGB(47, 53, 66);
+}
+
+void PPUI::OverrideDialogContent(const char* title, const char* body)
+{
+	mDialogOverride.isActivate = true;
+	mDialogOverride.Title = title;
+	mDialogOverride.Body = body;
 }
 
 int PPUI::DrawDialogKeyboard(ResultCallback cancelCallback, ResultCallback okCallback)
@@ -682,8 +775,8 @@ int PPUI::DrawDialogLoading(const char* title, const char* body, PopupCallback c
 		PPGraphics::Get()->DrawRectangle(15, spaceY + 2, 290, popupHeight, RGB(247, 247, 247));
 
 		// draw title
-		LabelBox(15, spaceY + 2, 290, 30, title, mDialogOverride.isActivate ? mDialogOverride.TitleBgColor : PPGraphics::Get()->PrimaryColor, PPGraphics::Get()->PrimaryTextColor, 0.8);
-		LabelBoxAutoWrap(20, spaceY + 40, 280, bodySize.y, body, RGB(255, 255, 255), PPGraphics::Get()->PrimaryTextColor);
+		LabelBox(15, spaceY + 2, 290, 30, mDialogOverride.isActivate && mDialogOverride.Title != nullptr ? mDialogOverride.Title : title, mDialogOverride.isActivate ? mDialogOverride.TitleBgColor : PPGraphics::Get()->PrimaryColor, PPGraphics::Get()->PrimaryTextColor, 0.8);
+		LabelBoxAutoWrap(20, spaceY + 40, 280, bodySize.y, mDialogOverride.isActivate && mDialogOverride.Body ? mDialogOverride.Body : body, RGB(255, 255, 255), PPGraphics::Get()->PrimaryTextColor);
 
 
 		// animation part
@@ -888,6 +981,41 @@ void PPUI::InfoBox(PPSessionManager* sessionManager)
 	LabelBoxLeft(5, 210, 100, 20, videoFpsBuffer, TRANSPARENT, RGB(150, 150, 150), 0.4f);
 }
 
+int PPUI::DrawTabs(const char* tabs[], u32 tabCount, int activeTab, float x, float y, float w, float h)
+{
+	int ret = -1;
+	float tabPadding = 10;
+	float cX = x + tabPadding / 2;
+	Color separetorActive = RGB(85, 239, 196); separetorActive.lighten(0.2f);
+	Color separetor = RGB(178, 190, 195); separetor.lighten(0.2f);
+
+	// Draw tab part
+	for(int i = 0; i < tabCount; ++i)
+	{
+		const ppVector2 tabTitleSize = PPGraphics::Get()->GetTextSize(tabs[i], 0.5f, 0.5f);
+		// tab button
+		if (FlatColorButton(cX, y + (activeTab == i ? 0 : tabPadding/2), tabTitleSize.x + tabPadding * 2, 25 + (activeTab == i ? tabPadding / 2 : 0), tabs[i],
+			activeTab == i ? RGB(85, 239, 196) : RGB(178, 190, 195),
+			activeTab == i ? RGB(129, 236, 236) : RGB(164, 176, 190),
+			activeTab == i ? RGB(45, 52, 54) : RGB(47, 53, 66)))
+		{
+			ret = i;
+		}
+		cX += tabTitleSize.x + tabPadding * 2;
+
+		// separetor line
+		PPGraphics::Get()->DrawRectangle(cX - 1, y + (activeTab == i ? 0 : tabPadding / 2), 1, 25 + (activeTab == i ? tabPadding / 2 : 0), 
+			activeTab == i ? separetorActive : separetor);
+	}
+
+	// Draw content background and scroll if need
+	float cY = y + tabPadding / 2 + 25;
+	PPGraphics::Get()->DrawRectangle(x, cY, w, h - (tabPadding / 2 + 25), RGB(85, 239, 196));
+
+
+	return ret;
+}
+
 int PPUI::DrawDialogBox(PPSessionManager* sessionManager)
 {
 	if (mDialogBox != nullptr) {
@@ -901,6 +1029,8 @@ int PPUI::DrawDialogBox(PPSessionManager* sessionManager)
 			mDialogBox = nullptr;
 			// disable override after finish dialog
 			mDialogOverride.isActivate = false;
+			mDialogOverride.Title = nullptr;
+			mDialogOverride.Body = nullptr;
 			// trigger call later after finish dialog
 			if(mDialogBoxCallLater != nullptr)
 			{

@@ -54,7 +54,10 @@ SessionState PPSessionManager::ConnectToServer(ServerConfig* config)
 void PPSessionManager::DisconnectToServer()
 {
 	if (_sessionState == SS_NOT_CONNECTED) return;
-	//TODO: implement this
+	if (_session == nullptr) return;
+	delete _session;
+	_session = NULL;
+	_sessionState = SS_NOT_CONNECTED;
 }
 
 void PPSessionManager::StartStreaming()
@@ -114,6 +117,12 @@ void PPSessionManager::UpdateStreamSetting()
 
 void PPSessionManager::GetControllerProfiles()
 {
+}
+
+void PPSessionManager::Authentication()
+{
+	if (_sessionState != SS_CONNECTED) return;
+	_session->SendMsgAuthentication();
 }
 
 void PPSessionManager::InitDecoder()

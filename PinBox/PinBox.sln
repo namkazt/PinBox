@@ -9,6 +9,8 @@ Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Citra|x64 = Citra|x64
 		Citra|x86 = Citra|x86
+		Citra-QT|x64 = Citra-QT|x64
+		Citra-QT|x86 = Citra-QT|x86
 		Netlink|x64 = Netlink|x64
 		Netlink|x86 = Netlink|x86
 	EndGlobalSection
@@ -17,6 +19,10 @@ Global
 		{7C85BF63-9A1F-43F0-9560-6E51BA537C01}.Citra|x64.Build.0 = Citra|x64
 		{7C85BF63-9A1F-43F0-9560-6E51BA537C01}.Citra|x86.ActiveCfg = Citra|Win32
 		{7C85BF63-9A1F-43F0-9560-6E51BA537C01}.Citra|x86.Build.0 = Citra|Win32
+		{7C85BF63-9A1F-43F0-9560-6E51BA537C01}.Citra-QT|x64.ActiveCfg = Citra-QT|x64
+		{7C85BF63-9A1F-43F0-9560-6E51BA537C01}.Citra-QT|x64.Build.0 = Citra-QT|x64
+		{7C85BF63-9A1F-43F0-9560-6E51BA537C01}.Citra-QT|x86.ActiveCfg = Citra-QT|Win32
+		{7C85BF63-9A1F-43F0-9560-6E51BA537C01}.Citra-QT|x86.Build.0 = Citra-QT|Win32
 		{7C85BF63-9A1F-43F0-9560-6E51BA537C01}.Netlink|x64.ActiveCfg = Netlink|x64
 		{7C85BF63-9A1F-43F0-9560-6E51BA537C01}.Netlink|x64.Build.0 = Netlink|x64
 		{7C85BF63-9A1F-43F0-9560-6E51BA537C01}.Netlink|x86.ActiveCfg = Netlink|Win32

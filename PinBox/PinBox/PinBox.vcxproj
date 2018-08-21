@@ -1,6 +1,14 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" ToolsVersion="14.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Citra-QT|Win32">
+      <Configuration>Citra-QT</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Citra-QT|x64">
+      <Configuration>Citra-QT</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
     <ProjectConfiguration Include="Citra|Win32">
       <Configuration>Citra</Configuration>
       <Platform>Win32</Platform>
@@ -64,6 +72,7 @@
   <PropertyGroup Label="Globals">
     <ProjectGuid>{7C85BF63-9A1F-43F0-9560-6E51BA537C01}</ProjectGuid>
     <Keyword>MakeFileProj</Keyword>
+    <WindowsTargetPlatformVersion>8.1</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Citra|Win32'" Label="Configuration">
@@ -94,6 +103,13 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Netlink|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v140</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Label="Configuration" Condition="'$(Configuration)|$(Platform)'=='Citra-QT|Win32'">
+    <PlatformToolset>v140</PlatformToolset>
+    <ConfigurationType>Makefile</ConfigurationType>
+  </PropertyGroup>
+  <PropertyGroup Label="Configuration" Condition="'$(Configuration)|$(Platform)'=='Citra-QT|x64'">
     <PlatformToolset>v140</PlatformToolset>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
@@ -157,6 +173,14 @@
     <NMakeIncludeSearchPath>C:\devkitPro\libctru\include;C:\devkitPro\devkitARM\arm-none-eabi\include;C:\devkitPro\libwebp\include;include;build;$(NMakeIncludeSearchPath)</NMakeIncludeSearchPath>
     <OutDir>..\tmp\out\$(Configuration)\</OutDir>
     <IntDir>..\tmp\intermediate\$(Configuration)\</IntDir>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Citra-QT|Win32'">
+    <IncludePath>C:\devkitPro\devkitARM\arm-none-eabi\include;C:\devkitPro\libctru\include;C:\devkitPro\libwebp\include;C:\devkitPro\libimgui\include;include;build;C:\devkitPro\portlibs\armv6k\include;$(IncludePath)</IncludePath>
+    <NMakePreprocessorDefinitions>USE_CITRA;CITRA;_DEBUG;$(NMakePreprocessorDefinitions)</NMakePreprocessorDefinitions>
+    <NMakeIncludeSearchPath>C:\devkitPro\libctru\include;C:\devkitPro\devkitARM\arm-none-eabi\include;include;C:\devkitPro\libwebp\include;build;C:\devkitPro\libimgui\include;C:\devkitPro\portlibs\armv6k\include;$(NMakeIncludeSearchPath)</NMakeIncludeSearchPath>
+    <NMakeBuildCommandLine>make &amp; start make citra-qt</NMakeBuildCommandLine>
+    <NMakeReBuildCommandLine>make clean all</NMakeReBuildCommandLine>
+    <NMakeCleanCommandLine>make clean</NMakeCleanCommandLine>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Citra|Win32'">
     <BuildLog>
