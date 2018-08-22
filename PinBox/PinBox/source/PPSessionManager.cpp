@@ -121,7 +121,8 @@ void PPSessionManager::GetControllerProfiles()
 
 void PPSessionManager::Authentication()
 {
-	if (_sessionState != SS_CONNECTED) return;
+	if (_sessionState != SS_CONNECTED || GetBusyState() != BS_NONE) return;
+	SetBusyState(BS_AUTHENTICATION);
 	_session->SendMsgAuthentication();
 }
 

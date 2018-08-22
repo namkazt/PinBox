@@ -113,7 +113,7 @@ private:
 	int								mRendering = 0;
 
 	// Texture cache
-	std::map<const char*, Sprite*>	mTexCached;
+	std::map<std::string, Sprite*>	mTexCached;
 
 	void setupForPosCollEnv(void* vertices);
 	void setupForPosTexlEnv(void* vertices, u32 color, int texID);
@@ -132,9 +132,10 @@ public:
 	void GraphicExit();
 
 	// cache functions
-	Sprite* AddCacheImageAsset(const char* name, const char* key);
-	Sprite* AddCacheImage(u8 *buf, u32 size, const char* key);
-	Sprite* GetCacheImage(const char* key);
+	Sprite* AddCacheImageAsset(const char* name, std::string key);
+	Sprite* AddCacheImage(const char* path, std::string key);
+	Sprite* AddCacheImage(u8 *buf, u32 size, std::string key);
+	Sprite* GetCacheImage(std::string key);
 
 	// draw functions
 	void BeginRender();
@@ -145,9 +146,13 @@ public:
 	void DrawTopScreenSprite();
 
 	void DrawImage(Sprite* sprite, int x, int y);
+	void DrawImage(std::string key, int x, int y) { DrawImage(GetCacheImage(key), x, y); }
 	void DrawImage(Sprite* sprite, int x, int y, int w, int h);
+	void DrawImage(std::string key, int x, int y, int w, int h) { DrawImage(GetCacheImage(key), x, y, w, h); }
 	void DrawImage(Sprite* sprite, int x, int y, int w, int h, int degrees);
+	void DrawImage(std::string key, int x, int y, int w, int h, int degrees) { DrawImage(GetCacheImage(key), x, y, w, h, degrees); }
 	void DrawImage(Sprite* sprite, int x, int y, int w, int h, int degrees, Vector2 anchor);
+	void DrawImage(std::string key, int x, int y, int w, int h, int degrees, Vector2 anchor) { DrawImage(GetCacheImage(key), x, y, w, h, degrees, anchor); }
 	void DrawRectangle(float x, float y, float w, float h, Color color);
 	void DrawText(const char* text, float x, float y, float scaleX, float scaleY, Color color, bool baseline);
 	void DrawTextAutoWrap(const char* text, float x, float y, float w, float scaleX, float scaleY, Color color, bool baseline);

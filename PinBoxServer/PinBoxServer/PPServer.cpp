@@ -36,6 +36,7 @@ void PPServer::InitServer()
 {
 	google::InitGoogleLogging("PinBoxServer");
 	google::SetCommandLineOption("GLOG_minloglevel", "2");
+
 	//===========================================================================
 	// Init config
 	//===========================================================================
@@ -44,6 +45,8 @@ void PPServer::InitServer()
 	ScreenCapturer = new ScreenCaptureSession();
 	ScreenCapturer->setParent(this);
 	InputStreamer = new InputStreamSession();
+
+
 	//===========================================================================
 	// Socket server part
 	//===========================================================================
@@ -51,6 +54,8 @@ void PPServer::InitServer()
 	std::cout << "Running on address: " << addr << std::endl << std::flush;
 	evpp::EventLoop loop;
 	evpp::TCPServer server(&loop, addr, "PinBoxServer", cfgThreadNum);
+
+
 	//===========================================================================
 	server.SetMessageCallback([&](const evpp::TCPConnPtr& conn, evpp::Buffer* msg)
 	{
@@ -58,6 +63,8 @@ void PPServer::InitServer()
 		if (session != nullptr) session->ProcessMessage(msg);
 		msg->Reset();
 	});
+
+
 	//===========================================================================
 	server.SetConnectionCallback([&](const evpp::TCPConnPtr& conn)
 	{

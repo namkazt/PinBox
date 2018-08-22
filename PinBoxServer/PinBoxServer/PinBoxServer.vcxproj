@@ -161,6 +161,7 @@
   <ItemGroup>
     <ClInclude Include="AudioStreamSession.h" />
     <ClInclude Include="const.h" />
+    <ClInclude Include="HubItem.h" />
     <ClInclude Include="InputStreamSession.h" />
     <ClInclude Include="PPClientSession.h" />
     <ClInclude Include="PPMessage.h" />
@@ -195,6 +196,7 @@
     </Text>
   </ItemGroup>
   <ItemGroup>
+    <None Include="hub.cfg" />
     <None Include="server.cfg" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

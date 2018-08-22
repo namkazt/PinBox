@@ -31,6 +31,7 @@
 #include <functional>
 #include <queue>
 
+#include <constant.h>
 #include "Mutex.h"
 #include "PPMessage.h"
 #include "HubItem.h"
@@ -107,7 +108,6 @@ private:
 
 	// hub items
 	std::vector<HubItem*>			_hubItems;
-	bool							_requestingHubItems = false;
 
 	void connectToServer();
 	void closeConnect();
@@ -135,6 +135,8 @@ public:
 	void RequestForData(u32 size, u32 tag = 0);
 	void AddMessageToQueue(u8 *msgBuffer, int32_t msgSize);
 
+	int GetHubItemCount() { return _hubItems.size(); }
+	HubItem* GetHubItem(int i) { return _hubItems.at(i); }
 
 private:
 	bool								isInputStarted = false;

@@ -53,6 +53,9 @@
     <ClInclude Include="const.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="HubItem.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="stdafx.cpp">
@@ -85,6 +88,9 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="server.cfg">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="hub.cfg">
       <Filter>Resource Files</Filter>
     </None>
   </ItemGroup>

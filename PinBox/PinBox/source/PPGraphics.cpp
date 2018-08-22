@@ -120,7 +120,7 @@ void PPGraphics::GraphicExit()
 	// clean up cache
 	for(auto it = mTexCached.begin(); it != mTexCached.end(); ++it) {
 		if(it->second->initialized) C3D_TexDelete(&it->second->tex);
-		free(it->second);
+		delete it->second;
 	}
 	mTexCached.clear();
 	// delete top
@@ -135,7 +135,7 @@ void PPGraphics::GraphicExit()
 	gfxExit();
 }
 
-Sprite* PPGraphics::AddCacheImageAsset(const char* name, const char* key)
+Sprite* PPGraphics::AddCacheImageAsset(const char* name, std::string key)
 {
 	auto iter = mTexCached.find(key);
 	if (iter != mTexCached.end()) {
@@ -145,17 +145,26 @@ Sprite* PPGraphics::AddCacheImageAsset(const char* name, const char* key)
 	// get image path
 	char path[100];
 	sprintf(path, "romfs:/assets/%s", name);
+	return AddCacheImage(path, key);
+}
+
+Sprite* PPGraphics::AddCacheImage(const char* path, std::string key)
+{
+	auto iter = mTexCached.find(key);
+	if (iter != mTexCached.end()) {
+		return iter->second;
+	}
+
 	unsigned char* image;
 	unsigned width, height;
 
 	int ret = lodepng_decode32_file(&image, &width, &height, path);
 	if (ret != 0)
 	{
-		printf("Failed when decode asset image: %s with key: %s\n", path, key);
+		printf("Failed when decode asset image: %s with key: %s\n", path, key.c_str());
 		return nullptr;
 	}
-
-	Sprite* sprite = calloc(1, sizeof(*sprite));
+	
 	u8 *gpusrc = linearAlloc(width*height * 4);
 	u8* src = image; u8 *dst = gpusrc;
 	// lodepng outputs big endian rgba so we need to convert
@@ -170,6 +179,7 @@ Sprite* PPGraphics::AddCacheImageAsset(const char* name, const char* key)
 		*dst++ = r;
 	}
 
+	Sprite* sprite = new Sprite();
 	// init texture
 	bool success = C3D_TexInit(&sprite->tex, next_pow2(width), next_pow2(height), GPU_RGBA8);
 	if (!success)
@@ -181,7 +191,7 @@ Sprite* PPGraphics::AddCacheImageAsset(const char* name, const char* key)
 	sprite->height = height;
 	C3D_TexSetWrap(&sprite->tex, GPU_CLAMP_TO_BORDER, GPU_CLAMP_TO_BORDER);
 
-	printf("Added sprite: %s from path: %s\n", key, path);
+	printf("Added sprite: %s from path: %s\n", key.c_str(), path);
 
 	GSPGPU_FlushDataCache(gpusrc, width*height * 4);
 	C3D_SyncDisplayTransfer((u32*)gpusrc, GX_BUFFER_DIM(width, height), (u32*)sprite->tex.data, GX_BUFFER_DIM(sprite->tex.width, sprite->tex.height), TEXTURE_RGBA_TRANSFER_FLAGS);
@@ -189,29 +199,28 @@ Sprite* PPGraphics::AddCacheImageAsset(const char* name, const char* key)
 	free(image);
 	linearFree(gpusrc);
 
-	mTexCached.insert(std::pair<const char*, Sprite*>(key, sprite));
+	mTexCached[key] = sprite;
 
 	return sprite;
 }
 
-Sprite* PPGraphics::AddCacheImage(u8* buf, u32 size, const char* key)
+Sprite* PPGraphics::AddCacheImage(u8* buf, u32 size, std::string key)
 {
 	auto iter = mTexCached.find(key);
 	if (iter != mTexCached.end()) {
 		return iter->second;
 	}
-
-	Sprite* sprite = calloc(1, sizeof(*sprite));
+	
 	// load data
 	unsigned char* image;
 	unsigned width, height;
 	int ret = lodepng_decode32(&image, &width, &height, buf, size);
 	if(ret != 0)
 	{
-		printf("Failed when decode png image with key: %s\n", key);
-		free(sprite);
+		printf("Failed when decode png image with key: %s\n", key.c_str());
 		return nullptr;
 	}
+	
 	u8 *gpusrc = linearAlloc(width*height * 4);
 	u8* src = image; u8 *dst = gpusrc;
 	// lodepng outputs big endian rgba so we need to convert
@@ -226,36 +235,38 @@ Sprite* PPGraphics::AddCacheImage(u8* buf, u32 size, const char* key)
 		*dst++ = r;
 	}
 
+	Sprite* sprite = new Sprite();
 	// init texture
 	bool success = C3D_TexInit(&sprite->tex, next_pow2(width), next_pow2(height), GPU_RGBA8);
 	if(!success)
 	{
-		free(sprite);
+		delete sprite;
 		return nullptr;
 	}
 	sprite->width = width;
 	sprite->height = height;
 	C3D_TexSetWrap(&sprite->tex, GPU_CLAMP_TO_BORDER, GPU_CLAMP_TO_BORDER);
 
-	printf("Added sprite: %s\n", key);
+	printf("added key: %s - size: %d\n", key.c_str(), size);
 
-	GSPGPU_FlushDataCache(gpusrc, width*height*4);
+	GSPGPU_FlushDataCache(gpusrc, width*height * 4);
 	C3D_SyncDisplayTransfer((u32*)gpusrc, GX_BUFFER_DIM(width, height), (u32*)sprite->tex.data, GX_BUFFER_DIM(sprite->tex.width, sprite->tex.height), TEXTURE_RGBA_TRANSFER_FLAGS);
 
 	free(image);
 	linearFree(gpusrc);
 
-	mTexCached.insert(std::pair<const char*, Sprite*>(key, sprite));
+	mTexCached[key] = sprite;
 
 	return sprite;
 }
 
-Sprite* PPGraphics::GetCacheImage(const char* key)
+Sprite* PPGraphics::GetCacheImage(std::string key)
 {
 	auto iter = mTexCached.find(key);
 	if (iter != mTexCached.end()) {
 		return iter->second;
 	}
+	printf("Image cache not found: %s\n", key.c_str());
 	return nullptr;
 }
 
@@ -419,6 +430,9 @@ void PPGraphics::DrawImage(Sprite* sprite, int x, int y, int w, int h, int degre
 
 void PPGraphics::DrawImage(Sprite* sprite, int x, int y, int w, int h, int degrees, Vector2 anchor)
 {
+	if (!sprite) return;
+	C3D_TexFlush(&sprite->tex);
+
 	// bind texture
 	C3D_TexBind(getTextUnit(GPU_TEXUNIT0), &sprite->tex);
 	C3D_TexEnv* env = C3D_GetTexEnv(0);

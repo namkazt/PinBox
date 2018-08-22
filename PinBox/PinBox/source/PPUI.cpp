@@ -29,6 +29,10 @@ static PopupCallback *mDialogBox;
 static PopupCallback *mDialogBoxCallLater;
 static DialogBoxOverride mDialogOverride;
 
+//----------------------------------------
+// Tab
+//---------------------------------------
+
 static u64 mTmpWaitTimer = 0;
 static std::vector<PopupCallback> mPopupList;
 
@@ -170,7 +174,22 @@ bool PPUI::TouchUp()
 
 void PPUI::InitResource()
 {
-	PPGraphics::Get()->AddCacheImageAsset("pc.png", "pc");
+	// create tmp folder
+	struct stat st = { 0 };
+	if (stat("pinbox", &st) == -1) mkdir("pinbox", 0700);				// create root pinbox folder
+	if (stat("pinbox/tmp", &st) == -1) mkdir("pinbox/tmp", 0700);		// create tmp folder for tmp asset cached
+
+	// add static resources
+	PPGraphics::Get()->AddCacheImageAsset("monitor.png", "monitor");
+	PPGraphics::Get()->AddCacheImageAsset("default_1.png", "default_1");
+	PPGraphics::Get()->AddCacheImageAsset("default_2.png", "default_2");
+	PPGraphics::Get()->AddCacheImageAsset("default_3.png", "default_3");
+	PPGraphics::Get()->AddCacheImageAsset("default_4.png", "default_4");
+}
+
+void PPUI::CleanupResource()
+{
+
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -183,7 +202,6 @@ int PPUI::DrawIdleTopScreen(PPSessionManager* sessionManager)
 	LabelBox(0, 0, 400, 240, "PinBox", RGB(26, 188, 156), RGB(255, 255, 255));
 }
 
-static int dddd = 0;
 int PPUI::DrawBtmServerSelectScreen(PPSessionManager* sm)
 {
 	PPGraphics::Get()->DrawRectangle(0, 0, 320, 240, RGB(236, 240, 241));
@@ -328,9 +346,6 @@ int PPUI::DrawBtmServerSelectScreen(PPSessionManager* sm)
 		LabelBoxAutoWrap(10, 45, 300, 185, "No server profile found.\nPlease add new one by Add button.", TRANSPARENT, PPGraphics::Get()->PrimaryTextColor);
 	}
 
-	Sprite* sprite = PPGraphics::Get()->GetCacheImage("pc");
-	if (sprite) PPGraphics::Get()->DrawImage(sprite, 100, 100);
-
 	// Dialog box ( alway at bottom so it will draw on top )
 	return DrawDialogBox(sm);
 }
@@ -470,14 +485,6 @@ int PPUI::DrawBtmPairedScreen(PPSessionManager* sm)
 	// LOGO
 	LabelBox(130, 0, 60, 35, "PinBox", TRANSPARENT, RGB(47, 53, 66), 0.9f);
 
-	// Start Stream / Stop Stream
-	if (FlatColorButton(235, 5, 80, 25, sm->GetSessionState() == SS_STREAMING ? "Stop Stream" : "Start Stream",
-		sm->GetSessionState() == SS_STREAMING ? RGB(214, 48, 49) : RGB(9, 132, 227), 
-		sm->GetSessionState() == SS_STREAMING ? RGB(255, 118, 117) : RGB(116, 185, 255), 
-		RGB(255, 255, 255)))
-	{
-		
-	}
 
 	// Case selection
 	if (sm ->GetSessionState() == SS_PAIRED)
@@ -509,8 +516,51 @@ int PPUI::DrawBtmPairedScreen(PPSessionManager* sm)
 			break;
 		}
 
+
+		if(mPairedScreenTabIdx == 0)
+		{
+			int hubCount = sm->GetHubItemCount();
+			int posY = 0;
+			int posX = 0;
+			for (int i = 0; i < hubCount; ++i)
+			{
+				HubItem* hItem = sm->GetHubItem(i);
+
+				// get sprite
+				Sprite* hSprite = nullptr;
+				if (hItem->type == HUB_SCREEN)
+				{
+					hSprite = PPGraphics::Get()->GetCacheImage("monitor");
+				}
+				else
+				{
+					hSprite = PPGraphics::Get()->GetCacheImage(hItem->uuid.c_str());
+				}
+
+				int x = 0;
+				int y = 70;
+
+				// draw image
+				PPGraphics::Get()->DrawImage(hSprite, x + 15 + posX, y + 5 + (48 + 32) * posY, 48, 48);
+				LabelBox(x + 15 + posX, y + 5 + (48 + 32) * posY + 48, 48, 30, hItem->name.c_str(), TRANSPARENT, RGB(47, 53, 66));
+
+				//--- move along
+				posY++;
+				if (posY >= 2) {
+					posY = 0;
+					posX += 48 + 48;
+				}
+			}
+		}else if(mPairedScreenTabIdx == 1)
+		{
+
+			HubItem* hItem = sm->GetHubItem(2);
+			Sprite* hSprite = PPGraphics::Get()->GetCacheImage(hItem->uuid.c_str());
+			PPGraphics::Get()->DrawImage(hSprite, 100, 100, 48, 48);
+		}
+
 	} else if(sm->GetSessionState() == SS_STREAMING) {
-		
+
 	}
 
 	// Dialog box ( alway at bottom so it will draw on top )
@@ -919,7 +969,6 @@ int PPUI::DrawTabs(const char* tabs[], u32 tabCount, int activeTab, float x, flo
 	float cX = x + tabPadding / 2;
 	Color separetorActive = RGB(85, 239, 196); separetorActive.lighten(0.2f);
 	Color separetor = RGB(178, 190, 195); separetor.lighten(0.2f);
-
 	// Draw tab part
 	for(int i = 0; i < tabCount; ++i)
 	{
@@ -939,10 +988,10 @@ int PPUI::DrawTabs(const char* tabs[], u32 tabCount, int activeTab, float x, flo
 			activeTab == i ? separetorActive : separetor);
 	}
 
+
 	// Draw content background and scroll if need
 	float cY = y + tabPadding / 2 + 25;
 	PPGraphics::Get()->DrawRectangle(x, cY, w, h - (tabPadding / 2 + 25), RGB(85, 239, 196));
-
 
 	return ret;
 }

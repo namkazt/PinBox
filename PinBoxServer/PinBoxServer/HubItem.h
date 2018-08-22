@@ -1,6 +1,6 @@
 #ifndef _PP_HUB_TITEM_H_
 #define _PP_HUB_TITEM_H_
-#include <3ds.h>
+#include "PPMessage.h"
 
 enum HubItemType
 {
@@ -22,6 +22,12 @@ public:
 	u32						thumbSize;
 
 	HubItemType				type;
+
+
+	// data
+	std::string				thumbImage;
+	std::string				exePath;
+	std::string				processName;
 };
 
 #endif

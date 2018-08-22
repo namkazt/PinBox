@@ -17,9 +17,7 @@ enum SessionState
 	SS_CONNECTING,
 	SS_CONNECTED,
 	SS_PAIRED,
-	SS_STREAMING,
-
-	SS_FAILED
+	SS_STREAMING
 };
 
 typedef struct
@@ -28,6 +26,12 @@ typedef struct
 	u32			size;
 } VideoFrame;
 
+enum BusyState
+{
+	BS_NONE = 0,
+	BS_AUTHENTICATION,
+	BS_HUB_ITEMS
+};
 
 class PPSessionManager
 {
@@ -66,6 +70,7 @@ protected:
 
 	
 	SessionState									_sessionState = SS_NOT_CONNECTED;
+	BusyState										_busyState = BS_NONE;
 public:
 	PPSessionManager();
 	~PPSessionManager();
@@ -95,6 +100,8 @@ public:
 	 */
 	void DisconnectToServer();
 
+	int GetHubItemCount() { return _session->GetHubItemCount(); }
+	HubItem* GetHubItem(int i) { return _session->GetHubItem(i); }
 
 	/**
 	 * \brief Get current session state
@@ -132,8 +139,15 @@ public:
 	*/
 	void GetControllerProfiles();
 
+
+	/**
+	 * \brief Send authentication message
+	 */
 	void Authentication();
 
+
+	BusyState GetBusyState() { return _busyState; }
+	void SetBusyState(BusyState bs) { _busyState = bs; }
 
 	/**
 	 * \brief Tell server that client want to start streaming

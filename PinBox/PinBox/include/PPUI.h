@@ -13,6 +13,7 @@
 #define RET_CLOSE_APP -1000
 
 
+typedef std::function<void(float x, float y, float w, float h)> TabContentDraw;
 typedef std::function<int()> PopupCallback;
 typedef std::function<void(void* arg1, void* arg2)> ResultCallback;
 
@@ -46,6 +47,7 @@ public:
 
 	// RESOURCES
 	static void InitResource();
+	static void CleanupResource();
 
 	// SCREEN
 	static int DrawIdleTopScreen(PPSessionManager *sessionManager);

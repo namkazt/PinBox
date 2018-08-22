@@ -9,8 +9,7 @@
 #include <evpp/tcp_server.h>
 #include <evpp/buffer.h>
 #include <evpp/tcp_conn.h>
-
-
+#include "HubItem.h"
 
 
 enum PPSession_Type { PPSESSION_NONE, PPSESSION_MOVIE, PPSESSION_SCREEN_CAPTURE, PPSESSION_INPUT_CAPTURE };
@@ -34,8 +33,12 @@ enum PPSession_Type { PPSESSION_NONE, PPSESSION_MOVIE, PPSESSION_SCREEN_CAPTURE,
 #define MSG_CODE_REQUEST_NEW_AUDIO_FRAME 18
 #define MSG_CODE_REQUEST_RECEIVED_AUDIO_FRAME 19
 
+// input
 #define MSG_CODE_SEND_INPUT_CAPTURE 42
 #define MSG_CODE_SEND_INPUT_CAPTURE_IDLE 44
+
+#define MSG_CODE_REQUEST_HUB_ITEMS 60
+#define MSG_CODE_RECEIVED_HUB_ITEMS 61
 
 // 8Mb default size just enough
 #define BUFFER_SIZE 1024 * 1024 * 8 
@@ -53,6 +56,8 @@ private:
 	u32							_waitForSize = 0;
 	PPMessage*					_tmpMessage = nullptr;
 	u8							_currentReadState = PPREQUEST_NONE;
+
+
 
 private:
 	void						sendMessageWithCode(u8 code);

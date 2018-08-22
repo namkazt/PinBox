@@ -48,7 +48,7 @@ int main()
 	PPGraphics::Get()->GraphicsInit();
 	PPAudio::Get()->AudioInit();
 	initDbgConsole();
-
+	PPUI::InitResource();
 	//---------------------------------------------
 	// Init SOCKET
 	//---------------------------------------------
@@ -62,7 +62,6 @@ int main()
 	// Init config
 	//---------------------------------------------
 	ConfigManager::Get()->InitConfig();
-	PPUI::InitResource();
 	//---------------------------------------------
 	// Init session manager
 	//---------------------------------------------
@@ -88,7 +87,7 @@ int main()
 		//---------------------------------------------
 		PPGraphics::Get()->BeginRender();
 		PPGraphics::Get()->RenderOn(GFX_BOTTOM);
-		int ret = PPUI::DrawBottomScreenUI(sm);
+		int ret = PPUI::DrawBtmServerSelectScreen(sm);
 		PPGraphics::Get()->EndRender();
 
 		if (ret == -1) break;
@@ -147,7 +146,6 @@ int main()
 			{
 				switch (sm->GetSessionState())
 				{
-				case SS_FAILED:
 				case SS_NOT_CONNECTED:
 				case SS_CONNECTING:
 				case SS_CONNECTED:
@@ -172,7 +170,8 @@ int main()
 	}
 		
 	delete sm;
-	
+
+	PPUI::CleanupResource();
 	PPGraphics::Get()->GraphicExit();
 	PPAudio::Get()->AudioExit();
 	ConfigManager::Get()->Destroy();

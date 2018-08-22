@@ -3,6 +3,8 @@
 #define _PP_SERVER_CONFIG_H__
 #include <libconfig.h++>
 #include <iostream>
+#include "HubItem.h"
+#include <vector>
 
 class ServerConfig
 {
@@ -10,13 +12,16 @@ public:
 	ServerConfig();
 	~ServerConfig();
 
-	static ServerConfig* Get();
+	static ServerConfig*		Get();
 
 	int							MonitorIndex = 0;
 	int							CaptureFPS = 30;
 	int							NetworkThread = 2;
 	int							ServerPort = 1234;
-	void LoadConfig();
+	void						LoadConfig();
+
+	std::vector<HubItem*>		HubItems;
+	void						LoadHubItems();
 };
 
 #endif

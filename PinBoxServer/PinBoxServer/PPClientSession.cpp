@@ -2,6 +2,8 @@
 #include "PPClientSession.h"
 #include "PPMessage.h"
 #include "PPServer.h"
+#include "HubItem.h"
+#include "ServerConfig.h"
 
 void PPClientSession::InitSession(evpp::TCPConnPtr conn, PPServer* parent)
 {
@@ -177,10 +179,42 @@ void PPClientSession::preprocessMessageCode(u8 code)
 
 	case MSG_CODE_SEND_INPUT_CAPTURE:
 		break;
-	
+
+	case MSG_CODE_REQUEST_HUB_ITEMS: {
+		std::cout << "Client send COMMAND: Request Hub Items" << std::endl;
+		evpp::Buffer* buf = new evpp::Buffer();
+		// add array size
+		u16 count = ServerConfig::Get()->HubItems.size();
+		buf->Append(&count, sizeof u16);
+		for (auto item : ServerConfig::Get()->HubItems)
+		{
+			// add 
+			u8 type = item->type;
+			buf->Append(&type, sizeof u8);
+			// add uuid
+			u16 uuidSize = item->uuid.size();
+			buf->Append(&uuidSize, sizeof u16);
+			buf->Append(item->uuid.c_str(), uuidSize);
+			// add name
+			u16 nameSize = item->name.size();
+			buf->Append(&nameSize, sizeof u16);
+			buf->Append(item->name.c_str(), nameSize);
+			// add thumbnail if not is monitor
+			if (item->type != HUB_SCREEN)
+			{
+				buf->Append(&item->thumbSize, sizeof u32);
+				buf->Append(item->thumbBuf, item->thumbSize);
+			}
+		}
+
+		// send and clean up
+		sendMessageWithCodeAndData(MSG_CODE_RECEIVED_HUB_ITEMS, (u8*)buf->data(), buf->size());
+		delete buf;
+		break;
+	}
 
 	default: 
-		std::cout << "Client " << _connection->remote_addr() << " send Header UNKNOW COMMAND" << std::endl;
+		std::cout << "Client " << _connection->remote_addr() << " send Header UNKNOW COMMAND: " << code << std::endl;
 		break;
 	
 	}

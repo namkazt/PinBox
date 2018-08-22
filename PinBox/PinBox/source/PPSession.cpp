@@ -93,6 +93,14 @@ void PPSession::ReleaseSession()
 	{
 		delete _tmpMessage;
 	}
+
+	// cleanup hub
+	for(HubItem* item : _hubItems)
+	{
+		if(item->thumbSize > 0) free(item->thumbBuf);
+		delete item;
+	}
+	_hubItems.clear();
 }
 
 void PPSession::StartStream()
@@ -373,7 +381,9 @@ void PPSession::processReceivedMsg(u8* buffer, u32 size, u32 tag)
 					printf("Authenticated successfully.\n");
 					_authenticated = true;
 
-					_manager->SetSessionState(SS_PAIRED);
+					_manager->SetBusyState(BS_NONE);
+					// send message to get hub items and other information
+					SendMsgRequestHubItems();
 					return;
 				}
 				else printf("Authenticaiton failed.\n");
@@ -439,8 +449,75 @@ void PPSession::processMessageData(u8* buffer, size_t size)
 		_manager->ProcessAudioFrame(buffer, size);
 		break;
 	case MSG_CODE_RECEIVED_HUB_ITEMS:
+		printf("Got hub items data\n");
+		// On get hub items list
+		u32 cursor = 0;
+		int i = 0;
+		// read number of hub items
+		u16 count = READ_U16(buffer, cursor); cursor += 2;
+		u16 size;
 
+		printf("Count: %d\n", count);
+		// read hub items
+		for(i = 0; i < count; ++i)
+		{
+			printf("> Read item: %d\n", i);
+			HubItem *item = new HubItem();
 
+			// read type : 1 bytes
+			u8 type = READ_U8(buffer, cursor); cursor += 1;
+			item->type = type;
+			printf("> Type: %d\n", type);
+
+			// read uuid
+			// size : 2 bytes
+			size = READ_U16(buffer, cursor); cursor += 2;
+			item->uuid.resize(size);
+			memcpy(&item->uuid[0], buffer + cursor, size); 
+			cursor += size;
+			printf("> uuid: %s :%d\n", item->uuid.c_str(), size);
+
+			// read name
+			// size : 2 bytes
+			size = READ_U16(buffer, cursor); cursor += 2;
+			item->name.resize(size);
+			memcpy(&item->name[0], buffer + cursor, size); 
+			cursor += size;
+			printf("> name: %s : %d\n", item->name.c_str(), size);
+
+			
+
+			if (type != HUB_SCREEN) {
+				// read thumbnail
+				// size : 4 bytes
+				item->thumbSize = READ_U32(buffer, cursor); 
+				cursor += 4;
+#ifndef USE_CITRA
+				// only work on N3ds device
+				PPGraphics::Get()->AddCacheImage(&buffer[cursor], item->thumbSize, item->uuid);
+#else
+				// Work around because of add direct buffer to cache make image unexpected behaviour
+				std::string fname = "pinbox/tmp/" + item->uuid + ".png";
+				if (PPGraphics::Get()->AddCacheImage(fname.c_str(), item->uuid) == nullptr) {
+					printf("Write cache file: %s\n", fname.c_str());
+					// save to file
+					FILE *f = fopen(fname.c_str(), "wb");
+					if (f != NULL)
+					{
+						fwrite(buffer + cursor, sizeof(u8), item->thumbSize, f);
+						fclose(f);
+						PPGraphics::Get()->AddCacheImage(fname.c_str(), item->uuid);
+					}
+				}
+#endif
+				cursor += item->thumbSize;
+			}
+
+			_hubItems.push_back(item);
+		}
+
+		_manager->SetBusyState(BS_NONE);
+		_manager->SetSessionState(SS_PAIRED);
 		break;
 	default: 
 		break;
@@ -515,17 +592,17 @@ void PPSession::SendMsgChangeSetting()
 
 void PPSession::SendMsgRequestHubItems()
 {
-	if (_connect_state == CONNECTED && !_requestingHubItems) {
+	if (_connect_state == CONNECTED && _authenticated && _manager->GetBusyState() == BS_NONE) {
+		printf("Request for hub items\n");
+		_manager->SetBusyState(BS_HUB_ITEMS);
 		// cleanup items
 		_hubItems.clear();
-
-		_requestingHubItems = true;
-
 		// send request
 		PPMessage *msg = new PPMessage();
 		msg->BuildMessageHeader(MSG_CODE_REQUEST_HUB_ITEMS);
 		u8* msgBuffer = msg->BuildMessageEmpty();
 		AddMessageToQueue(msgBuffer, msg->GetMessageSize());
+		RequestForData(MSG_COMMAND_SIZE, PPREQUEST_HEADER);
 		delete msg;
 	}
 }
