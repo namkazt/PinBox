@@ -3,9 +3,6 @@
 #include "ConfigManager.h"
 #include "Anim.h"
 
-// assets
-#include "pc_png.h"
-
 volatile u32 kDown;
 volatile u32 kHeld;
 volatile u32 kUp;
@@ -169,9 +166,11 @@ bool PPUI::TouchUp()
 	return last_kHeld & KEY_TOUCH && kUp & KEY_TOUCH;
 }
 
+
+
 void PPUI::InitResource()
 {
-	PPGraphics::Get()->AddCacheImage((u8*)&pc_png[0], pc_png_size, "pc");
+	PPGraphics::Get()->AddCacheImageAsset("pc.png", "pc");
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -329,11 +328,8 @@ int PPUI::DrawBtmServerSelectScreen(PPSessionManager* sm)
 		LabelBoxAutoWrap(10, 45, 300, 185, "No server profile found.\nPlease add new one by Add button.", TRANSPARENT, PPGraphics::Get()->PrimaryTextColor);
 	}
 
-	// add to cache
-	Sprite* test = PPGraphics::Get()->GetCacheImage("pc");
-
-	PPGraphics::Get()->DrawImage(test, 100, 100, 32, 32, dddd, Vector2{0,0});
-	++dddd;
+	Sprite* sprite = PPGraphics::Get()->GetCacheImage("pc");
+	if (sprite) PPGraphics::Get()->DrawImage(sprite, 100, 100);
 
 	// Dialog box ( alway at bottom so it will draw on top )
 	return DrawDialogBox(sm);

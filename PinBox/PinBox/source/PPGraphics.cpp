@@ -135,6 +135,65 @@ void PPGraphics::GraphicExit()
 	gfxExit();
 }
 
+Sprite* PPGraphics::AddCacheImageAsset(const char* name, const char* key)
+{
+	auto iter = mTexCached.find(key);
+	if (iter != mTexCached.end()) {
+		return iter->second;
+	}
+
+	// get image path
+	char path[100];
+	sprintf(path, "romfs:/assets/%s", name);
+	unsigned char* image;
+	unsigned width, height;
+
+	int ret = lodepng_decode32_file(&image, &width, &height, path);
+	if (ret != 0)
+	{
+		printf("Failed when decode asset image: %s with key: %s\n", path, key);
+		return nullptr;
+	}
+
+	Sprite* sprite = calloc(1, sizeof(*sprite));
+	u8 *gpusrc = linearAlloc(width*height * 4);
+	u8* src = image; u8 *dst = gpusrc;
+	// lodepng outputs big endian rgba so we need to convert
+	for (int i = 0; i<width*height; i++) {
+		int r = *src++;
+		int g = *src++;
+		int b = *src++;
+		int a = *src++;
+		*dst++ = a;
+		*dst++ = b;
+		*dst++ = g;
+		*dst++ = r;
+	}
+
+	// init texture
+	bool success = C3D_TexInit(&sprite->tex, next_pow2(width), next_pow2(height), GPU_RGBA8);
+	if (!success)
+	{
+		free(sprite);
+		return nullptr;
+	}
+	sprite->width = width;
+	sprite->height = height;
+	C3D_TexSetWrap(&sprite->tex, GPU_CLAMP_TO_BORDER, GPU_CLAMP_TO_BORDER);
+
+	printf("Added sprite: %s from path: %s\n", key, path);
+
+	GSPGPU_FlushDataCache(gpusrc, width*height * 4);
+	C3D_SyncDisplayTransfer((u32*)gpusrc, GX_BUFFER_DIM(width, height), (u32*)sprite->tex.data, GX_BUFFER_DIM(sprite->tex.width, sprite->tex.height), TEXTURE_RGBA_TRANSFER_FLAGS);
+
+	free(image);
+	linearFree(gpusrc);
+
+	mTexCached.insert(std::pair<const char*, Sprite*>(key, sprite));
+
+	return sprite;
+}
+
 Sprite* PPGraphics::AddCacheImage(u8* buf, u32 size, const char* key)
 {
 	auto iter = mTexCached.find(key);

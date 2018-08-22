@@ -43,6 +43,8 @@ public:
 	static bool TouchMove();
 	static bool TouchUp();
 
+
+	// RESOURCES
 	static void InitResource();
 
 	// SCREEN

@@ -35,7 +35,7 @@ SOURCES		:=	source
 DATA		:=	data
 INCLUDES	:=	include
 ICON        :=  assets/icon.png
-#ROMFS		:=	romfs
+ROMFS		:=	romfs
 
 
 #---------------------------------------------------------------------------------

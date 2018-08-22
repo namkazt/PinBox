@@ -37,6 +37,10 @@ int main()
 	acInit();
 	aptInit();
 	irrstInit();
+	Result rc = romfsInit();
+	if (rc) printf("romfsInit: %08lX\n", rc);
+	else printf("romfs Init Successful!\n");
+
 	APT_SetAppCpuTimeLimit(80);
 	//---------------------------------------------
 	// Init Graphics
@@ -175,6 +179,7 @@ int main()
 	irrstExit();
 	socExit();
 	free(SOC_buffer);
+	romfsExit();
 	aptExit();
 	acExit();
 

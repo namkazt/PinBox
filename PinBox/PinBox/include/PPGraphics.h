@@ -132,6 +132,7 @@ public:
 	void GraphicExit();
 
 	// cache functions
+	Sprite* AddCacheImageAsset(const char* name, const char* key);
 	Sprite* AddCacheImage(u8 *buf, u32 size, const char* key);
 	Sprite* GetCacheImage(const char* key);
 
@@ -147,7 +148,6 @@ public:
 	void DrawImage(Sprite* sprite, int x, int y, int w, int h);
 	void DrawImage(Sprite* sprite, int x, int y, int w, int h, int degrees);
 	void DrawImage(Sprite* sprite, int x, int y, int w, int h, int degrees, Vector2 anchor);
-
 	void DrawRectangle(float x, float y, float w, float h, Color color);
 	void DrawText(const char* text, float x, float y, float scaleX, float scaleY, Color color, bool baseline);
 	void DrawTextAutoWrap(const char* text, float x, float y, float w, float scaleX, float scaleY, Color color, bool baseline);
