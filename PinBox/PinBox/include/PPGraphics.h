@@ -6,6 +6,7 @@
 #include <3ds/gfx.h>
 #include <citro3d.h>
 #include "Color.h"
+#include <map>
 
 //=========================================================================================
 // Const
@@ -25,6 +26,11 @@
 	GX_TRANSFER_IN_FORMAT(GX_TRANSFER_FMT_RGB8) | GX_TRANSFER_OUT_FORMAT(GX_TRANSFER_FMT_RGB8) | \
 	GX_TRANSFER_SCALING(GX_TRANSFER_SCALE_NO))
 
+#define TEXTURE_RGBA_TRANSFER_FLAGS \
+	(GX_TRANSFER_FLIP_VERT(1) | GX_TRANSFER_OUT_TILED(1) | GX_TRANSFER_RAW_COPY(0) | \
+	GX_TRANSFER_IN_FORMAT(GX_TRANSFER_FMT_RGBA8) | GX_TRANSFER_OUT_FORMAT(GX_TRANSFER_FMT_RGBA8) | \
+	GX_TRANSFER_SCALING(GX_TRANSFER_SCALE_NO))
+
 #define TEX_GRAPHIC 0
 #define TEX_VIDEO_STREAM_LEFT 1
 #define TEX_VIDEO_STREAM_RIGHT 2
@@ -38,34 +44,34 @@ typedef struct
 {
 	float x;
 	float y;
-}ppVector2;
+}Vector2;
 
 typedef struct
 {
 	float x;
 	float y;
 	float z;
-}ppVector3;
+}Vector3;
 
 typedef struct
 {
-	ppVector3 position;
+	Vector3 position;
 	u32 color;
-}ppVertexPosCol;
+}VertexPosCol;
 
 typedef struct
 {
-	ppVector3 position;
-	ppVector2 textcoord;
-}ppVertexPosTex;
+	Vector3 position;
+	Vector2 textcoord;
+}VertexPosTex;
 
 typedef struct 
 {
-	C3D_Tex spriteTexture;
+	C3D_Tex tex;
 	u32 width;
 	u32 height;
 	bool initialized = false;
-}ppSprite;
+}Sprite;
 
 //=========================================================================================
 // Class
@@ -96,7 +102,7 @@ private:
 	C3D_Tex*						mGlyphSheets;
 
 	// top screen sprite
-	ppSprite*						mTopScreenSprite;
+	Sprite*							mTopScreenSprite;
 
 	// Temporary memory pool
 	void							*memoryPoolAddr = NULL;
@@ -106,6 +112,9 @@ private:
 	gfxScreen_t						mCurrentDrawScreen = GFX_TOP;
 	int								mRendering = 0;
 
+	// Texture cache
+	std::map<const char*, Sprite*>	mTexCached;
+
 	void setupForPosCollEnv(void* vertices);
 	void setupForPosTexlEnv(void* vertices, u32 color, int texID);
 
@@ -114,15 +123,17 @@ private:
 
 	void *allocMemoryPoolAligned(u32 size, u32 alignment);
 	void resetMemoryPool() { memoryPoolIndex = 0; }
-	u32 getMemoryFreeSpace() const { return memoryPoolSize - memoryPoolIndex; };
 
-	void checkStartRendering();
 public:
 	~PPGraphics();
 	static PPGraphics* Get();
 
 	void GraphicsInit();
 	void GraphicExit();
+
+	// cache functions
+	Sprite* AddCacheImage(u8 *buf, u32 size, const char* key);
+	Sprite* GetCacheImage(const char* key);
 
 	// draw functions
 	void BeginRender();
@@ -132,11 +143,16 @@ public:
 	void UpdateTopScreenSprite(u8* data, u32 size);
 	void DrawTopScreenSprite();
 
+	void DrawImage(Sprite* sprite, int x, int y);
+	void DrawImage(Sprite* sprite, int x, int y, int w, int h);
+	void DrawImage(Sprite* sprite, int x, int y, int w, int h, int degrees);
+	void DrawImage(Sprite* sprite, int x, int y, int w, int h, int degrees, Vector2 anchor);
+
 	void DrawRectangle(float x, float y, float w, float h, Color color);
 	void DrawText(const char* text, float x, float y, float scaleX, float scaleY, Color color, bool baseline);
 	void DrawTextAutoWrap(const char* text, float x, float y, float w, float scaleX, float scaleY, Color color, bool baseline);
-	ppVector2 GetTextSize(const char* text, float scaleX, float scaleY);
-	ppVector3 GetTextSizeAutoWrap(const char* text, float scaleX, float scaleY, float w);
+	Vector2 GetTextSize(const char* text, float scaleX, float scaleY);
+	Vector3 GetTextSizeAutoWrap(const char* text, float scaleX, float scaleY, float w);
 };
 
 

@@ -5,7 +5,7 @@
 
 #define ONE_MILLISECOND 1000000ULL
 #define ONE_MICROSECOND 1000ULL
-#define BUFFERSIZE 0x3000
+#define BUFFERSIZE 0x1000
 #define BUFFER_POOL_SIZE (BUFFERSIZE * 12)
 // static buffer to store socket data
 static u8*						g_receivedBuffer;
@@ -401,13 +401,13 @@ void PPSession::processReceivedMsg(u8* buffer, u32 size, u32 tag)
 	}
 	case PPREQUEST_BODY:
 	{
-		// if tmp message is null that mean this is useless data then we avoid it
-		if (_tmpMessage->GetContentSize() == 0) {
-			_tmpMessage->ClearHeader();
-			// we should prepare request for new header
-			RequestForData(MSG_COMMAND_SIZE, PPREQUEST_HEADER);
-			return;
-		}
+		//// if tmp message is null that mean this is useless data then we avoid it
+		//if (_tmpMessage->GetContentSize() == 0) {
+		//	_tmpMessage->ClearHeader();
+		//	// we should prepare request for new header
+		//	RequestForData(MSG_COMMAND_SIZE, PPREQUEST_HEADER);
+		//	return;
+		//}
 		// verify buffer size with message estimate size
 		if (size == _tmpMessage->GetContentSize())
 		{
@@ -434,7 +434,13 @@ void PPSession::processMessageData(u8* buffer, size_t size)
 		_manager->ProcessVideoFrame(buffer, size);
 		break;
 	case MSG_CODE_REQUEST_NEW_AUDIO_FRAME:
-		//_manager->ProcessAudioFrame(buffer, size);
+		//TODO: currently audio sleep make it all slow
+		// should be avoid this by doing that in main thread
+		_manager->ProcessAudioFrame(buffer, size);
+		break;
+	case MSG_CODE_RECEIVED_HUB_ITEMS:
+
+
 		break;
 	default: 
 		break;
@@ -455,7 +461,7 @@ void PPSession::SendMsgAuthentication()
 	delete msg;
 }
 
-void PPSession::SendMsgStartSession()
+void PPSession::SendMsgStartStream()
 {
 	if (isSessionStarted) return;
 	PPMessage *msg = new PPMessage();
@@ -466,7 +472,7 @@ void PPSession::SendMsgStartSession()
 	delete msg;
 }
 
-void PPSession::SendMsgStopSession()
+void PPSession::SendMsgStopStream()
 {
 	if (!isSessionStarted) return;
 	//--------------------------------------
@@ -507,10 +513,21 @@ void PPSession::SendMsgChangeSetting()
 	delete authenMsg;
 }
 
-
-void PPSession::SendMsgResetSession()
+void PPSession::SendMsgRequestHubItems()
 {
+	if (_connect_state == CONNECTED && !_requestingHubItems) {
+		// cleanup items
+		_hubItems.clear();
 
+		_requestingHubItems = true;
+
+		// send request
+		PPMessage *msg = new PPMessage();
+		msg->BuildMessageHeader(MSG_CODE_REQUEST_HUB_ITEMS);
+		u8* msgBuffer = msg->BuildMessageEmpty();
+		AddMessageToQueue(msgBuffer, msg->GetMessageSize());
+		delete msg;
+	}
 }
 
 //-----------------------------------------------------
@@ -523,7 +540,7 @@ bool PPSession::SendMsgSendInputData(u32 down, u32 up, short cx, short cy, short
 	msg->BuildMessageHeader(MSG_CODE_SEND_INPUT_CAPTURE);
 	//-----------------------------------------------
 	// alloc msg content block
-	size_t contentSize = 16;
+	const size_t contentSize = 16;
 	u8* contentBuffer = (u8*)malloc(sizeof(u8) * contentSize);
 	u8* pointer = contentBuffer;
 	//----------------------------------------------

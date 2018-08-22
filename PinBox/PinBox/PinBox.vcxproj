@@ -41,6 +41,7 @@
   <ItemGroup>
     <ClCompile Include="source\ConfigManager.cpp" />
     <ClCompile Include="source\easing.cpp" />
+    <ClCompile Include="source\lodepng.cpp" />
     <ClCompile Include="source\main.cpp" />
     <ClCompile Include="source\Mutex.cpp" />
     <ClCompile Include="source\PPAudio.cpp" />
@@ -58,6 +59,8 @@
     <ClInclude Include="include\ConfigManager.h" />
     <ClInclude Include="include\constant.h" />
     <ClInclude Include="include\easing.h" />
+    <ClInclude Include="include\HubItem.h" />
+    <ClInclude Include="include\lodepng.h" />
     <ClInclude Include="include\Logger.h" />
     <ClInclude Include="include\Mutex.h" />
     <ClInclude Include="include\PPAudio.h" />

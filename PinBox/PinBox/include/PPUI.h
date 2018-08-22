@@ -43,6 +43,8 @@ public:
 	static bool TouchMove();
 	static bool TouchUp();
 
+	static void InitResource();
+
 	// SCREEN
 	static int DrawIdleTopScreen(PPSessionManager *sessionManager);
 
@@ -53,7 +55,6 @@ public:
 
 	static int DrawStreamConfigUI(PPSessionManager *sessionManager, ResultCallback cancel, ResultCallback ok);
 	static int DrawIdleBottomScreen(PPSessionManager *sessionManager);
-	static int DrawBottomScreenUI(PPSessionManager *sessionManager);
 
 	static void InfoBox(PPSessionManager *sessionManager);
 

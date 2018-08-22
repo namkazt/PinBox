@@ -58,7 +58,7 @@ int main()
 	// Init config
 	//---------------------------------------------
 	ConfigManager::Get()->InitConfig();
-	
+	PPUI::InitResource();
 	//---------------------------------------------
 	// Init session manager
 	//---------------------------------------------

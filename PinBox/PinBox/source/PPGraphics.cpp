@@ -12,11 +12,25 @@
 #include <citro3d.h>
 #include <3ds/font.h>
 #include <3ds/util/utf.h>
-
+#include "lodepng.h"
 //---------------------------------------------------------------------
 // Graphics Instance
 //---------------------------------------------------------------------
 static PPGraphics* mInstance = nullptr;
+
+#define TEX_MIN_SIZE 32
+//Grabbed from: http://graphics.stanford.edu/~seander/bithacks.html#RoundUpPowerOf2
+unsigned int next_pow2(unsigned int v)
+{
+	v--;
+	v |= v >> 1;
+	v |= v >> 2;
+	v |= v >> 4;
+	v |= v >> 8;
+	v |= v >> 16;
+	v++;
+	return v >= TEX_MIN_SIZE ? v : TEX_MIN_SIZE;
+}
 
 PPGraphics* PPGraphics::Get()
 {
@@ -46,7 +60,7 @@ void PPGraphics::GraphicsInit()
 	//---------------------------------------------------------------------
 	// Setup top screen sprite ( for video render )
 	//---------------------------------------------------------------------
-	mTopScreenSprite = new ppSprite();
+	mTopScreenSprite = new Sprite();
 
 	//---------------------------------------------------------------------
 	// Init memory pool
@@ -75,9 +89,9 @@ void PPGraphics::GraphicsInit()
 	// Init top screen sprite
 	//---------------------------------------------------------------------
 	mTopScreenSprite->initialized = true;
-	C3D_TexInit(&mTopScreenSprite->spriteTexture, 512, 256, GPU_RGB8);
-	C3D_TexSetFilter(&mTopScreenSprite->spriteTexture, GPU_LINEAR, GPU_NEAREST);
-	C3D_TexSetWrap(&mTopScreenSprite->spriteTexture, GPU_CLAMP_TO_BORDER, GPU_CLAMP_TO_BORDER);
+	C3D_TexInit(&mTopScreenSprite->tex, 512, 256, GPU_RGB8);
+	C3D_TexSetFilter(&mTopScreenSprite->tex, GPU_LINEAR, GPU_NEAREST);
+	C3D_TexSetWrap(&mTopScreenSprite->tex, GPU_CLAMP_TO_BORDER, GPU_CLAMP_TO_BORDER);
 	//---------------------------------------------------------------------
 	// System font init
 	//---------------------------------------------------------------------
@@ -103,10 +117,15 @@ void PPGraphics::GraphicsInit()
 
 void PPGraphics::GraphicExit()
 {
-	if(mTopScreenSprite->initialized)
-	{
-		C3D_TexDelete(&mTopScreenSprite->spriteTexture);
+	// clean up cache
+	for(auto it = mTexCached.begin(); it != mTexCached.end(); ++it) {
+		if(it->second->initialized) C3D_TexDelete(&it->second->tex);
+		free(it->second);
 	}
+	mTexCached.clear();
+	// delete top
+	if(mTopScreenSprite->initialized)
+		C3D_TexDelete(&mTopScreenSprite->tex);
 	delete mTopScreenSprite;
 	linearFree(memoryPoolAddr);
 	free(mGlyphSheets);
@@ -116,9 +135,69 @@ void PPGraphics::GraphicExit()
 	gfxExit();
 }
 
-void PPGraphics::checkStartRendering()
+Sprite* PPGraphics::AddCacheImage(u8* buf, u32 size, const char* key)
 {
+	auto iter = mTexCached.find(key);
+	if (iter != mTexCached.end()) {
+		return iter->second;
+	}
 
+	Sprite* sprite = calloc(1, sizeof(*sprite));
+	// load data
+	unsigned char* image;
+	unsigned width, height;
+	int ret = lodepng_decode32(&image, &width, &height, buf, size);
+	if(ret != 0)
+	{
+		printf("Failed when decode png image with key: %s\n", key);
+		free(sprite);
+		return nullptr;
+	}
+	u8 *gpusrc = linearAlloc(width*height * 4);
+	u8* src = image; u8 *dst = gpusrc;
+	// lodepng outputs big endian rgba so we need to convert
+	for (int i = 0; i<width*height; i++) {
+		int r = *src++;
+		int g = *src++;
+		int b = *src++;
+		int a = *src++;
+		*dst++ = a;
+		*dst++ = b;
+		*dst++ = g;
+		*dst++ = r;
+	}
+
+	// init texture
+	bool success = C3D_TexInit(&sprite->tex, next_pow2(width), next_pow2(height), GPU_RGBA8);
+	if(!success)
+	{
+		free(sprite);
+		return nullptr;
+	}
+	sprite->width = width;
+	sprite->height = height;
+	C3D_TexSetWrap(&sprite->tex, GPU_CLAMP_TO_BORDER, GPU_CLAMP_TO_BORDER);
+
+	printf("Added sprite: %s\n", key);
+
+	GSPGPU_FlushDataCache(gpusrc, width*height*4);
+	C3D_SyncDisplayTransfer((u32*)gpusrc, GX_BUFFER_DIM(width, height), (u32*)sprite->tex.data, GX_BUFFER_DIM(sprite->tex.width, sprite->tex.height), TEXTURE_RGBA_TRANSFER_FLAGS);
+
+	free(image);
+	linearFree(gpusrc);
+
+	mTexCached.insert(std::pair<const char*, Sprite*>(key, sprite));
+
+	return sprite;
+}
+
+Sprite* PPGraphics::GetCacheImage(const char* key)
+{
+	auto iter = mTexCached.find(key);
+	if (iter != mTexCached.end()) {
+		return iter->second;
+	}
+	return nullptr;
 }
 
 PPGraphics::~PPGraphics()
@@ -159,24 +238,11 @@ void PPGraphics::EndRender()
 	C3D_FrameEnd(0);
 }
 
-unsigned int next_pow2(unsigned int v)
-{
-	v--;
-	v |= v >> 1;
-	v |= v >> 2;
-	v |= v >> 4;
-	v |= v >> 8;
-	v |= v >> 16;
-	v++;
-	return v >= 64 ? v : 64;
-}
-
-
 void PPGraphics::UpdateTopScreenSprite(u8* data, u32 size)
 {
 	if (!mTopScreenSprite->initialized) return;
-	memcpy(mTopScreenSprite->spriteTexture.data, data, size);
-	GSPGPU_FlushDataCache(mTopScreenSprite->spriteTexture.data, size);
+	memcpy(mTopScreenSprite->tex.data, data, size);
+	GSPGPU_FlushDataCache(mTopScreenSprite->tex.data, size);
 }
 
 void PPGraphics::DrawTopScreenSprite()
@@ -188,20 +254,20 @@ void PPGraphics::DrawTopScreenSprite()
 	float u = 1;
 	float v = 1;
 
-	ppVertexPosTex *vertices = (ppVertexPosTex*)allocMemoryPoolAligned(sizeof(ppVertexPosTex) * 4, 8);
+	VertexPosTex *vertices = (VertexPosTex*)allocMemoryPoolAligned(sizeof(VertexPosTex) * 4, 8);
 	
 	// set position
-	vertices[0].position = (ppVector3) { 0, 0, 0.5f };
-	vertices[1].position = (ppVector3) { 512.0f, 0, 0.5f };
-	vertices[2].position = (ppVector3) { 0, 256.0f, 0.5f };
-	vertices[3].position = (ppVector3) { 512.0f, 256.0f, 0.5f };
-	vertices[0].textcoord = (ppVector2) { 0.0f, 1.0f };
-	vertices[1].textcoord = (ppVector2) { 1.0f, 1.0f};
-	vertices[2].textcoord = (ppVector2) { 0.0f, 0.0f };
-	vertices[3].textcoord = (ppVector2) { 1.0f, 0.0f};
+	vertices[0].position = (Vector3) { 0, 0, 0.5f };
+	vertices[1].position = (Vector3) { 512.0f, 0, 0.5f };
+	vertices[2].position = (Vector3) { 0, 256.0f, 0.5f };
+	vertices[3].position = (Vector3) { 512.0f, 256.0f, 0.5f };
+	vertices[0].textcoord = (Vector2) { 0.0f, 1.0f };
+	vertices[1].textcoord = (Vector2) { 1.0f, 1.0f};
+	vertices[2].textcoord = (Vector2) { 0.0f, 0.0f };
+	vertices[3].textcoord = (Vector2) { 1.0f, 0.0f};
 	
 	// setup env
-	C3D_TexBind(getTextUnit(GPU_TEXUNIT0), &mTopScreenSprite->spriteTexture);
+	C3D_TexBind(getTextUnit(GPU_TEXUNIT0), &mTopScreenSprite->tex);
 	C3D_TexEnv* env = C3D_GetTexEnv(0);
 	C3D_TexEnvSrc(env, C3D_Both, GPU_TEXTURE0, 0, 0);
 	C3D_TexEnvOp(env, C3D_Both, 0, 0, 0);
@@ -214,7 +280,7 @@ void PPGraphics::DrawTopScreenSprite()
 
 	C3D_BufInfo* bufInfo = C3D_GetBufInfo();
 	BufInfo_Init(bufInfo);
-	BufInfo_Add(bufInfo, vertices, sizeof(ppVertexPosTex), 2, 0x10);
+	BufInfo_Add(bufInfo, vertices, sizeof(VertexPosTex), 2, 0x10);
 
 	C3D_DrawArrays(GPU_TRIANGLE_STRIP, 0, 4);
 }
@@ -233,7 +299,7 @@ void PPGraphics::setupForPosCollEnv(void* vertices)
 
 	C3D_BufInfo* bufInfo = C3D_GetBufInfo();
 	BufInfo_Init(bufInfo);
-	BufInfo_Add(bufInfo, vertices, sizeof(ppVertexPosCol), 2, 0x10);
+	BufInfo_Add(bufInfo, vertices, sizeof(VertexPosCol), 2, 0x10);
 }
 
 void PPGraphics::setupForPosTexlEnv(void* vertices, u32 color, int texID)
@@ -253,7 +319,7 @@ void PPGraphics::setupForPosTexlEnv(void* vertices, u32 color, int texID)
 
 	C3D_BufInfo* bufInfo = C3D_GetBufInfo();
 	BufInfo_Init(bufInfo);
-	BufInfo_Add(bufInfo, vertices, sizeof(ppVertexPosTex), 2, 0x10);
+	BufInfo_Add(bufInfo, vertices, sizeof(VertexPosTex), 2, 0x10);
 }
 
 int PPGraphics::getTextUnit(GPU_TEXUNIT unit)
@@ -277,16 +343,89 @@ void* PPGraphics::allocMemoryPoolAligned(u32 size, u32 alignment)
 	return NULL;
 }
 
-void PPGraphics::DrawRectangle(float x, float y, float w, float h, Color color)
+void PPGraphics::DrawImage(Sprite* sprite, int x, int y)
 {
-	ppVertexPosCol* vertices = (ppVertexPosCol*)allocMemoryPoolAligned(sizeof(ppVertexPosCol) * 4, 8);
+	DrawImage(sprite, x, y, sprite->width, sprite->height);
+}
+
+void PPGraphics::DrawImage(Sprite* sprite, int x, int y, int w, int h)
+{
+	DrawImage(sprite, x, y, w, h, 0);
+}
+
+void PPGraphics::DrawImage(Sprite* sprite, int x, int y, int w, int h, int degrees)
+{
+	DrawImage(sprite, x, y, w, h, degrees, Vector2{ 0.5f, 0.5f });
+}
+
+void PPGraphics::DrawImage(Sprite* sprite, int x, int y, int w, int h, int degrees, Vector2 anchor)
+{
+	// bind texture
+	C3D_TexBind(getTextUnit(GPU_TEXUNIT0), &sprite->tex);
+	C3D_TexEnv* env = C3D_GetTexEnv(0);
+	C3D_TexEnvSrc(env, C3D_Both, GPU_TEXTURE0, 0, 0);
+	C3D_TexEnvOp(env, C3D_Both, 0, 0, 0);
+	C3D_TexEnvFunc(env, C3D_Both, GPU_REPLACE);
+
+
+	VertexPosTex *vertices = (VertexPosTex*)allocMemoryPoolAligned(sizeof(VertexPosTex) * 4, 8);
 	if (!vertices) return;
 
 	// set position
-	vertices[0].position = (ppVector3) { x, y, 0.5f };
-	vertices[1].position = (ppVector3) { x+w, y, 0.5f };
-	vertices[2].position = (ppVector3) { x, y+h, 0.5f };
-	vertices[3].position = (ppVector3) { x+w, y+h, 0.5f };
+	vertices[0].position = (Vector3) { x, y, 0.5f };
+	vertices[1].position = (Vector3) { w + x, y, 0.5f };
+	vertices[2].position = (Vector3) { x, h + y, 0.5f };
+	vertices[3].position = (Vector3) { w + x, h + y, 0.5f };
+
+	float u = sprite->width / (float)sprite->tex.width;
+	float v = sprite->width / (float)sprite->tex.height;
+
+	// set uv
+	vertices[0].textcoord = (Vector2) { 0.0f, 0.0f };
+	vertices[1].textcoord = (Vector2) { u, 0.0f };
+	vertices[2].textcoord = (Vector2) { 0.0f, v };
+	vertices[3].textcoord = (Vector2) { u, v };
+
+	// rotate if need
+	if (degrees != 0)
+	{
+		float rad = (float)degrees * M_PI / 180.f;
+		const float c = cosf(rad);
+		const float s = sinf(rad);
+		float cx = x + w * anchor.x;
+		float cy = y + h * anchor.y;
+		int i;
+		for (i = 0; i < 4; ++i) { // Rotate and translate
+			float _x = cx - vertices[i].position.x;
+			float _y = cy - vertices[i].position.y;
+			vertices[i].position.x = _x*c - _y*s + cx;
+			vertices[i].position.y = _x*s + _y*c + cy;
+		}
+	}
+
+	// setup attributes
+	C3D_AttrInfo* attrInfo = C3D_GetAttrInfo();
+	AttrInfo_Init(attrInfo);
+	AttrInfo_AddLoader(attrInfo, 0, GPU_FLOAT, 3);
+	AttrInfo_AddLoader(attrInfo, 1, GPU_FLOAT, 2);
+
+	C3D_BufInfo* bufInfo = C3D_GetBufInfo();
+	BufInfo_Init(bufInfo);
+	BufInfo_Add(bufInfo, vertices, sizeof(VertexPosTex), 2, 0x10);
+
+	C3D_DrawArrays(GPU_TRIANGLE_STRIP, 0, 4);
+}
+
+void PPGraphics::DrawRectangle(float x, float y, float w, float h, Color color)
+{
+	VertexPosCol* vertices = (VertexPosCol*)allocMemoryPoolAligned(sizeof(VertexPosCol) * 4, 8);
+	if (!vertices) return;
+
+	// set position
+	vertices[0].position = (Vector3) { x, y, 0.5f };
+	vertices[1].position = (Vector3) { x+w, y, 0.5f };
+	vertices[2].position = (Vector3) { x, y+h, 0.5f };
+	vertices[3].position = (Vector3) { x+w, y+h, 0.5f };
 
 	// set color
 	vertices[0].color = color.toU32();
@@ -333,21 +472,21 @@ void PPGraphics::DrawText(const char* text, float x, float y, float scaleX, floa
 				C3D_TexBind(getTextUnit(GPU_TEXUNIT0), &mGlyphSheets[lastSheet]);
 			}
 
-			ppVertexPosTex* vertices = (ppVertexPosTex*)allocMemoryPoolAligned(sizeof(ppVertexPosTex) * 4, 8);
+			VertexPosTex* vertices = (VertexPosTex*)allocMemoryPoolAligned(sizeof(VertexPosTex) * 4, 8);
 			if (!vertices) 
 				break; // out of memory in pool
 
 			// set position
-			vertices[0].position = (ppVector3) { x + data.vtxcoord.left, y + data.vtxcoord.bottom, 0.5f };
-			vertices[1].position = (ppVector3) { x + data.vtxcoord.right, y + data.vtxcoord.bottom, 0.5f };
-			vertices[2].position = (ppVector3) { x + data.vtxcoord.left, y + data.vtxcoord.top, 0.5f };
-			vertices[3].position = (ppVector3) { x + data.vtxcoord.right, y + data.vtxcoord.top, 0.5f };
+			vertices[0].position = (Vector3) { x + data.vtxcoord.left, y + data.vtxcoord.bottom, 0.5f };
+			vertices[1].position = (Vector3) { x + data.vtxcoord.right, y + data.vtxcoord.bottom, 0.5f };
+			vertices[2].position = (Vector3) { x + data.vtxcoord.left, y + data.vtxcoord.top, 0.5f };
+			vertices[3].position = (Vector3) { x + data.vtxcoord.right, y + data.vtxcoord.top, 0.5f };
 
 			// set uv
-			vertices[0].textcoord = (ppVector2) { data.texcoord.left , data.texcoord.bottom };
-			vertices[1].textcoord = (ppVector2) { data.texcoord.right, data.texcoord.bottom };
-			vertices[2].textcoord = (ppVector2) { data.texcoord.left, data.texcoord.top };
-			vertices[3].textcoord = (ppVector2) { data.texcoord.right, data.texcoord.top };
+			vertices[0].textcoord = (Vector2) { data.texcoord.left , data.texcoord.bottom };
+			vertices[1].textcoord = (Vector2) { data.texcoord.right, data.texcoord.bottom };
+			vertices[2].textcoord = (Vector2) { data.texcoord.left, data.texcoord.top };
+			vertices[3].textcoord = (Vector2) { data.texcoord.right, data.texcoord.top };
 
 			setupForPosTexlEnv(vertices, color.toU32(), TEX_FONT_GRAPHIC);
 
@@ -396,21 +535,21 @@ void PPGraphics::DrawTextAutoWrap(const char* text, float x, float y, float w, f
 				C3D_TexBind(getTextUnit(GPU_TEXUNIT0), &mGlyphSheets[lastSheet]);
 			}
 
-			ppVertexPosTex* vertices = (ppVertexPosTex*)allocMemoryPoolAligned(sizeof(ppVertexPosTex) * 4, 8);
+			VertexPosTex* vertices = (VertexPosTex*)allocMemoryPoolAligned(sizeof(VertexPosTex) * 4, 8);
 			if (!vertices)
 				break; // out of memory in pool
 
 					   // set position
-			vertices[0].position = (ppVector3) { x + data.vtxcoord.left, y + data.vtxcoord.bottom, 0.5f };
-			vertices[1].position = (ppVector3) { x + data.vtxcoord.right, y + data.vtxcoord.bottom, 0.5f };
-			vertices[2].position = (ppVector3) { x + data.vtxcoord.left, y + data.vtxcoord.top, 0.5f };
-			vertices[3].position = (ppVector3) { x + data.vtxcoord.right, y + data.vtxcoord.top, 0.5f };
+			vertices[0].position = (Vector3) { x + data.vtxcoord.left, y + data.vtxcoord.bottom, 0.5f };
+			vertices[1].position = (Vector3) { x + data.vtxcoord.right, y + data.vtxcoord.bottom, 0.5f };
+			vertices[2].position = (Vector3) { x + data.vtxcoord.left, y + data.vtxcoord.top, 0.5f };
+			vertices[3].position = (Vector3) { x + data.vtxcoord.right, y + data.vtxcoord.top, 0.5f };
 
 			// set uv
-			vertices[0].textcoord = (ppVector2) { data.texcoord.left, data.texcoord.bottom };
-			vertices[1].textcoord = (ppVector2) { data.texcoord.right, data.texcoord.bottom };
-			vertices[2].textcoord = (ppVector2) { data.texcoord.left, data.texcoord.top };
-			vertices[3].textcoord = (ppVector2) { data.texcoord.right, data.texcoord.top };
+			vertices[0].textcoord = (Vector2) { data.texcoord.left, data.texcoord.bottom };
+			vertices[1].textcoord = (Vector2) { data.texcoord.right, data.texcoord.bottom };
+			vertices[2].textcoord = (Vector2) { data.texcoord.left, data.texcoord.top };
+			vertices[3].textcoord = (Vector2) { data.texcoord.right, data.texcoord.top };
 
 			setupForPosTexlEnv(vertices, color.toU32(), TEX_FONT_GRAPHIC);
 
@@ -432,12 +571,12 @@ void PPGraphics::DrawTextAutoWrap(const char* text, float x, float y, float w, f
 }
 
 
-ppVector2 PPGraphics::GetTextSize(const char* text, float scaleX, float scaleY)
+Vector2 PPGraphics::GetTextSize(const char* text, float scaleX, float scaleY)
 {
 	ssize_t  units;
 	u32 code;
 
-	ppVector2 result;
+	Vector2 result;
 	float maxW = 0, cW = 0;
 
 	const u8* p = (const u8*)text;
@@ -470,12 +609,12 @@ ppVector2 PPGraphics::GetTextSize(const char* text, float scaleX, float scaleY)
 	return result;
 }
 
-ppVector3 PPGraphics::GetTextSizeAutoWrap(const char* text, float scaleX, float scaleY, float w)
+Vector3 PPGraphics::GetTextSizeAutoWrap(const char* text, float scaleX, float scaleY, float w)
 {
 	ssize_t  units;
 	u32 code;
 
-	ppVector3 result;
+	Vector3 result;
 	float maxW = 0;
 	float padding = 2;
 

@@ -33,6 +33,7 @@
 
 #include "Mutex.h"
 #include "PPMessage.h"
+#include "HubItem.h"
 
 enum PPSession_Type { PPSESSION_NONE, PPSESSION_MOVIE, PPSESSION_SCREEN_CAPTURE, PPSESSION_INPUT_CAPTURE};
 
@@ -59,6 +60,10 @@ enum PPSession_Type { PPSESSION_NONE, PPSESSION_MOVIE, PPSESSION_SCREEN_CAPTURE,
 // input
 #define MSG_CODE_SEND_INPUT_CAPTURE 42
 #define MSG_CODE_SEND_INPUT_CAPTURE_IDLE 44
+
+// hub
+#define MSG_CODE_REQUEST_HUB_ITEMS 60
+#define MSG_CODE_RECEIVED_HUB_ITEMS 61
 
 // audio
 #define AUDIO_CHANNEL	0x08
@@ -100,6 +105,10 @@ private:
 	// test connection result
 	int	volatile					_testConnectionResult = 0;
 
+	// hub items
+	std::vector<HubItem*>			_hubItems;
+	bool							_requestingHubItems = false;
+
 	void connectToServer();
 	void closeConnect();
 	void recvSocketData();
@@ -132,29 +141,20 @@ private:
 	bool								isSessionStarted = false;
 
 public:
-	//-----------------------------------------------------
-	// profile setting
-	typedef struct
-	{
-		std::string profileName = "Default";
-		bool waitToReceivedFrame = false;
-		u32 smoothStepFrames = 3;
-		u32 sourceQuality = 75;
-		u32 sourceScale = 100;
-	} SSProfile;
-	//----------------------------------------------------
-	//----------------------------------------------------
-
-public:
+	// Authentication
 	void								SendMsgAuthentication();
 
+	// Stream
+	void								SendMsgStartStream();
+	void								SendMsgStopStream();
 
-	void								SendMsgStartSession();
-	void								SendMsgStopSession();
+	// Setting
 	void								SendMsgChangeSetting();
 
-	void								SendMsgResetSession();
+	// Hub 
+	void								SendMsgRequestHubItems();
 
+	// Input
 	bool								SendMsgSendInputData(u32 down, u32 up, short cx, short cy, short ctx, short cty);
 };
 
