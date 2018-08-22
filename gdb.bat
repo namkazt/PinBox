@@ -1,1 +1,0 @@
-start "" powershell.exe C:\devkitPro\devkitARM\bin\arm-none-eabi-gdb.exe E:\3ds\PinBoxStreaming\PinBox\PinBox\PinBox.elf
