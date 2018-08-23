@@ -13,10 +13,14 @@
 #include <3ds/font.h>
 #include <3ds/util/utf.h>
 #include "lodepng.h"
+
+#define IM_ARRAYSIZE(_ARR) ((int)(sizeof(_ARR)/sizeof(*_ARR)))
 //---------------------------------------------------------------------
 // Graphics Instance
 //---------------------------------------------------------------------
 static PPGraphics* mInstance = nullptr;
+
+static Vector2 mCircleVertex12[12];
 
 #define TEX_MIN_SIZE 32
 //Grabbed from: http://graphics.stanford.edu/~seander/bithacks.html#RoundUpPowerOf2
@@ -43,6 +47,15 @@ PPGraphics* PPGraphics::Get()
 
 void PPGraphics::GraphicsInit()
 {
+	// shared data
+	int arrSize = IM_ARRAYSIZE(mCircleVertex12);
+	for(int i = 0; i < arrSize; ++i)
+	{
+		const float a = ((float)i * 2 * M_PI) / (float)IM_ARRAYSIZE(mCircleVertex12);
+		mCircleVertex12[i] = Vector2{ cosf(a), sinf(a) };
+	}
+
+	// init
 	gfxInitDefault();
 	C3D_Init(C3D_DEFAULT_CMDBUF_SIZE);
 
@@ -489,26 +502,112 @@ void PPGraphics::DrawImage(Sprite* sprite, int x, int y, int w, int h, int degre
 	C3D_DrawArrays(GPU_TRIANGLE_STRIP, 0, 4);
 }
 
-void PPGraphics::DrawRectangle(float x, float y, float w, float h, Color color)
+void PPGraphics::DrawRectangle(float x, float y, float w, float h, Color color, float rounding)
 {
-	VertexPosCol* vertices = (VertexPosCol*)allocMemoryPoolAligned(sizeof(VertexPosCol) * 4, 8);
-	if (!vertices) return;
+	u32 col = color.toU32();
 
-	// set position
-	vertices[0].position = (Vector3) { x, y, 0.5f };
-	vertices[1].position = (Vector3) { x+w, y, 0.5f };
-	vertices[2].position = (Vector3) { x, y+h, 0.5f };
-	vertices[3].position = (Vector3) { x+w, y+h, 0.5f };
+	if(rounding > 0.0f)
+	{
+		VertexPosCol* vertices = (VertexPosCol*)allocMemoryPoolAligned(sizeof(VertexPosCol) * 66, 8);
+		if (!vertices) return;
+		int vIndex = -1;
+		Vector3 outters[8];
+		int outterIdx = -1;
 
-	// set color
-	vertices[0].color = color.toU32();
-	vertices[1].color = vertices[0].color;
-	vertices[2].color = vertices[0].color;
-	vertices[3].color = vertices[0].color;
+		Vector3 tl = Vector3{ x + rounding, y + rounding, 0.5f };
+		Vector3 tr = Vector3{ x + w - rounding, y + rounding, 0.5f };
+		Vector3 bl = Vector3{ x + rounding, y + h - rounding, 0.5f };
+		Vector3 br = Vector3{ x + w - rounding, y + h - rounding, 0.5f };
 
-	setupForPosCollEnv(vertices);
+		// main rect
+		vertices[++vIndex] = VertexPosCol { tl , col };			// top-left
+		vertices[++vIndex] = VertexPosCol { tr , col };			// top-right
+		vertices[++vIndex] = VertexPosCol { bl , col };			// bottom-left
 
-	C3D_DrawArrays(GPU_TRIANGLE_STRIP, 0, 4);
+		vertices[++vIndex] = VertexPosCol { tr , col };			// top-right
+		vertices[++vIndex] = VertexPosCol { bl , col };			// bottom-left
+		vertices[++vIndex] = VertexPosCol { br , col };			// bottom-right
+
+		// arc path func
+		// tl : 6, 9     tr : 9, 12     br : 0, 3    bl : 3, 6
+		const std::function<void(Vector3 center, int min, int max)> arcVertices = [&](Vector3 center, int min, int max)
+		{
+			Vector3 result[4];
+			int i = -1;
+			for (int a = min; a <= max; ++a)
+			{
+				const Vector2& v = mCircleVertex12[a % IM_ARRAYSIZE(mCircleVertex12)];
+				result[++i] = Vector3{ center.x + v.x * rounding, center.y + v.y * rounding, 0.5f };
+			}
+			// add vertices
+			vertices[++vIndex] = VertexPosCol{ center , col };
+			vertices[++vIndex] = VertexPosCol{ result[0] , col };
+			vertices[++vIndex] = VertexPosCol{ result[1] , col };
+
+			vertices[++vIndex] = VertexPosCol{ center , col };
+			vertices[++vIndex] = VertexPosCol{ result[1] , col };
+			vertices[++vIndex] = VertexPosCol{ result[2] , col };
+
+			vertices[++vIndex] = VertexPosCol{ center , col };
+			vertices[++vIndex] = VertexPosCol{ result[2] , col };
+			vertices[++vIndex] = VertexPosCol{ result[3] , col };
+
+			outters[++outterIdx] = result[0];
+			outters[++outterIdx] = result[3];
+		};
+
+		arcVertices(tl, 6, 9);
+		arcVertices(tr, 9, 12);
+		arcVertices(br, 0, 3);
+		arcVertices(bl, 3, 6);
+
+		// outer rect
+		vertices[++vIndex] = VertexPosCol{ tl , col };			
+		vertices[++vIndex] = VertexPosCol{ tr , col };			
+		vertices[++vIndex] = VertexPosCol{ outters[1] , col };		
+		vertices[++vIndex] = VertexPosCol{ tr , col };		
+		vertices[++vIndex] = VertexPosCol{ outters[1] , col };			
+		vertices[++vIndex] = VertexPosCol{ outters[2] , col };		
+
+		vertices[++vIndex] = VertexPosCol{ tr , col };
+		vertices[++vIndex] = VertexPosCol{ br , col };
+		vertices[++vIndex] = VertexPosCol{ outters[3] , col };
+		vertices[++vIndex] = VertexPosCol{ outters[3] , col };
+		vertices[++vIndex] = VertexPosCol{ br , col };
+		vertices[++vIndex] = VertexPosCol{ outters[4] , col };
+
+		vertices[++vIndex] = VertexPosCol{ bl , col };
+		vertices[++vIndex] = VertexPosCol{ br , col };
+		vertices[++vIndex] = VertexPosCol{ outters[5] , col };
+		vertices[++vIndex] = VertexPosCol{ bl , col };
+		vertices[++vIndex] = VertexPosCol{ outters[5] , col };
+		vertices[++vIndex] = VertexPosCol{ outters[6] , col };
+
+		vertices[++vIndex] = VertexPosCol{ tl , col };
+		vertices[++vIndex] = VertexPosCol{ bl , col };
+		vertices[++vIndex] = VertexPosCol{ outters[0] , col };
+		vertices[++vIndex] = VertexPosCol{ bl , col };
+		vertices[++vIndex] = VertexPosCol{ outters[0] , col };
+		vertices[++vIndex] = VertexPosCol{ outters[7] , col };
+
+		setupForPosCollEnv(vertices);
+
+		C3D_DrawArrays(GPU_TRIANGLES, 0, 66);
+	}else
+	{
+		VertexPosCol* vertices = (VertexPosCol*)allocMemoryPoolAligned(sizeof(VertexPosCol) * 4, 8);
+		if (!vertices) return;
+		u32 vIndex = 0;
+
+		vertices[vIndex] = VertexPosCol{ Vector3{ x, y, 0.5f } , col };
+		vertices[++vIndex] = VertexPosCol{ Vector3{ x + w, y, 0.5f } , col };
+		vertices[++vIndex] = VertexPosCol{ Vector3{ x, y + h, 0.5f } , col };
+		vertices[++vIndex] = VertexPosCol{ Vector3{ x + w, y + h, 0.5f } , col };
+
+		setupForPosCollEnv(vertices);
+
+		C3D_DrawArrays(GPU_TRIANGLE_STRIP, 0, 4);
+	}
 }
 
 void PPGraphics::DrawText(const char* text, float x, float y, float scaleX, float scaleY, Color color, bool baseline)

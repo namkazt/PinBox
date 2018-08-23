@@ -216,7 +216,7 @@ int PPUI::DrawBtmServerSelectScreen(PPSessionManager* sm)
 	}
 
 	// Quit
-	if (FlatColorButton(5, 5, 50, 25, "Quit", RGB(214, 48, 49), RGB(255, 118, 117), RGB(255, 255, 255)))
+	if (FlatColorButton(5, 5, 50, 25, "Quit", RGB(214, 48, 49), RGB(255, 118, 117), RGB(255, 255, 255), 6.f))
 	{
 		OverrideDialogTypeCritical();
 		DrawDialogMessage(sm, "Warning", "Are you sure to quit?", [=]()
@@ -231,7 +231,7 @@ int PPUI::DrawBtmServerSelectScreen(PPSessionManager* sm)
 	}
 
 	// Add new Server
-	if (FlatColorButton(260, 5, 50, 25, "Add", RGB(9, 132, 227), RGB(116, 185, 255), RGB(255, 255, 255)))
+	if (FlatColorButton(260, 5, 50, 25, "Add", RGB(9, 132, 227), RGB(116, 185, 255), RGB(255, 255, 255), 6.f))
 	{
 		AddPopup([=]()
 		{
@@ -280,7 +280,7 @@ int PPUI::DrawBtmServerSelectScreen(PPSessionManager* sm)
 			LabelBoxLeft(70, sx + 25, 150, 10, (ConfigManager::Get()->servers[i].ip + ":" + ConfigManager::Get()->servers[i].port).c_str(), TRANSPARENT, RGB(116, 125, 140), 0.45);
 
 			// Connect button
-			if (FlatColorButton(5, sx + 2, 60, 32, "Connect", RGB(46, 213, 115), RGB(123, 237, 159), RGB(47, 53, 66)) 
+			if (FlatColorButton(5, sx + 2, 60, 32, "Connect", RGB(46, 213, 115), RGB(123, 237, 159), RGB(47, 53, 66), 6.f)
 				&& sm->GetSessionState() == SS_NOT_CONNECTED)
 			{
 				mTmpWaitTimer = osGetTime();
@@ -331,7 +331,7 @@ int PPUI::DrawBtmServerSelectScreen(PPSessionManager* sm)
 			}
 
 			// Remove button
-			if (FlatColorButton(286, sx + 6, 26, 26, "X", RGB(255, 71, 87), RGB(255, 107, 129), RGB(47, 53, 66)))
+			if (FlatColorButton(286, sx + 6, 26, 26, "X", RGB(255, 71, 87), RGB(255, 107, 129), RGB(255, 255, 255), 13.f))
 			{
 				DrawDialogMessage(sm, "Warning", "Are you sure to remove this profile?", [=]()
 				{
@@ -367,7 +367,7 @@ int PPUI::DrawBtmAddNewServerProfileScreen(PPSessionManager* sessionManager, Res
 
 	// Input server name
 	LabelBoxLeft(5, 30, 100, 30, "Server Name", TRANSPARENT, RGB(44, 62, 80));
-	if (LabelBox(105, 30, 210, 30, mTmpServerConfig->name.c_str(), PPGraphics::Get()->PrimaryColor, RGB(255, 255, 255)))
+	if (LabelBox(105, 30, 210, 30, mTmpServerConfig->name.c_str(), PPGraphics::Get()->PrimaryColor, RGB(255, 255, 255), 0.5f, 6.f))
 	{
 		mTemplateInputString = std::string(mTmpServerConfig->name);
 		DrawDialogKeyboard([=](void* a, void* b) {},
@@ -382,7 +382,7 @@ int PPUI::DrawBtmAddNewServerProfileScreen(PPSessionManager* sessionManager, Res
 
 	// Input server ip
 	LabelBoxLeft(5, 70, 100, 30, "Server IP", TRANSPARENT, RGB(44, 62, 80));
-	if (LabelBox(105, 70, 210, 30, mTmpServerConfig->ip.c_str(), PPGraphics::Get()->PrimaryColor, RGB(255, 255, 255)))
+	if (LabelBox(105, 70, 210, 30, mTmpServerConfig->ip.c_str(), PPGraphics::Get()->PrimaryColor, RGB(255, 255, 255), 0.5f, 6.f))
 	{
 		mTemplateInputString = std::string(mTmpServerConfig->ip);
 		DrawDialogNumberInput([=](void* a, void* b) {},
@@ -398,7 +398,7 @@ int PPUI::DrawBtmAddNewServerProfileScreen(PPSessionManager* sessionManager, Res
 
 	// Input server port
 	LabelBoxLeft(5, 110, 100, 30, "Server Port", TRANSPARENT, RGB(44, 62, 80));
-	if (LabelBox(105, 110, 210, 30, mTmpServerConfig->port.c_str(), PPGraphics::Get()->PrimaryColor, RGB(255, 255, 255)))
+	if (LabelBox(105, 110, 210, 30, mTmpServerConfig->port.c_str(), PPGraphics::Get()->PrimaryColor, RGB(255, 255, 255), 0.5f, 6.f))
 	{
 		mTemplateInputString = std::string(mTmpServerConfig->port);
 		DrawDialogNumberInput([=](void* a, void* b) {},
@@ -413,7 +413,7 @@ int PPUI::DrawBtmAddNewServerProfileScreen(PPSessionManager* sessionManager, Res
 
 
 	// Cancel button
-	if (FlatColorButton(10, 200, 50, 30, "Cancel", RGB(192, 57, 43), RGB(231, 76, 60), RGB(223, 228, 234)))
+	if (FlatColorButton(10, 200, 50, 30, "Cancel", RGB(192, 57, 43), RGB(231, 76, 60), RGB(223, 228, 234), 6.f))
 	{
 		ClosePopup();
 		if (cancel != nullptr) cancel(nullptr, nullptr);
@@ -421,7 +421,7 @@ int PPUI::DrawBtmAddNewServerProfileScreen(PPSessionManager* sessionManager, Res
 
 
 	// OK button
-	if (FlatColorButton(260, 200, 50, 30, "OK", RGB(41, 128, 185), RGB(52, 152, 219), RGB(223, 228, 234)))
+	if (FlatColorButton(260, 200, 50, 30, "OK", RGB(41, 128, 185), RGB(52, 152, 219), RGB(223, 228, 234), 6.f))
 	{
 		mTmpWaitTimer = osGetTime();
 		OverrideDialogTypeInfo();
@@ -474,7 +474,7 @@ int PPUI::DrawBtmPairedScreen(PPSessionManager* sm)
 	// if wifi was turn off we need close connection and return to Select Server Screen
 
 	// Disconnect to server
-	if (FlatColorButton(5, 5, 80, 25, "Disconnect", RGB(214, 48, 49), RGB(255, 118, 117), RGB(255, 255, 255)))
+	if (FlatColorButton(5, 5, 80, 25, "Disconnect", RGB(214, 48, 49), RGB(255, 118, 117), RGB(255, 255, 255), 6.f))
 	{
 		OverrideDialogTypeCritical();
 		DrawDialogMessage(sm, "Warning", "Are you sure to disconnect?", [=]()
@@ -523,9 +523,9 @@ int PPUI::DrawBtmPairedScreen(PPSessionManager* sm)
 			break;
 		}
 
-
-		if(mPairedScreenTabIdx == 0)
+		switch (mPairedScreenTabIdx)
 		{
+		case 0: {
 			int hubCount = sm->GetHubItemCount();
 			int posY = 0;
 			int posX = 0;
@@ -544,26 +544,42 @@ int PPUI::DrawBtmPairedScreen(PPSessionManager* sm)
 					hSprite = PPGraphics::Get()->GetCacheImage(hItem->uuid.c_str());
 				}
 
-				int x = 0;
-				int y = 70;
+				// display config
+				int itemSpaceX = 48;
+				int itemSpaceY = 32;
+				int thumbSize = 48;
+				int cx = 0, cy = 75;
+				int ix = cx + 25 + posX;
+				int iy = cy + 5 + (thumbSize + itemSpaceY) * posY;
+
+				// draw background
+				PPGraphics::Get()->DrawRectangle(ix - 15, iy - 5, thumbSize + 30, thumbSize + 25, RGB(241, 242, 246), 6.0f);
 
 				// draw image
-				PPGraphics::Get()->DrawImage(hSprite, x + 15 + posX, y + 5 + (48 + 32) * posY, 48, 48);
-				LabelBox(x + 15 + posX, y + 5 + (48 + 32) * posY + 48, 48, 30, hItem->name.c_str(), TRANSPARENT, RGB(47, 53, 66));
+				PPGraphics::Get()->DrawImage(hSprite, ix, iy, thumbSize, thumbSize);
+				LabelBox(ix, iy + thumbSize, thumbSize, 25, hItem->name.c_str(), TRANSPARENT, RGB(47, 53, 66));
 
 				//--- move along
 				posY++;
 				if (posY >= 2) {
 					posY = 0;
-					posX += 48 + 48;
+					posX += thumbSize + itemSpaceX;
 				}
 			}
-		}else if(mPairedScreenTabIdx == 1)
-		{
-
+			break;
+		}
+		case 1: {
 			HubItem* hItem = sm->GetHubItem(2);
 			Sprite* hSprite = PPGraphics::Get()->GetCacheImage(hItem->uuid.c_str());
 			PPGraphics::Get()->DrawImage(hSprite, 100, 100, 48, 48);
+			break;
+		}
+		case 2: {
+			HubItem* hItem = sm->GetHubItem(3);
+			Sprite* hSprite = PPGraphics::Get()->GetCacheImage(hItem->uuid.c_str());
+			PPGraphics::Get()->DrawImage(hSprite, 100, 100, 48, 48);
+			break;
+		}
 		}
 
 	} else if(sm->GetSessionState() == SS_STREAMING) {
@@ -759,8 +775,8 @@ int PPUI::DrawDialogLoading(const char* title, const char* body, PopupCallback c
 		PPGraphics::Get()->DrawRectangle(0, 0, 320, 240, PPGraphics::Get()->TransBackgroundDark);
 
 		// draw dialog box
-		PPGraphics::Get()->DrawRectangle(13, spaceY, 294, popupHeight + 4, mDialogOverride.isActivate ? mDialogOverride.TitleBgColor : PPGraphics::Get()->PrimaryColor);
-		PPGraphics::Get()->DrawRectangle(15, spaceY + 2, 290, popupHeight, RGB(247, 247, 247));
+		PPGraphics::Get()->DrawRectangle(13, spaceY, 294, popupHeight + 4, mDialogOverride.isActivate ? mDialogOverride.TitleBgColor : PPGraphics::Get()->PrimaryColor, 6.0f);
+		PPGraphics::Get()->DrawRectangle(15, spaceY + 2, 290, popupHeight, RGB(247, 247, 247), 6.0f);
 
 		// draw title
 		LabelBox(15, spaceY + 2, 290, 30, mDialogOverride.isActivate && mDialogOverride.Title != nullptr ? mDialogOverride.Title : title, mDialogOverride.isActivate ? mDialogOverride.TitleBgColor : PPGraphics::Get()->PrimaryColor, PPGraphics::Get()->PrimaryTextColor, 0.8);
@@ -769,7 +785,7 @@ int PPUI::DrawDialogLoading(const char* title, const char* body, PopupCallback c
 
 		// animation part
 		float minX = 60, maxX = 250;
-		float minW = 10, maxW = 55;
+		float minW = 15, maxW = 55;
 		double duration = 1.0 * 1000ULL;
 		double durationW = duration / 2.0;
 
@@ -786,7 +802,7 @@ int PPUI::DrawDialogLoading(const char* title, const char* body, PopupCallback c
 		double eW = getEasingFunction(EaseInQuint)(pW);
 		float currentW = minW + eW * (maxW - minW);
 
-		PPGraphics::Get()->DrawRectangle(currentX, spaceY + 40 + bodySize.y + 4, currentW, 15, RGB(255, 165, 2));
+		PPGraphics::Get()->DrawRectangle(currentX, spaceY + 40 + bodySize.y + 4, currentW, 15, RGB(255, 165, 2), 7.5f);
 
 		if (timePassA >= duration)
 		{
@@ -820,8 +836,8 @@ int PPUI::DrawDialogMessage(PPSessionManager* sessionManager, const char* title,
 		PPGraphics::Get()->DrawRectangle(0, 0, 320, 240, PPGraphics::Get()->TransBackgroundDark);
 
 		// draw dialog box
-		PPGraphics::Get()->DrawRectangle(13, spaceY, 294, popupHeight + 4, mDialogOverride.isActivate ? mDialogOverride.TitleBgColor : PPGraphics::Get()->PrimaryColor);
-		PPGraphics::Get()->DrawRectangle(15, spaceY + 2, 290, popupHeight, RGB(247, 247, 247));
+		PPGraphics::Get()->DrawRectangle(13, spaceY, 294, popupHeight + 4, mDialogOverride.isActivate ? mDialogOverride.TitleBgColor : PPGraphics::Get()->PrimaryColor, 6.0f);
+		PPGraphics::Get()->DrawRectangle(15, spaceY + 2, 290, popupHeight, RGB(247, 247, 247), 6.0f);
 
 		// draw title
 		LabelBox(15, spaceY + 2, 290, 30, title, mDialogOverride.isActivate ? mDialogOverride.TitleBgColor : PPGraphics::Get()->PrimaryColor, PPGraphics::Get()->PrimaryTextColor, 0.8);
@@ -829,7 +845,7 @@ int PPUI::DrawDialogMessage(PPSessionManager* sessionManager, const char* title,
 
 		// draw button close
 		if(FlatColorButton(135, spaceY + 40 + bodySize.y + 4, 50, 30, "Close", 
-			PPGraphics::Get()->AccentColor, PPGraphics::Get()->AccentDarkColor, PPGraphics::Get()->AccentTextColor))
+			PPGraphics::Get()->AccentColor, PPGraphics::Get()->AccentDarkColor, PPGraphics::Get()->AccentTextColor, 6.0f))
 		{
 			return -1;
 		}
@@ -854,8 +870,8 @@ int PPUI::DrawDialogMessage(PPSessionManager* sessionManager, const char* title,
 		PPGraphics::Get()->DrawRectangle(0, 0, 320, 240, PPGraphics::Get()->TransBackgroundDark);
 
 		// draw dialog box
-		PPGraphics::Get()->DrawRectangle(13, spaceY, 294, popupHeight + 4, mDialogOverride.isActivate ? mDialogOverride.TitleBgColor : PPGraphics::Get()->PrimaryColor);
-		PPGraphics::Get()->DrawRectangle(15, spaceY + 2, 290, popupHeight, RGB(247, 247, 247));
+		PPGraphics::Get()->DrawRectangle(13, spaceY, 294, popupHeight + 4, mDialogOverride.isActivate ? mDialogOverride.TitleBgColor : PPGraphics::Get()->PrimaryColor, 6.0f);
+		PPGraphics::Get()->DrawRectangle(15, spaceY + 2, 290, popupHeight, RGB(247, 247, 247), 6.0f);
 
 		// draw title
 		LabelBox(15, spaceY + 2, 290, 30, title, mDialogOverride.isActivate ? mDialogOverride.TitleBgColor : PPGraphics::Get()->PrimaryColor, PPGraphics::Get()->PrimaryTextColor, 0.8);
@@ -863,7 +879,7 @@ int PPUI::DrawDialogMessage(PPSessionManager* sessionManager, const char* title,
 
 		// draw button close
 		if (FlatColorButton(135, spaceY + 40 + bodySize.y + 4, 50, 30, "Close",
-			PPGraphics::Get()->AccentColor, PPGraphics::Get()->AccentDarkColor, PPGraphics::Get()->AccentTextColor))
+			PPGraphics::Get()->AccentColor, PPGraphics::Get()->AccentDarkColor, PPGraphics::Get()->AccentTextColor, 6.0f))
 		{
 			return closeCallback();
 		}
@@ -888,8 +904,8 @@ int PPUI::DrawDialogMessage(PPSessionManager* sessionManager, const char* title,
 		PPGraphics::Get()->DrawRectangle(0, 0, 320, 240, PPGraphics::Get()->TransBackgroundDark);
 
 		// draw dialog box
-		PPGraphics::Get()->DrawRectangle(13, spaceY, 294, popupHeight + 4, mDialogOverride.isActivate ? mDialogOverride.TitleBgColor : PPGraphics::Get()->PrimaryColor);
-		PPGraphics::Get()->DrawRectangle(15, spaceY + 2, 290, popupHeight, RGB(247, 247, 247));
+		PPGraphics::Get()->DrawRectangle(13, spaceY, 294, popupHeight + 4, mDialogOverride.isActivate ? mDialogOverride.TitleBgColor : PPGraphics::Get()->PrimaryColor, 6.0f);
+		PPGraphics::Get()->DrawRectangle(15, spaceY + 2, 290, popupHeight, RGB(247, 247, 247), 6.0f);
 
 		// draw title
 		LabelBox(15, spaceY + 2, 290, 30, title, mDialogOverride.isActivate ? mDialogOverride.TitleBgColor : PPGraphics::Get()->PrimaryColor, PPGraphics::Get()->PrimaryTextColor, 0.8);
@@ -897,14 +913,14 @@ int PPUI::DrawDialogMessage(PPSessionManager* sessionManager, const char* title,
 
 		// draw button close
 		if (FlatColorButton(115, spaceY + 40 + bodySize.y + 4, 40, 30, "Close",
-			PPGraphics::Get()->AccentColor, PPGraphics::Get()->AccentDarkColor, PPGraphics::Get()->AccentTextColor))
+			PPGraphics::Get()->AccentColor, PPGraphics::Get()->AccentDarkColor, PPGraphics::Get()->AccentTextColor, 6.0f))
 		{
 			return cancelCallback();
 		}
 
 		// draw button ok
 		if (FlatColorButton(165, spaceY + 40 + bodySize.y + 4, 40, 30, "OK",
-			PPGraphics::Get()->PrimaryColor, PPGraphics::Get()->PrimaryDarkColor, PPGraphics::Get()->PrimaryTextColor))
+			PPGraphics::Get()->PrimaryColor, PPGraphics::Get()->PrimaryDarkColor, PPGraphics::Get()->PrimaryTextColor, 6.0f))
 		{
 			return okCallback();
 		}
@@ -979,9 +995,9 @@ int PPUI::DrawTabs(const char* tabs[], u32 tabCount, int activeTab, float x, flo
 		const Vector2 tabTitleSize = PPGraphics::Get()->GetTextSize(tabs[i], 0.5f, 0.5f);
 		// tab button
 		if (FlatColorButton(cX, y + (activeTab == i ? 0 : tabPadding/2), tabTitleSize.x + tabPadding * 2, 25 + (activeTab == i ? tabPadding / 2 : 0), tabs[i],
-			activeTab == i ? RGB(85, 239, 196) : RGB(178, 190, 195),
-			activeTab == i ? RGB(129, 236, 236) : RGB(164, 176, 190),
-			activeTab == i ? RGB(45, 52, 54) : RGB(47, 53, 66)))
+			activeTab == i ? RGB(30, 144, 255) : RGB(223, 228, 234),
+			activeTab == i ? RGB(83, 82, 237) : RGB(30, 144, 255),
+			activeTab == i ? RGB(241, 242, 246) : RGB(47, 53, 66)))
 		{
 			ret = i;
 		}
@@ -995,7 +1011,7 @@ int PPUI::DrawTabs(const char* tabs[], u32 tabCount, int activeTab, float x, flo
 
 	// Draw content background and scroll if need
 	float cY = y + tabPadding / 2 + 25;
-	PPGraphics::Get()->DrawRectangle(x, cY, w, h - (tabPadding / 2 + 25), RGB(85, 239, 196));
+	PPGraphics::Get()->DrawRectangle(x, cY, w, h - (tabPadding / 2 + 25), RGB(223, 228, 234));
 
 	return ret;
 }
@@ -1129,27 +1145,27 @@ bool PPUI::ToggleBox(float x, float y, float w, float h, bool value, const char*
 // BUTTON
 ///////////////////////////////////////////////////////////////////////////
 
-bool PPUI::FlatButton(float x, float y, float w, float h, const char* label)
+bool PPUI::FlatButton(float x, float y, float w, float h, const char* label, float rounding)
 {
-	return FlatColorButton(x, y, w, h, label, RGB(26, 188, 156), RGB(46, 204, 113), RGB(236, 240, 241));
+	return FlatColorButton(x, y, w, h, label, RGB(26, 188, 156), RGB(46, 204, 113), RGB(236, 240, 241), rounding);
 }
 
-bool PPUI::FlatDarkButton(float x, float y, float w, float h, const char* label)
+bool PPUI::FlatDarkButton(float x, float y, float w, float h, const char* label, float rounding)
 {
-	return FlatColorButton(x, y, w, h, label, RGB(22, 160, 133), RGB(39, 174, 96), RGB(236, 240, 241));
+	return FlatColorButton(x, y, w, h, label, RGB(22, 160, 133), RGB(39, 174, 96), RGB(236, 240, 241), rounding);
 }
 
-bool PPUI::FlatColorButton(float x, float y, float w, float h, const char* label, Color colNormal, Color colActive, Color txtCol)
+bool PPUI::FlatColorButton(float x, float y, float w, float h, const char* label, Color colNormal, Color colActive, Color txtCol, float rounding)
 {
 	float tScale = 0.5f;
 	if (TouchDownOnArea(x, y, w, h) && !mTmpLockTouch)
 	{
-		PPGraphics::Get()->DrawRectangle(x, y, w, h, colActive);
+		PPGraphics::Get()->DrawRectangle(x, y, w, h, colActive, rounding);
 		tScale = 0.6f;
 	}
 	else
 	{
-		PPGraphics::Get()->DrawRectangle(x, y, w, h, colNormal);
+		PPGraphics::Get()->DrawRectangle(x, y, w, h, colNormal, rounding);
 	}
 	Vector2 tSize = PPGraphics::Get()->GetTextSize(label, tScale, tScale);
 	PPGraphics::Get()->DrawText(label, x + (w - tSize.x) / 2.0f, y + (h - tSize.y) / 2.0f, tScale, tScale, txtCol, false);
@@ -1200,9 +1216,9 @@ bool PPUI::RepeatButton(float x, float y, float w, float h, const char* label, C
  * \param defaultValue 
  * \param placeHolder 
  */
-int PPUI::LabelBox(float x, float y, float w, float h, const char* label, Color bgColor, Color txtColor, float scale)
+int PPUI::LabelBox(float x, float y, float w, float h, const char* label, Color bgColor, Color txtColor, float scale, float rounding)
 {
-	PPGraphics::Get()->DrawRectangle(x, y, w, h, bgColor);
+	PPGraphics::Get()->DrawRectangle(x, y, w, h, bgColor, rounding);
 	Vector2 tSize = PPGraphics::Get()->GetTextSize(label, scale, scale);
 	float startX = (w - tSize.x) / 2.0f;
 	float startY = (h - tSize.y) / 2.0f;
@@ -1219,9 +1235,9 @@ int PPUI::LabelBox(float x, float y, float w, float h, const char* label, Color 
 }
 
 int PPUI::LabelBoxAutoWrap(float x, float y, float w, float h, const char* label, Color bgColor, Color txtColor,
-	float scale)
+	float scale, float rounding)
 {
-	PPGraphics::Get()->DrawRectangle(x, y, w, h, bgColor);
+	PPGraphics::Get()->DrawRectangle(x, y, w, h, bgColor, rounding);
 	Vector3 tSize = PPGraphics::Get()->GetTextSizeAutoWrap(label, scale, scale, w);
 	float startX = (w - tSize.x) / 2.0f;
 	float startY = (h - tSize.y) / 2.0f;
@@ -1236,9 +1252,9 @@ int PPUI::LabelBoxAutoWrap(float x, float y, float w, float h, const char* label
 	return TouchUpOnArea(x, y, w, h) && !mTmpLockTouch;
 }
 
-int PPUI::LabelBoxLeft(float x, float y, float w, float h, const char* label, Color bgColor, Color txtColor, float scale)
+int PPUI::LabelBoxLeft(float x, float y, float w, float h, const char* label, Color bgColor, Color txtColor, float scale, float rounding)
 {
-	PPGraphics::Get()->DrawRectangle(x, y, w, h, bgColor);
+	PPGraphics::Get()->DrawRectangle(x, y, w, h, bgColor, rounding);
 	Vector2 tSize = PPGraphics::Get()->GetTextSize(label, scale, scale);
 	float startY = (h - tSize.y) / 2.0f;
 	PPGraphics::Get()->DrawText(label, x, y + startY, scale, scale, txtColor, false);

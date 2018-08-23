@@ -92,16 +92,16 @@ public:
 	static bool ToggleBox(float x, float y, float w, float h, bool value, const char* label);
 
 	// BUTTON
-	static bool FlatButton(float x, float y, float w, float h, const char* label);
-	static bool FlatDarkButton(float x, float y, float w, float h, const char* label);
-	static bool FlatColorButton(float x, float y, float w, float h, const char* label, Color colNormal, Color colActive, Color txtCol);
+	static bool FlatButton(float x, float y, float w, float h, const char* label, float rounding = 0.0f);
+	static bool FlatDarkButton(float x, float y, float w, float h, const char* label, float rounding = 0.0f);
+	static bool FlatColorButton(float x, float y, float w, float h, const char* label, Color colNormal, Color colActive, Color txtCol, float rounding = 0.0f);
 
 	static bool RepeatButton(float x, float y, float w, float h, const char* label, Color colNormal, Color colActive, Color txtCol);
 
 	// TEXT
-	static int LabelBox(float x, float y, float w, float h, const char* label, Color bgColor, Color txtColor, float scale = 0.5f);
-	static int LabelBoxAutoWrap(float x, float y, float w, float h, const char* label, Color bgColor, Color txtColor, float scale = 0.5f);
-	static int LabelBoxLeft(float x, float y, float w, float h, const char* label, Color bgColor, Color txtColor, float scale = 0.5f);
+	static int LabelBox(float x, float y, float w, float h, const char* label, Color bgColor, Color txtColor, float scale = 0.5f, float rounding = 0.f);
+	static int LabelBoxAutoWrap(float x, float y, float w, float h, const char* label, Color bgColor, Color txtColor, float scale = 0.5f, float rounding = 0.f);
+	static int LabelBoxLeft(float x, float y, float w, float h, const char* label, Color bgColor, Color txtColor, float scale = 0.5f, float rounding = 0.f);
 
 	// POPUP
 	static bool HasPopup();

@@ -145,6 +145,7 @@ public:
 	void UpdateTopScreenSprite(u8* data, u32 size);
 	void DrawTopScreenSprite();
 
+	// Draw image
 	void DrawImage(Sprite* sprite, int x, int y);
 	void DrawImage(std::string key, int x, int y) { DrawImage(GetCacheImage(key), x, y); }
 	void DrawImage(Sprite* sprite, int x, int y, int w, int h);
@@ -153,7 +154,11 @@ public:
 	void DrawImage(std::string key, int x, int y, int w, int h, int degrees) { DrawImage(GetCacheImage(key), x, y, w, h, degrees); }
 	void DrawImage(Sprite* sprite, int x, int y, int w, int h, int degrees, Vector2 anchor);
 	void DrawImage(std::string key, int x, int y, int w, int h, int degrees, Vector2 anchor) { DrawImage(GetCacheImage(key), x, y, w, h, degrees, anchor); }
-	void DrawRectangle(float x, float y, float w, float h, Color color);
+
+	// draw rectangle
+	void DrawRectangle(float x, float y, float w, float h, Color color, float rounding = 0.0f);
+
+	// draw text
 	void DrawText(const char* text, float x, float y, float scaleX, float scaleY, Color color, bool baseline);
 	void DrawTextAutoWrap(const char* text, float x, float y, float w, float scaleX, float scaleY, Color color, bool baseline);
 	Vector2 GetTextSize(const char* text, float scaleX, float scaleY);
