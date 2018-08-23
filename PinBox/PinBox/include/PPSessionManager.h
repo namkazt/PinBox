@@ -17,7 +17,9 @@ enum SessionState
 	SS_CONNECTING,
 	SS_CONNECTED,
 	SS_PAIRED,
-	SS_STREAMING
+	SS_STREAMING,
+
+	SS_FAILED
 };
 
 typedef struct

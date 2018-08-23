@@ -55,6 +55,7 @@ void PPSessionManager::DisconnectToServer()
 {
 	if (_sessionState == SS_NOT_CONNECTED) return;
 	if (_session == nullptr) return;
+	printf("Cleanup session.\n");
 	delete _session;
 	_session = NULL;
 	_sessionState = SS_NOT_CONNECTED;

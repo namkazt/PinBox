@@ -304,20 +304,27 @@ int PPUI::DrawBtmServerSelectScreen(PPSessionManager* sm)
 						// reset variable of paired screen
 						mPairedScreenTabIdx = 0;
 						return -1;
-					default:
+					case SS_FAILED:
 						if (osGetTime() - mTmpWaitTimer > (1 * TIME_SECOND))
 						{
 							mDialogBoxCallLater = new PopupCallback([=]()
-							{
+							{	
 								// We need set session manager back to not connected state
 								// because of other state can't go there so it must be SS_FAILED
-								sm->SetSessionState(SS_NOT_CONNECTED);
+								
 								OverrideDialogTypeCritical();
-								DrawDialogMessage(sm, "Error", "Can't Connect to server!");
+								DrawDialogMessage(sm, "Error", "Can't connect to server for some reason.", [=]()
+								{
+									sm->DisconnectToServer();
+									return -1;
+								});
 								return 0;
 							});
 							return -1;
 						}
+						return 0;
+					default:
+						return 0;
 					}
 					return 0;
 				});
@@ -858,8 +865,7 @@ int PPUI::DrawDialogMessage(PPSessionManager* sessionManager, const char* title,
 		if (FlatColorButton(135, spaceY + 40 + bodySize.y + 4, 50, 30, "Close",
 			PPGraphics::Get()->AccentColor, PPGraphics::Get()->AccentDarkColor, PPGraphics::Get()->AccentTextColor))
 		{
-			if (closeCallback != nullptr) return closeCallback();
-			return -1;
+			return closeCallback();
 		}
 		return 0;
 	});
@@ -893,16 +899,14 @@ int PPUI::DrawDialogMessage(PPSessionManager* sessionManager, const char* title,
 		if (FlatColorButton(115, spaceY + 40 + bodySize.y + 4, 40, 30, "Close",
 			PPGraphics::Get()->AccentColor, PPGraphics::Get()->AccentDarkColor, PPGraphics::Get()->AccentTextColor))
 		{
-			if (cancelCallback != nullptr) return cancelCallback();
-			return -1;
+			return cancelCallback();
 		}
 
 		// draw button ok
 		if (FlatColorButton(165, spaceY + 40 + bodySize.y + 4, 40, 30, "OK",
 			PPGraphics::Get()->PrimaryColor, PPGraphics::Get()->PrimaryDarkColor, PPGraphics::Get()->PrimaryTextColor))
 		{
-			if (okCallback != nullptr) return okCallback();
-			return -1;
+			return okCallback();
 		}
 		return 0;
 	});
@@ -926,14 +930,14 @@ int PPUI::DrawStreamConfigUI(PPSessionManager* sessionManager, ResultCallback ca
 	if (FlatColorButton(200, 200, 50, 30, "Cancel", RGB(192, 57, 43), RGB(231, 76, 60), RGB(255, 255, 255)))
 	{
 		ClosePopup();
-		if (cancel != nullptr) cancel(nullptr, nullptr);
+		cancel(nullptr, nullptr);
 	}
 
 	// OK button
 	if (FlatColorButton(260, 200, 50, 30, "OK", RGB(41, 128, 185), RGB(52, 152, 219), RGB(255, 255, 255)))
 	{
 		ClosePopup();
-		if (ok != nullptr) ok(nullptr, nullptr);
+		ok(nullptr, nullptr);
 	}
 }
 

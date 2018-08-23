@@ -34,6 +34,8 @@ PPSession::PPSession()
 PPSession::~PPSession()
 {
 	ReleaseSession();
+
+	CleanUp();
 	// free static buffer
 	free(g_receivedBuffer);
 	free(_ip);
@@ -77,14 +79,17 @@ void PPSession::ReleaseSession()
 {
 	if (!_running || _kill) return;
 	_kill = true;
-
+	_running = false;
 	// join thread
 	threadJoin(_thread, U64_MAX);
 	threadFree(_thread);
 	_thread = NULL;
+}
 
+void PPSession::CleanUp()
+{
 	// clean up
-	_running = false;
+	
 	g_receivedSize = 0;
 	g_waitForSize = 0;
 	g_msgTag = 0;
@@ -95,9 +100,9 @@ void PPSession::ReleaseSession()
 	}
 
 	// cleanup hub
-	for(HubItem* item : _hubItems)
+	for (HubItem* item : _hubItems)
 	{
-		if(item->thumbSize > 0) free(item->thumbBuf);
+		if (item->thumbSize > 0) free(item->thumbBuf);
 		delete item;
 	}
 	_hubItems.clear();
@@ -126,6 +131,7 @@ void PPSession::StopStream()
 void PPSession::connectToServer()
 {
 	_connect_state = CONNECTING;
+	//_manager->SetSessionState(SS_CONNECTING);
 	//--------------------------------------------------
 	// define socket
 	_sock = socket(AF_INET, SOCK_STREAM, 0);
@@ -135,7 +141,7 @@ void PPSession::connectToServer()
 		gfxFlushBuffers();
 		// Error: can't create socket
 		_connect_state = FAIL;
-		_manager->SetSessionState(SS_NOT_CONNECTED);
+		_manager->SetSessionState(SS_FAILED);
 		return;
 	}
 
@@ -148,7 +154,7 @@ void PPSession::connectToServer()
 		printf("IP and Port not supported.\n", _ip, _port);
 		gfxFlushBuffers();
 		_connect_state = FAIL;
-		_manager->SetSessionState(SS_NOT_CONNECTED);
+		_manager->SetSessionState(SS_FAILED);
 		return;
 	}
 
@@ -161,7 +167,7 @@ void PPSession::connectToServer()
 		printf("Could not connect to server.\n");
 		gfxFlushBuffers();
 		_connect_state = FAIL;
-		_manager->SetSessionState(SS_NOT_CONNECTED);
+		_manager->SetSessionState(SS_FAILED);
 		return;
 	}
 
@@ -173,14 +179,11 @@ void PPSession::connectToServer()
 	fcntl(_sock, F_SETFL, fcntl(_sock, F_GETFL, 0) | O_NONBLOCK);
 	printf("Connected to server.\n");
 	gfxFlushBuffers();
-
-	//on connected successfully 
 }
 
 void PPSession::closeConnect()
 {
 	// set kill again to make sure it set
-	printf("closing session...\n");
 
 	// close connection
 	if(_connect_state == CONNECTED)
@@ -193,6 +196,8 @@ void PPSession::closeConnect()
 	}
 	_sock = -1;
 	_connect_state = IDLE;
+
+	printf("closed session.\n");
 }
 
 void PPSession::recvSocketData()
@@ -296,13 +301,6 @@ void PPSession::threadMain()
 			sendMessageData();
 		}
 
-		if (_connect_state == FAIL)
-		{
-			printf("Connection failed for some reason.\n");
-			_kill = true;
-			break;
-		}
-
 		svcSleepThread(sleepDuration);
 	}
 
@@ -314,8 +312,6 @@ void PPSession::threadMain()
 	// close connection
 	closeConnect();
 }
-
-
 
 void PPSession::threadTest()
 {

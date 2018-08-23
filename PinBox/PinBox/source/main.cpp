@@ -149,6 +149,7 @@ int main()
 				case SS_NOT_CONNECTED:
 				case SS_CONNECTING:
 				case SS_CONNECTED:
+				case SS_FAILED:
 					r = PPUI::DrawBtmServerSelectScreen(sm);
 					break;
 				case SS_PAIRED: 

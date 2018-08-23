@@ -128,6 +128,7 @@ public:
 	void InitSession(PPSessionManager* manager, const char* ip, const char* port);
 	void threadMain();
 	void ReleaseSession();
+	void CleanUp();
 
 	void StartStream();
 	void StopStream();
