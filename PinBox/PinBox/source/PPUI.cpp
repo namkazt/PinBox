@@ -20,7 +20,6 @@ static touchPosition last_kTouchDown;
 volatile u64 holdTime = 0;
 
 static u32 sleepModeState = 0;
-static int mPairedScreenTabIdx = 0;
 //----------------------------------------
 // Dialog
 //---------------------------------------
@@ -32,12 +31,19 @@ static DialogBoxOverride mDialogOverride;
 //----------------------------------------
 // Tab
 //---------------------------------------
+static int mPairedScreenTabIdx = 0;
+static int mHubItemSelectedIdx = -1;
+
+//----------------------------------------
+// Scroll Box
+//---------------------------------------
+static Vector2 mScrollLastTouch = Vector2{ -1,-1 };
+static float mScrollSpeedModified = 0;
+static bool mScrolling = false;
 
 static u64 mTmpWaitTimer = 0;
 static std::vector<PopupCallback> mPopupList;
-
 static std::string mTemplateInputString = "";
-
 static ServerConfig* mTmpServerConfig = nullptr;
 
 //----------------------------------------
@@ -202,6 +208,8 @@ int PPUI::DrawIdleTopScreen(PPSessionManager* sessionManager)
 	LabelBox(0, 0, 400, 240, "PinBox", RGB(26, 188, 156), RGB(255, 255, 255));
 }
 
+static Vector2 scrollboxTestCursor;
+
 int PPUI::DrawBtmServerSelectScreen(PPSessionManager* sm)
 {
 	PPGraphics::Get()->DrawRectangle(0, 0, 320, 240, RGB(236, 240, 241));
@@ -353,6 +361,14 @@ int PPUI::DrawBtmServerSelectScreen(PPSessionManager* sm)
 		LabelBoxAutoWrap(10, 45, 300, 185, "No server profile found.\nPlease add new one by Add button.", TRANSPARENT, PPGraphics::Get()->PrimaryTextColor);
 	}
 
+	// test scroll box
+	scrollboxTestCursor = ScrollBox(10, 100, 300, 100, D_HORIZONTAL, scrollboxTestCursor, [=]()
+	{
+		PPGraphics::Get()->DrawRectangle(10, 100, 300, 100, RGB(240, 147, 43));
+		WH wh{ 1500, 300 };
+		return wh;
+	});
+
 	// Dialog box ( alway at bottom so it will draw on top )
 	return DrawDialogBox(sm);
 }
@@ -492,6 +508,14 @@ int PPUI::DrawBtmPairedScreen(PPSessionManager* sm)
 	// LOGO
 	LabelBox(130, 0, 60, 35, "PinBox", TRANSPARENT, RGB(47, 53, 66), 0.9f);
 
+	// Stream / Stop button
+	// only display when selected an item and in hub tab 
+	if (mHubItemSelectedIdx >= 0 && mPairedScreenTabIdx == 0) {
+		if (FlatColorButton(240, 5, 70, 25, "Stream", RGB(46, 213, 115), RGB(123, 237, 159), RGB(47, 53, 66), 6.f))
+		{
+			
+		}
+	}
 
 	// Case selection
 	if (sm ->GetSessionState() == SS_PAIRED)
@@ -526,6 +550,9 @@ int PPUI::DrawBtmPairedScreen(PPSessionManager* sm)
 		switch (mPairedScreenTabIdx)
 		{
 		case 0: {
+			//==========================================================
+			// HUB ITEMS SCREEN
+			//==========================================================
 			int hubCount = sm->GetHubItemCount();
 			int posY = 0;
 			int posX = 0;
@@ -553,11 +580,15 @@ int PPUI::DrawBtmPairedScreen(PPSessionManager* sm)
 				int iy = cy + 5 + (thumbSize + itemSpaceY) * posY;
 
 				// draw background
-				PPGraphics::Get()->DrawRectangle(ix - 15, iy - 5, thumbSize + 30, thumbSize + 25, RGB(241, 242, 246), 6.0f);
+				if(SelectBox(ix - 15, iy - 5, thumbSize + 30, thumbSize + 25, mHubItemSelectedIdx == i ? RGB(30, 144, 255) : RGB(241, 242, 246), 6.0f))
+				{
+					if (mHubItemSelectedIdx != i) mHubItemSelectedIdx = i;
+					else mHubItemSelectedIdx = -1;
+				}
 
 				// draw image
 				PPGraphics::Get()->DrawImage(hSprite, ix, iy, thumbSize, thumbSize);
-				LabelBox(ix, iy + thumbSize, thumbSize, 25, hItem->name.c_str(), TRANSPARENT, RGB(47, 53, 66));
+				LabelBox(ix, iy + thumbSize, thumbSize, 25, hItem->name.c_str(), TRANSPARENT, mHubItemSelectedIdx == i ? RGB(241, 242, 246) : RGB(47, 53, 66));
 
 				//--- move along
 				posY++;
@@ -569,12 +600,18 @@ int PPUI::DrawBtmPairedScreen(PPSessionManager* sm)
 			break;
 		}
 		case 1: {
+			//==========================================================
+			// BASIC CONFIG SCREEN
+			//==========================================================
 			HubItem* hItem = sm->GetHubItem(2);
 			Sprite* hSprite = PPGraphics::Get()->GetCacheImage(hItem->uuid.c_str());
 			PPGraphics::Get()->DrawImage(hSprite, 100, 100, 48, 48);
 			break;
 		}
 		case 2: {
+			//==========================================================
+			// ADVANCE CONFIG SCREEN
+			//==========================================================
 			HubItem* hItem = sm->GetHubItem(3);
 			Sprite* hSprite = PPGraphics::Get()->GetCacheImage(hItem->uuid.c_str());
 			PPGraphics::Get()->DrawImage(hSprite, 100, 100, 48, 48);
@@ -1038,13 +1075,127 @@ int PPUI::DrawDialogBox(PPSessionManager* sessionManager)
 				delete mDialogBoxCallLater;
 				mDialogBoxCallLater = nullptr;
 			}
-
 			if (ret == RET_CLOSE_APP) return -1;
 		}
 	}
 	return 0;
 }
 
+Vector2 PPUI::ScrollBox(float x, float y, float w, float h, Direction dir, Vector2 cursor, WHCallback contentDraw)
+{
+	PPGraphics::Get()->StartMasked(x, y, w, h, GFX_BOTTOM);
+
+	// return content size after drawing
+	WH ret = contentDraw();
+
+	// check for touch scrolling
+	
+	Vector2 dif;
+	if (TouchDownOnArea(x, y, w, h) && !mTmpLockTouch)
+	{
+		dif = Vector2{ (float)kTouch.px - mScrollLastTouch.x, (float)kTouch.py - mScrollLastTouch.y };
+		if (mScrolling) {
+			// calculate speed modifier
+			if (abs(dif.x) >= 3 && (dir == D_HORIZONTAL || dir == D_BOTH))
+			{
+				mScrollSpeedModified += SCROLL_SPEED_STEP;
+			}
+			if (abs(dif.y) >= 3 && (dir == D_VERTICAL || dir == D_BOTH))
+			{
+				mScrollSpeedModified += SCROLL_SPEED_STEP;
+			}
+		}
+
+		// check if not scrolling yet
+		if(!mScrolling && mScrollLastTouch.x > -1.f)
+		{
+			if(abs(dif.x) >= SCROLL_THRESHOLD && (dir == D_HORIZONTAL || dir == D_BOTH))
+			{
+				mScrolling = true;
+			}
+			if (abs(dif.y) >= SCROLL_THRESHOLD && (dir == D_VERTICAL || dir == D_BOTH))
+			{
+				mScrolling = true;
+			}
+		}
+
+		mScrollLastTouch = Vector2{ (float)kTouch.px ,(float)kTouch.py };
+	}else
+	{
+		mScrollLastTouch = Vector2{ -1.0f, -1.0f };
+		mScrolling = false;
+		mScrollSpeedModified = SCROLL_SPEED_MODIFIED;
+	}
+
+	// check for scroll box
+	switch (dir)
+	{
+		case D_NONE: 
+		{
+			// Do not display scroll bar
+			break;
+		}
+		case D_HORIZONTAL: 
+		{
+			Vector2 maxScroll = { ret.width - w , 0 };
+			float p2c = w / (float)ret.width;
+			if (p2c < SCROLL_BAR_MIN) p2c = SCROLL_BAR_MIN;
+			// only display scroll bar if percent is small than 1.0
+			if (p2c < 1.0f)
+			{
+				float bW = floorf(p2c * w);
+
+				if (mScrolling) {
+					cursor.x += (float)dif.x + mScrollSpeedModified * (float)dif.x;
+					if (cursor.x > maxScroll.x) cursor.x = maxScroll.x;
+					if (cursor.x < 0) cursor.x = 0;
+					//TODO: cursor are use for content drawing display
+				}
+
+				float moveableW = w - bW - 8; // 8 is padding
+				float barMovePercent = cursor.x / maxScroll.x;
+
+				PPGraphics::Get()->DrawRectangle(x + 4 + floorf(moveableW * barMovePercent), y + h - 10, bW, 6, RGBA(83, 92, 104, 150), 3.0f);
+			}
+			break;
+		}
+		case D_VERTICAL: 
+		{
+			Vector2 maxScroll = { 0 , ret.height - h };
+			float p2c = h / (float)ret.height;
+			if (p2c < SCROLL_BAR_MIN) p2c = SCROLL_BAR_MIN;
+			// only display scroll bar if percent is small than 1.0
+			if (p2c < 1.0f)
+			{
+				float bH = floorf(p2c * h);
+
+				if (mScrolling) {
+					cursor.y = y + (float)dif.y +mScrollSpeedModified * (float)dif.y;
+					if (cursor.y > maxScroll.y) cursor.y = maxScroll.y;
+					if (cursor.y < 0) cursor.y = 0;
+				}
+
+				float moveableH = h - bH - 8; // 8 is padding
+				float barMovePercent = cursor.y / maxScroll.y;
+
+
+				PPGraphics::Get()->DrawRectangle(x + w - 10, y + 4 + floorf(moveableH * barMovePercent), 6, bH, RGBA(83, 92, 104, 150), 3.0f);
+			}
+			break;
+		}
+		case D_BOTH: 
+		{
+			break;
+		}
+		default: 
+		{
+			
+		};
+	}
+
+	PPGraphics::Get()->StopMasked();
+	return cursor;
+}
 
 ///////////////////////////////////////////////////////////////////////////
 // SLIDE
@@ -1139,6 +1290,12 @@ bool PPUI::ToggleBox(float x, float y, float w, float h, bool value, const char*
 		FlatColorButton(startX + 1 + (boxSize / 2), startY + 1, (boxSize / 2) - 2, h - 2, "Off", RGB(236, 240, 241), RGB(189, 195, 199), RGB(44, 62, 80));
 	}
 	return result;
+}
+
+bool PPUI::SelectBox(float x, float y, float w, float h, Color color, float rounding)
+{
+	PPGraphics::Get()->DrawRectangle(x, y, w, h, color, rounding);
+	return TouchUpOnArea(x, y, w, h) && !mTmpLockTouch;
 }
 
 ///////////////////////////////////////////////////////////////////////////

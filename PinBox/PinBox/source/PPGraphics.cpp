@@ -610,6 +610,18 @@ void PPGraphics::DrawRectangle(float x, float y, float w, float h, Color color, 
 	}
 }
 
+void PPGraphics::StartMasked(float x, float y, float w, float h, gfxScreen_t screen) const
+{
+	if(screen == GFX_TOP) C3D_SetScissor(GPU_SCISSOR_NORMAL, 240 - (y + h), 400 - (x + w), 240 - y, 400 - x);
+	else C3D_SetScissor(GPU_SCISSOR_NORMAL, 240 - (y + h), 320 - (x + w), 240 - y, 320 - x);
+	
+}
+
+void PPGraphics::StopMasked() const
+{
+	C3D_SetScissor(GPU_SCISSOR_DISABLE, 0, 0, 0, 0);
+}
+
 void PPGraphics::DrawText(const char* text, float x, float y, float scaleX, float scaleY, Color color, bool baseline)
 {
 	ssize_t  units;

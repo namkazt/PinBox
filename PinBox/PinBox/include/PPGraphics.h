@@ -158,6 +158,10 @@ public:
 	// draw rectangle
 	void DrawRectangle(float x, float y, float w, float h, Color color, float rounding = 0.0f);
 
+	// mask
+	void StartMasked(float x, float y, float w, float h, gfxScreen_t screen) const;
+	void StopMasked() const;
+
 	// draw text
 	void DrawText(const char* text, float x, float y, float scaleX, float scaleY, Color color, bool baseline);
 	void DrawTextAutoWrap(const char* text, float x, float y, float w, float scaleX, float scaleY, Color color, bool baseline);

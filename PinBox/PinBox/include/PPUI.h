@@ -12,10 +12,18 @@
 //#define UI_DEBUG 1
 #define RET_CLOSE_APP -1000
 
+#define SCROLL_THRESHOLD 5
+#define SCROLL_BAR_MIN 0.2f
+#define SCROLL_SPEED_MODIFIED 0.2f
+#define SCROLL_SPEED_STEP 0.18f
 
-typedef std::function<void(float x, float y, float w, float h)> TabContentDraw;
-typedef std::function<int()> PopupCallback;
-typedef std::function<void(void* arg1, void* arg2)> ResultCallback;
+enum Direction
+{
+	D_NONE = 0,
+	D_HORIZONTAL = 1,
+	D_VERTICAL = 2,
+	D_BOTH = 3
+};
 
 typedef struct DialogBoxOverride {
 	bool isActivate = false;
@@ -24,6 +32,16 @@ typedef struct DialogBoxOverride {
 	const char* Title = nullptr;
 	const char* Body = nullptr;
 };
+
+typedef struct WH {
+	int width;
+	int height;
+};
+
+typedef std::function<void(float x, float y, float w, float h)> TabContentDraw;
+typedef std::function<int()> PopupCallback;
+typedef std::function<WH()> WHCallback;
+typedef std::function<void(void* arg1, void* arg2)> ResultCallback;
 
 class PPUI
 {
@@ -83,13 +101,17 @@ public:
 	static int DrawDialogBox(PPSessionManager *sessionManager);
 
 
-
+	// SCROLL BOX
+	static Vector2 ScrollBox(float x, float y, float w, float h, Direction dir, Vector2 cursor, WHCallback contentDraw);
 
 	// SLIDE
 	static float Slide(float x, float y, float w, float h, float val, float min, float max, float step, const char* label);
 	
 	// CHECKBOX
 	static bool ToggleBox(float x, float y, float w, float h, bool value, const char* label);
+
+	// SELECT BOX
+	static bool SelectBox(float x, float y, float w, float h, Color color, float rounding);
 
 	// BUTTON
 	static bool FlatButton(float x, float y, float w, float h, const char* label, float rounding = 0.0f);
