@@ -62,7 +62,7 @@ private:
 private:
 	void						sendMessageWithCode(u8 code);
 	void						sendMessageWithCodeAndData(u8 code, u8* buffer, size_t bufferSize);
-	void						preprocessMessageCode(u8 code);
+	void						processMessageHeader(u8 code);
 	void						processMessageBody(u8* buffer, u8 code);
 
 	void						ProcessIncommingMessage(u8* buffer, u32 size);

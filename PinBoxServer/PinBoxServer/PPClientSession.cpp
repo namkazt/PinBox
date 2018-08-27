@@ -111,7 +111,7 @@ void PPClientSession::ProcessIncommingMessage(u8* buffer, u32 size)
 			_waitForSize = _tmpMessage->GetContentSize();
 			//----------------------------------------------------
 			// pre process header code if need
-			preprocessMessageCode(_tmpMessage->GetMessageCode());
+			processMessageHeader(_tmpMessage->GetMessageCode());
 			//----------------------------------------------------
 			// it content size of message is zero so we start 
 			// wait for new message
@@ -155,19 +155,18 @@ void PPClientSession::sendMessageWithCodeAndData(u8 code, u8* buffer, size_t buf
 	free(result);
 }
 
-void PPClientSession::preprocessMessageCode(u8 code)
+void PPClientSession::processMessageHeader(u8 code)
 {
 	switch (code)
 	{
-
-	case MSG_CODE_REQUEST_START_SCREEN_CAPTURE:
-		std::cout << "Client send COMMAND: Start Stream" << std::endl;
-		_server->ScreenCapturer->startStream();
-		break;
-	case MSG_CODE_REQUEST_STOP_SCREEN_CAPTURE:
-		std::cout << "Client send COMMAND: Stop Stream" << std::endl;
-		_server->ScreenCapturer->stopStream();
-		break;
+	//case MSG_CODE_REQUEST_START_SCREEN_CAPTURE:
+	//	std::cout << "Client send COMMAND: Start Stream" << std::endl;
+	//	_server->ScreenCapturer->startStream();
+	//	break;
+	//case MSG_CODE_REQUEST_STOP_SCREEN_CAPTURE:
+	//	std::cout << "Client send COMMAND: Stop Stream" << std::endl;
+	//	_server->ScreenCapturer->stopStream();
+	//	break;
 	case MSG_CODE_REQUEST_SCREEN_RECEIVED_FRAME: 
 
 		break;
@@ -226,6 +225,20 @@ void PPClientSession::processMessageBody(u8* buffer, u8 code)
 
 	switch (code)
 	{
+
+	case MSG_CODE_REQUEST_START_SCREEN_CAPTURE:
+		std::cout << "Client send COMMAND: Start Stream" << std::endl;
+		_server->ScreenCapturer->startStream();
+		break;
+	case MSG_CODE_REQUEST_STOP_SCREEN_CAPTURE:
+		std::cout << "Client send COMMAND: Stop Stream" << std::endl;
+		_server->ScreenCapturer->stopStream();
+		break;
+
+
+		//================================================
+		// Delete later
+		//================================================
 	case MSG_CODE_REQUEST_CHANGE_SETTING_SCREEN_CAPTURE: {
 		//NOTE: do those setting are useless for now.
 
@@ -248,6 +261,9 @@ void PPClientSession::processMessageBody(u8* buffer, u8 code)
 		break;
 	}
 
+	//================================================
+	// Input process
+	//================================================
 	case MSG_CODE_SEND_INPUT_CAPTURE:
 	{
 		//--------------------------------------
