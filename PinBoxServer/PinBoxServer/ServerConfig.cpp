@@ -99,7 +99,7 @@ void ServerConfig::LoadHubItems()
 	{
 		HubItem *hubItem = new HubItem();
 		std::ostringstream stringStream;
-		stringStream << "Monitor " << mon.Index;
+		stringStream << "Monitor " << mon.Index + 1;
 		hubItem->name = stringStream.str();
 
 		char ranUUID[100];
