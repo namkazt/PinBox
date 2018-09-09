@@ -1,4 +1,4 @@
-Please, set a title for the issue that starts with "BUG" or "FEATURE REQUEST" accordingly. Use [stackoverflow](https://stackoverflow.com) for supporting issues.
+Please, set a title for the issue that starts with "BUG" or "FEATURE REQUEST" accordingly. Use [the Pinbox Discord Server](https://discord.gg/9Qae7fT) for supporting issues.
 
 <!--- Provide a general summary of the issue in the Title above -->
 
