@@ -1,3 +1,5 @@
+Note: this project no longer maintained
+
 
 [![N|Solid](https://cdn.discordapp.com/attachments/340110838947905538/398531319048699905/test.png)](https://github.com/namkazt/PinBox)
 
