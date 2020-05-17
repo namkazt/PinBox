@@ -5,7 +5,7 @@ Note: this project no longer maintained
 
 Welcome to Pinbox! Pinbox is a homebrew application (Soon .cia) for the Nintendo 3DS that streams content from your Windows PC to the 3DS. Keep in mind, Pinbox is currenty in alpha, so bugs will occur! Contact Namkazt on the Pinbox Discord for help. 
 
-https://discord.gg/9Qae7fT
+https://discord.gg/CpNpMdG
 
 # Current Support
 - Streaming from Windows PC to a 3DS ( or over internet from VPS windows server )
@@ -43,4 +43,4 @@ Tutorial Video (Thanks to @GameInCanada): https://www.youtube.com/watch?v=Q-R2cy
 Please follow the instructions in the Pinbox Discord since the troubleshooting requirements are changing all the time and will be updated constantly.
 
 ## If you are having issues don't hesitate to ask for help on our official Discord channel! 
-## https://discord.gg/9Qae7fT
+## https://discord.gg/CpNpMdG
