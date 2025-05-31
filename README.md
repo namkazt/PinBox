@@ -1,4 +1,4 @@
-# Note: My 3DS battery was died so this project no longer maintained.
+# Note: My 3DS is no longer working because the battery is dead, so I'm unable to continue this project
 
 
 [![N|Solid](https://cdn.discordapp.com/attachments/340110838947905538/398531319048699905/test.png)](https://github.com/namkazt/PinBox)
